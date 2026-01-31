@@ -1,11 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEngine;
-using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using EasyLocalLLM.LLM.Manager;
+using EasyLocalLLM.LLM.Ollama;
+using EasyLocalLLM.LLM.Factory;
 
 /// <summary>
-/// 新しい Runtime ライブラリのストリーミング機能のテスト
-/// ReferenceOnlyDeveloping の ADVSceneController パターンを再現
+/// 新しい Runtime ライブラリのストリーミング機�EのチE��チE
+/// ReferenceOnlyDeveloping の ADVSceneController パターンを�E現
 /// </summary>
 public class LibraryTestStreaming : MonoBehaviour
 {
@@ -17,7 +20,7 @@ public class LibraryTestStreaming : MonoBehaviour
     {
         Debug.Log("=== EasyLocalLLM Streaming Test Start ===");
 
-        // クライアントを初期化
+        // クライアントを初期匁E
         var clientConfig = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -79,7 +82,7 @@ public class LibraryTestStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 1: シンプルなストリーミング
+    /// チE��チE1: シンプルなストリーミング
     /// </summary>
     private IEnumerator TestSimpleStreaming()
     {
@@ -103,7 +106,7 @@ public class LibraryTestStreaming : MonoBehaviour
 
         yield return _client.SendMessageStreamingAsync(
             "Tell me a short joke",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -112,14 +115,14 @@ public class LibraryTestStreaming : MonoBehaviour
                     return;
                 }
 
-                if (!isFinal)
+                if (!response.IsFinal)
                 {
                     // ストリーミング中
                     _testOutput += ".";
                 }
                 else
                 {
-                    // 完了
+                    // 完亁E
                     _testOutput += $"\n\nFinal Response:\n{response.Content}\n";
                     isComplete = true;
                 }
@@ -135,7 +138,7 @@ public class LibraryTestStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 2: 長い回答のストリーミング
+    /// チE��チE2: 長ぁE��答�Eストリーミング
     /// </summary>
     private IEnumerator TestLongResponseStreaming()
     {
@@ -160,7 +163,7 @@ public class LibraryTestStreaming : MonoBehaviour
 
         yield return _client.SendMessageStreamingAsync(
             "Explain machine learning in detail",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -169,10 +172,10 @@ public class LibraryTestStreaming : MonoBehaviour
                     return;
                 }
 
-                if (!isFinal)
+                if (!response.IsFinal)
                 {
                     chunkCount++;
-                    // 部分応答を表示（最初の200文字のみ）
+                    // 部刁E��答を表示�E�最初�E200斁E���Eみ�E�E
                     string preview = response.Content.Length > 200
                         ? response.Content.Substring(0, 200) + "..."
                         : response.Content;
@@ -184,7 +187,7 @@ public class LibraryTestStreaming : MonoBehaviour
                 }
                 else
                 {
-                    // 完了
+                    // 完亁E
                     _testOutput += $"\n\nTotal chunks received: {chunkCount}\n";
                     _testOutput += $"Final length: {response.Content.Length} characters\n";
                     isComplete = true;
@@ -201,7 +204,7 @@ public class LibraryTestStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 3: リアルタイム表示シミュレーション
+    /// チE��チE3: リアルタイム表示シミュレーション
     /// </summary>
     private IEnumerator TestRealTimeDisplay()
     {
@@ -226,7 +229,7 @@ public class LibraryTestStreaming : MonoBehaviour
 
         yield return _client.SendMessageStreamingAsync(
             "Write a haiku about spring",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -235,11 +238,11 @@ public class LibraryTestStreaming : MonoBehaviour
                     return;
                 }
 
-                if (!isFinal)
+                if (!response.IsFinal)
                 {
-                    // リアルタイムで内容を更新
+                    // リアルタイムで冁E��を更新
                     displayContent = response.Content;
-                    // 最新の内容を表示（改行前後200文字）
+                    // 最新の冁E��を表示�E�改行前征E00斁E��！E
                     int startIdx = Math.Max(0, displayContent.Length - 100);
                     string visible = displayContent.Substring(startIdx);
                     _testOutput = _testOutput.TrimEnd('\n') + "\rDisplay: " + visible;
@@ -262,7 +265,7 @@ public class LibraryTestStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 4: セッション履歴を含むストリーミング
+    /// チE��チE4: セチE��ョン履歴を含むストリーミング
     /// </summary>
     private IEnumerator TestStreamingWithHistory()
     {
@@ -275,16 +278,16 @@ public class LibraryTestStreaming : MonoBehaviour
 
         string sessionId = "test-stream-history-session";
 
-        // メッセージ 1
+        // メチE��ージ 1
         _testOutput += "Message 1 (Streaming): \"My favorite color is blue\"\n";
         bool isComplete1 = false;
 
         yield return _client.SendMessageStreamingAsync(
             "My favorite color is blue",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null) { isComplete1 = true; return; }
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"Response: {response.Content}\n";
                     isComplete1 = true;
@@ -297,16 +300,16 @@ public class LibraryTestStreaming : MonoBehaviour
 
         yield return new WaitForSeconds(1.0f);
 
-        // メッセージ 2（履歴を含むストリーミング）
+        // メチE��ージ 2�E�履歴を含むストリーミング�E�E
         _testOutput += "\nMessage 2 (Streaming): \"What color did I say I like?\"\n";
         bool isComplete2 = false;
 
         yield return _client.SendMessageStreamingAsync(
             "What color did I say I like?",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null) { isComplete2 = true; return; }
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"Response: {response.Content}\n";
                     _testOutput += "(Should mention 'blue')\n";
@@ -323,3 +326,4 @@ public class LibraryTestStreaming : MonoBehaviour
         _testOutput += "[Test 4] Complete\n";
     }
 }
+

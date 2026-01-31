@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using UnityEngine;
-using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using EasyLocalLLM.LLM.Ollama;
+using EasyLocalLLM.LLM.Factory;
 
 /// <summary>
 /// クイックスタート用テストスクリプト
@@ -38,7 +40,7 @@ public class QuickStartTest : MonoBehaviour
 
         yield return client.SendMessageAsync(
             "Hello! What is your name?",
-            (chatResponse, error, isFinal) =>
+            (chatResponse, error) =>
             {
                 if (error != null)
                 {
@@ -48,7 +50,7 @@ public class QuickStartTest : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (chatResponse.IsFinal)
                 {
                     response = chatResponse.Content;
                     Debug.Log($"✓ Response received: {response}");
@@ -67,7 +69,7 @@ public class QuickStartTest : MonoBehaviour
 
         yield return client.SendMessageAsync(
             "Can you repeat your name again?",
-            (chatResponse, error, isFinal) =>
+            (chatResponse, error) =>
             {
                 if (error != null)
                 {
@@ -76,7 +78,7 @@ public class QuickStartTest : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (chatResponse.IsFinal)
                 {
                     Debug.Log($"✓ Follow-up response: {chatResponse.Content}");
                     Debug.Log("✓ Session history is working correctly!");
@@ -96,7 +98,7 @@ public class QuickStartTest : MonoBehaviour
 
         yield return client.SendMessageStreamingAsync(
             "Tell me a very brief fact about space",
-            (chatResponse, error, isFinal) =>
+            (chatResponse, error) =>
             {
                 if (error != null)
                 {
@@ -105,7 +107,7 @@ public class QuickStartTest : MonoBehaviour
                     return;
                 }
 
-                if (!isFinal)
+                if (!chatResponse.IsFinal)
                 {
                     chunkCount++;
                 }

@@ -1,11 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEngine;
-using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using EasyLocalLLM.LLM.Manager;
+using EasyLocalLLM.LLM.Ollama;
+using EasyLocalLLM.LLM.Factory;
 
 /// <summary>
-/// ReferenceOnlyDeveloping の ADVSceneController パターンを
-/// 新しい Runtime ライブラリで完全に再現するテスト
+/// ReferenceOnlyDeveloping の ADVSceneController パターンめE
+/// 新しい Runtime ライブラリで完�Eに再現するチE��チE
 /// </summary>
 public class LibraryComparisonTest : MonoBehaviour
 {
@@ -13,7 +16,7 @@ public class LibraryComparisonTest : MonoBehaviour
     private string _testOutput = "";
     private bool _testInProgress = false;
 
-    // 前のコードの ChatMessage 相当
+    // 前�Eコード�E ChatMessage 相彁E
     private class LegacyChatMessage
     {
         public string role;
@@ -24,7 +27,7 @@ public class LibraryComparisonTest : MonoBehaviour
     {
         Debug.Log("=== ReferenceOnlyDeveloping vs New Library Comparison ===");
 
-        // 新ライブラリの初期化
+        // 新ライブラリの初期匁E
         var config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -80,7 +83,7 @@ public class LibraryComparisonTest : MonoBehaviour
     }
 
     /// <summary>
-    /// ADVSceneController の非ストリーミングパターンを再現
+    /// ADVSceneController の非ストリーミングパターンを�E現
     /// </summary>
     private IEnumerator TestADVScenePattern()
     {
@@ -96,10 +99,10 @@ public class LibraryComparisonTest : MonoBehaviour
         string model = "mistral";
         var messageHistory = new System.Collections.Generic.List<LegacyChatMessage>();
 
-        // Legacy pattern: まずシステムメッセージと初期メッセージ
+        // Legacy pattern: まずシスチE��メチE��ージと初期メチE��ージ
         messageHistory.Add(new LegacyChatMessage { role = "system", content = "You are a helpful assistant." });
 
-        // New library pattern: ChatRequestOptions で管理
+        // New library pattern: ChatRequestOptions で管琁E
         var options = new ChatRequestOptions
         {
             ChatId = "adv-scene-session",
@@ -114,7 +117,7 @@ public class LibraryComparisonTest : MonoBehaviour
 
         yield return _client.SendMessageAsync(
             "Hello, I'm starting an adventure game.",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -123,12 +126,12 @@ public class LibraryComparisonTest : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"\nAssistant: {response.Content}\n";
 
-                    // Legacy: messageHistory に追加していた
-                    // New: 自動的に内部で管理
+                    // Legacy: messageHistory に追加してぁE��
+                    // New: 自動的に冁E��で管琁E
                     _testOutput += "\n[Internal History Management]\n";
                     _testOutput += "Legacy: Manual messageHistory.Add(...)\n";
                     _testOutput += "New: Automatic via ChatHistoryManager\n";
@@ -143,14 +146,14 @@ public class LibraryComparisonTest : MonoBehaviour
 
         yield return new WaitForSeconds(1.0f);
 
-        // 2番目のメッセージ（履歴を含む）
+        // 2番目のメチE��ージ�E�履歴を含む�E�E
         _testOutput += "\nSending: \"What should I do first?\"\n";
 
         bool isComplete2 = false;
 
         yield return _client.SendMessageAsync(
             "What should I do first?",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -159,7 +162,7 @@ public class LibraryComparisonTest : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"\nAssistant: {response.Content}\n";
                     isComplete2 = true;
@@ -176,7 +179,7 @@ public class LibraryComparisonTest : MonoBehaviour
     }
 
     /// <summary>
-    /// ADVSceneController のストリーミングパターンを再現
+    /// ADVSceneController のストリーミングパターンを�E現
     /// </summary>
     private IEnumerator TestADVSceneStreamingPattern()
     {
@@ -204,7 +207,7 @@ public class LibraryComparisonTest : MonoBehaviour
 
         yield return _client.SendMessageStreamingAsync(
             "Tell me an epic story about a dragon.",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -213,7 +216,7 @@ public class LibraryComparisonTest : MonoBehaviour
                     return;
                 }
 
-                if (!isFinal)
+                if (!response.IsFinal)
                 {
                     chunkCount++;
                     _testOutput += "*";  // Progress indicator
@@ -223,7 +226,7 @@ public class LibraryComparisonTest : MonoBehaviour
                     _testOutput += $"\n\nTotal chunks: {chunkCount}\n";
                     _testOutput += $"Final response length: {response.Content.Length} chars\n";
 
-                    // Legacy: Translate メソッドの参考
+                    // Legacy: Translate メソチE��の参老E
                     _testOutput += "\n[Streaming Behavior]\n";
                     _testOutput += "Legacy: Manual chunk parsing & concat\n";
                     _testOutput += "New: Automatic via HttpRequestHelper\n";
@@ -242,7 +245,7 @@ public class LibraryComparisonTest : MonoBehaviour
     }
 
     /// <summary>
-    /// MainSceneController パターンを再現
+    /// MainSceneController パターンを�E現
     /// </summary>
     private IEnumerator TestMainScenePattern()
     {
@@ -255,11 +258,11 @@ public class LibraryComparisonTest : MonoBehaviour
         _testOutput += "New: ChatRequestOptions.SystemPrompt\n";
         _testOutput += "---\n";
 
-        // Legacy: inEnglish フラグで日本語/英語を切り替え
+        // Legacy: inEnglish フラグで日本誁E英語を刁E��替ぁE
         bool inEnglish = false;
 
         string systemPromptEn = "You are a capable AI. Carefully read the given text. Also, please pay the utmost attention to consistency between your statements.";
-        string systemPromptJa = "あなたは有能なAIです。与えられた文章を注意深く読み解いてください。また、自身の発言間での整合性に最大限の注意を払ってください。";
+        string systemPromptJa = "あなた�E有�EなAIです。与えられた文章を注意深く読み解ぁE��ください。また、�E身の発言間での整合性に最大限�E注意を払ってください、E;
 
         string selectedPrompt = inEnglish ? systemPromptEn : systemPromptJa;
 
@@ -278,7 +281,7 @@ public class LibraryComparisonTest : MonoBehaviour
 
         yield return _client.SendMessageAsync(
             "Please analyze this text.",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -287,7 +290,7 @@ public class LibraryComparisonTest : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"\nResponse: {response.Content}\n";
                     _testOutput += "\n[Improvements]\n";
@@ -310,7 +313,7 @@ public class LibraryComparisonTest : MonoBehaviour
     }
 
     /// <summary>
-    /// TitleSceneController 初期化パターンを再現
+    /// TitleSceneController 初期化パターンを�E現
     /// </summary>
     private IEnumerator TestTitleSceneInitPattern()
     {
@@ -338,7 +341,7 @@ public class LibraryComparisonTest : MonoBehaviour
 
         yield return _client.SendMessageAsync(
             "hello",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -349,7 +352,7 @@ public class LibraryComparisonTest : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"\nSuccess! Response: {response.Content}\n";
                     _testOutput += "\n[Initialization Improvements]\n";
@@ -371,3 +374,4 @@ public class LibraryComparisonTest : MonoBehaviour
         _testOutput += "[TitleScene Pattern] Complete\n";
     }
 }
+

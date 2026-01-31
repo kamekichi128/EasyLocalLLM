@@ -1,11 +1,14 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEngine;
-using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using EasyLocalLLM.LLM.Manager;
+using EasyLocalLLM.LLM.Ollama;
+using EasyLocalLLM.LLM.Factory;
 
 /// <summary>
-/// 新しい Runtime ライブラリの非ストリーミング機能のテスト
-/// ReferenceOnlyDeveloping の ADVSceneController パターンを再現
+/// 新しい Runtime ライブラリの非ストリーミング機�EのチE��チE
+/// ReferenceOnlyDeveloping の ADVSceneController パターンを�E現
 /// </summary>
 public class LibraryTestNonStreaming : MonoBehaviour
 {
@@ -17,18 +20,18 @@ public class LibraryTestNonStreaming : MonoBehaviour
     {
         Debug.Log("=== EasyLocalLLM NonStreaming Test Start ===");
 
-        // サーバマネージャーを初期化
+        // サーバ�Eネ�Eジャーを�E期化
         var serverConfig = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
             ExecutablePath = Application.streamingAssetsPath + "/LLM/ollama.exe",
-            AutoStartServer = false,  // テスト環境では手動管理
+            AutoStartServer = false,  // チE��ト環墁E��は手動管琁E
             DebugMode = true
         };
 
         // OllamaServerManager.Initialize(serverConfig);
 
-        // クライアントを初期化
+        // クライアントを初期匁E
         var clientConfig = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -96,7 +99,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 1: シンプルなメッセージ送信
+    /// チE��チE1: シンプルなメチE��ージ送信
     /// </summary>
     private IEnumerator TestSimpleMessage()
     {
@@ -119,7 +122,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         yield return _client.SendMessageAsync(
             "Hello, how are you?",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -128,7 +131,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"Response: {response.Content}\n";
                     _testOutput += "---\n";
@@ -145,7 +148,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 2: 温度 0（確定的な回答）
+    /// チE��チE2: 温度 0�E�確定的な回答！E
     /// </summary>
     private IEnumerator TestDeterministicResponse()
     {
@@ -168,7 +171,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         yield return _client.SendMessageAsync(
             "What is 2+2?",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -177,7 +180,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"Response: {response.Content}\n";
                     _testOutput += "---\n";
@@ -194,7 +197,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 3: セッション履歴管理
+    /// チE��チE3: セチE��ョン履歴管琁E
     /// </summary>
     private IEnumerator TestSessionHistory()
     {
@@ -207,13 +210,13 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         string sessionId = "test-history-session";
 
-        // メッセージ 1
+        // メチE��ージ 1
         _testOutput += "Message 1: \"My name is Alice\"\n";
         bool isComplete1 = false;
 
         yield return _client.SendMessageAsync(
             "My name is Alice",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -222,7 +225,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"Response: {response.Content}\n";
                     isComplete1 = true;
@@ -235,13 +238,13 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         yield return new WaitForSeconds(1.0f);
 
-        // メッセージ 2（履歴を含む）
+        // メチE��ージ 2�E�履歴を含む�E�E
         _testOutput += "\nMessage 2: \"What is my name?\"\n";
         bool isComplete2 = false;
 
         yield return _client.SendMessageAsync(
             "What is my name?",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -250,7 +253,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
                     return;
                 }
 
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"Response: {response.Content}\n";
                     _testOutput += "(Should remember 'Alice')\n";
@@ -268,7 +271,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 4: エラーハンドリング
+    /// チE��チE4: エラーハンドリング
     /// </summary>
     private IEnumerator TestErrorHandling()
     {
@@ -282,7 +285,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         var wrongConfig = new OllamaConfig
         {
-            ServerUrl = "http://localhost:9999",  // 存在しないサーバ
+            ServerUrl = "http://localhost:9999",  // 存在しなぁE��ーチE
             DefaultModelName = "mistral",
             MaxRetries = 2,
             RetryDelaySeconds = 0.5f,
@@ -295,7 +298,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         yield return testClient.SendMessageAsync(
             "Test message",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null)
                 {
@@ -320,7 +323,7 @@ public class LibraryTestNonStreaming : MonoBehaviour
     }
 
     /// <summary>
-    /// テスト 5: 複数セッションの同時管理
+    /// チE��チE5: 褁E��セチE��ョンの同時管琁E
     /// </summary>
     private IEnumerator TestMultipleSessions()
     {
@@ -331,16 +334,16 @@ public class LibraryTestNonStreaming : MonoBehaviour
         _testOutput += "\n[Test 5] Multiple Sessions Test\n";
         _testOutput += "---\n";
 
-        // セッション A
+        // セチE��ョン A
         _testOutput += "Session A: \"I like programming\"\n";
         bool completeA = false;
 
         yield return _client.SendMessageAsync(
             "I like programming",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null) { completeA = true; return; }
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"A Response: {response.Content}\n";
                     completeA = true;
@@ -353,16 +356,16 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        // セッション B
+        // セチE��ョン B
         _testOutput += "\nSession B: \"I like cooking\"\n";
         bool completeB = false;
 
         yield return _client.SendMessageAsync(
             "I like cooking",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null) { completeB = true; return; }
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"B Response: {response.Content}\n";
                     completeB = true;
@@ -375,16 +378,16 @@ public class LibraryTestNonStreaming : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        // セッション A に戻る
+        // セチE��ョン A に戻めE
         _testOutput += "\nSession A Follow-up: \"What is my hobby?\"\n";
         bool completeA2 = false;
 
         yield return _client.SendMessageAsync(
             "What is my hobby?",
-            (response, error, isFinal) =>
+            (response, error) =>
             {
                 if (error != null) { completeA2 = true; return; }
-                if (isFinal)
+                if (response.IsFinal)
                 {
                     _testOutput += $"A Response: {response.Content}\n";
                     _testOutput += "(Should remember 'programming')\n";
@@ -401,3 +404,4 @@ public class LibraryTestNonStreaming : MonoBehaviour
         _testOutput += "[Test 5] Complete\n";
     }
 }
+
