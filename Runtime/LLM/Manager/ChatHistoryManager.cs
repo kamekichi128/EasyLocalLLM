@@ -50,6 +50,10 @@ namespace EasyLocalLLM.LLM.Manager
                 };
                 _sessions[sessionId] = session;
             }
+            else if (!string.IsNullOrEmpty(systemPrompt))
+            {
+                session.SystemPrompt = systemPrompt;
+            }
             return session;
         }
 

@@ -31,32 +31,6 @@
 3. `LibraryTestStreaming` スクリプトをアタッチ
 4. ゲームを実行
 
-### 3. **ComparisonTest.cs** - 旧実装との互換性テスト
-ReferenceOnlyDeveloping の各シーンコントローラと同等の動作を確認
-
-- **ADVSceneController 非ストリーミング版**
-  - 複数メッセージの送信
-  - 自動履歴管理
-  - リトライロジック検証
-
-- **ADVSceneController ストリーミング版**
-  - チャンク処理
-  - リアルタイム受信
-
-- **MainSceneController パターン**
-  - 言語別システムプロンプト
-  - ビジーフラグ管理
-
-- **TitleSceneController パターン**
-  - 初期化テスト
-  - リトライ機能検証
-
-**実行方法**：
-1. 新しいシーンを作成
-2. GameObject を作成
-3. `LibraryComparisonTest` スクリプトをアタッチ
-4. ゲームを実行
-
 ---
 
 ## 前提条件
@@ -152,22 +126,6 @@ Expected: リアルタイムで表示更新
 Result: 段階的に詩が表示される
 ```
 
-### テスト 9: Comparison - ADVScene Pattern
-
-```
-Legacy: SendMessageToChatbotAtOnce
-New: SendMessageAsync
-Result: 同一の動作を確認
-```
-
-### テスト 10: Comparison - MainScene Pattern
-
-```
-Legacy: inEnglish フラグで言語切り替え
-New: ChatRequestOptions.SystemPrompt
-Result: 柔軟な設定が可能
-```
-
 ---
 
 ## よくあるエラーと対処法
@@ -235,10 +193,6 @@ ollama pull neural-chat
 - [ ] Streaming - Simple ✅
 - [ ] Streaming - Long Response ✅
 - [ ] Streaming - Real-time Display ✅
-- [ ] Comparison - ADVScene Non-Streaming ✅
-- [ ] Comparison - ADVScene Streaming ✅
-- [ ] Comparison - MainScene ✅
-- [ ] Comparison - TitleScene ✅
 
 すべてのテストが ✅ になれば、ライブラリは本番環境で使用可能です。
 

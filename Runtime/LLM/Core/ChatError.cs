@@ -22,6 +22,9 @@ namespace EasyLocalLLM.LLM.Core
         /// <summary>指定されたモデルが見つからない</summary>
         ModelNotFound,
 
+        /// <summary>ユーザーによるキャンセル</summary>
+        Cancelled,
+
         /// <summary>その他のエラー</summary>
         Unknown
     }

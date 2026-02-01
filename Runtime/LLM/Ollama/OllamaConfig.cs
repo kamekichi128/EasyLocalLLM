@@ -56,5 +56,10 @@ namespace EasyLocalLLM.LLM.Ollama
         /// Ollama サーバを自動起動するか
         /// </summary>
         public bool AutoStartServer { get; set; } = true;
+
+        /// <summary>
+        /// 同時実行可能なセッション数（1 以上）
+        /// </summary>
+        public int MaxConcurrentSessions { get; set; } = 1;
     }
 }

@@ -1,3 +1,5 @@
+using System;
+
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
@@ -44,5 +46,10 @@ namespace EasyLocalLLM.LLM.Core
         /// メッセージ履歴の最大保持数（0 = 無制限）
         /// </summary>
         public int? MaxHistory { get; set; }
+
+        /// <summary>
+        /// キャンセル要求（true で中断）
+        /// </summary>
+        public Func<bool> CancelRequested { get; set; }
     }
 }

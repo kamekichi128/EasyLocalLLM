@@ -26,7 +26,8 @@ namespace EasyLocalLLM.LLM.Ollama
             string url,
             string jsonBody,
             Action<string> onSuccess,
-            Action<ChatError> onError)
+            Action<ChatError> onError,
+            Func<bool> shouldCancel = null)
         {
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
             int attempt = 0;
@@ -51,6 +52,17 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     while (!operation.isDone)
                     {
+                        if (shouldCancel?.Invoke() == true)
+                        {
+                            request.Abort();
+                            onError?.Invoke(new ChatError
+                            {
+                                ErrorType = LLMErrorType.Cancelled,
+                                Message = "Request cancelled",
+                                IsRetryable = false
+                            });
+                            yield break;
+                        }
                         yield return null;
                     }
 
@@ -105,7 +117,8 @@ namespace EasyLocalLLM.LLM.Ollama
             string jsonBody,
             Action<string> onChunk,
             Action<bool> onComplete,
-            Action<ChatError> onError)
+            Action<ChatError> onError,
+            Func<bool> shouldCancel = null)
         {
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
             int attempt = 0;
@@ -126,22 +139,50 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     var operation = request.SendWebRequest();
 
-                    int lastProcessedIndex = 0;
+                    int lastProcessedByteCount = 0;
+                    var decoder = Encoding.UTF8.GetDecoder();
+                    var buffer = new StringBuilder();
 
                     while (!operation.isDone)
                     {
-                        if (request.downloadHandler.data != null && request.downloadHandler.data.Length > 0)
+                        if (shouldCancel?.Invoke() == true)
                         {
-                            string responseChunk = Encoding.UTF8.GetString(request.downloadHandler.data);
-                            string[] chunks = responseChunk.Split('\n');
-
-                            for (int i = lastProcessedIndex; i < chunks.Length; i++)
+                            request.Abort();
+                            onError?.Invoke(new ChatError
                             {
-                                string chunk = chunks[i].Trim();
-                                if (!string.IsNullOrEmpty(chunk))
+                                ErrorType = LLMErrorType.Cancelled,
+                                Message = "Request cancelled",
+                                IsRetryable = false
+                            });
+                            onComplete?.Invoke(false);
+                            yield break;
+                        }
+                        var data = request.downloadHandler.data;
+                        if (data != null && data.Length > lastProcessedByteCount)
+                        {
+                            int byteCount = data.Length - lastProcessedByteCount;
+                            char[] charBuffer = new char[Encoding.UTF8.GetMaxCharCount(byteCount)];
+                            int charsDecoded = decoder.GetChars(data, lastProcessedByteCount, byteCount, charBuffer, 0);
+                            buffer.Append(charBuffer, 0, charsDecoded);
+                            lastProcessedByteCount = data.Length;
+
+                            string buffered = buffer.ToString();
+                            int lastNewline = buffered.LastIndexOf('\n');
+                            if (lastNewline >= 0)
+                            {
+                                string complete = buffered.Substring(0, lastNewline + 1);
+                                string remainder = buffered.Substring(lastNewline + 1);
+                                buffer.Clear();
+                                buffer.Append(remainder);
+
+                                string[] chunks = complete.Split('\n');
+                                for (int i = 0; i < chunks.Length; i++)
                                 {
-                                    onChunk?.Invoke(chunk);
-                                    lastProcessedIndex = i + 1;
+                                    string chunk = chunks[i].Trim();
+                                    if (!string.IsNullOrEmpty(chunk))
+                                    {
+                                        onChunk?.Invoke(chunk);
+                                    }
                                 }
                             }
                         }
@@ -151,15 +192,27 @@ namespace EasyLocalLLM.LLM.Ollama
                     if (request.result == UnityWebRequest.Result.Success)
                     {
                         // 最後のチャンクも処理
-                        string lastChunk = Encoding.UTF8.GetString(request.downloadHandler.data);
-                        string[] lastChunks = lastChunk.Split('\n');
-
-                        for (int i = lastProcessedIndex; i < lastChunks.Length; i++)
+                        var finalData = request.downloadHandler.data;
+                        if (finalData != null && finalData.Length > lastProcessedByteCount)
                         {
-                            string chunk = lastChunks[i].Trim();
-                            if (!string.IsNullOrEmpty(chunk))
+                            int byteCount = finalData.Length - lastProcessedByteCount;
+                            char[] charBuffer = new char[Encoding.UTF8.GetMaxCharCount(byteCount)];
+                            int charsDecoded = decoder.GetChars(finalData, lastProcessedByteCount, byteCount, charBuffer, 0);
+                            buffer.Append(charBuffer, 0, charsDecoded);
+                            lastProcessedByteCount = finalData.Length;
+                        }
+
+                        string remaining = buffer.ToString().Trim();
+                        if (!string.IsNullOrEmpty(remaining))
+                        {
+                            string[] lastChunks = remaining.Split('\n');
+                            for (int i = 0; i < lastChunks.Length; i++)
                             {
-                                onChunk?.Invoke(chunk);
+                                string chunk = lastChunks[i].Trim();
+                                if (!string.IsNullOrEmpty(chunk))
+                                {
+                                    onChunk?.Invoke(chunk);
+                                }
                             }
                         }
 

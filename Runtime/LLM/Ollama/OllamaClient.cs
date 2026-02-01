@@ -16,7 +16,121 @@ namespace EasyLocalLLM.LLM.Ollama
         private readonly OllamaConfig _config;
         private readonly ChatHistoryManager _historyManager;
         private readonly HttpRequestHelper _httpHelper;
-        private bool _isRunning = false;
+        private readonly HashSet<string> _runningChatIds = new();
+        private readonly List<PendingRequest> _pendingRequests = new();
+        private long _pendingSequence = 0;
+
+        private class PendingRequest
+        {
+            public string ChatId { get; }
+            public int Priority { get; }
+            public long Order { get; }
+
+            public PendingRequest(string chatId, int priority, long order)
+            {
+                ChatId = chatId;
+                Priority = priority;
+                Order = order;
+            }
+        }
+
+        private void InsertPendingSorted(PendingRequest request)
+        {
+            int index = _pendingRequests.FindIndex(r =>
+                r.Priority < request.Priority ||
+                (r.Priority == request.Priority && r.Order > request.Order));
+
+            if (index >= 0)
+            {
+                _pendingRequests.Insert(index, request);
+            }
+            else
+            {
+                _pendingRequests.Add(request);
+            }
+        }
+
+        private int GetNextRunnableIndex(int maxConcurrent)
+        {
+            if (_runningChatIds.Count >= maxConcurrent)
+            {
+                return -1;
+            }
+
+            int bestIndex = -1;
+            for (int i = 0; i < _pendingRequests.Count; i++)
+            {
+                var candidate = _pendingRequests[i];
+                if (_runningChatIds.Contains(candidate.ChatId))
+                {
+                    continue;
+                }
+
+                if (bestIndex < 0)
+                {
+                    bestIndex = i;
+                    continue;
+                }
+
+                var best = _pendingRequests[bestIndex];
+                if (candidate.Priority > best.Priority ||
+                    (candidate.Priority == best.Priority && candidate.Order < best.Order))
+                {
+                    bestIndex = i;
+                }
+            }
+
+            return bestIndex;
+        }
+
+        private IEnumerator WaitForTurn(string chatId, ChatRequestOptions options, Action<ChatError> onError)
+        {
+            int maxConcurrent = Mathf.Max(1, _config.MaxConcurrentSessions);
+
+            if (!options.WaitIfBusy)
+            {
+                if (_pendingRequests.Count > 0 || _runningChatIds.Contains(chatId) || _runningChatIds.Count >= maxConcurrent)
+                {
+                    onError?.Invoke(new ChatError
+                    {
+                        ErrorType = LLMErrorType.Unknown,
+                        Message = "Client is busy",
+                        IsRetryable = false
+                    });
+                    yield break;
+                }
+
+                yield break;
+            }
+
+            var pending = new PendingRequest(chatId, options.Priority, ++_pendingSequence);
+            InsertPendingSorted(pending);
+
+            while (true)
+            {
+                if (options.CancelRequested?.Invoke() == true)
+                {
+                    _pendingRequests.Remove(pending);
+                    onError?.Invoke(new ChatError
+                    {
+                        ErrorType = LLMErrorType.Cancelled,
+                        Message = "Request cancelled",
+                        IsRetryable = false
+                    });
+                    yield break;
+                }
+
+                maxConcurrent = Mathf.Max(1, _config.MaxConcurrentSessions);
+                int nextIndex = GetNextRunnableIndex(maxConcurrent);
+                if (nextIndex >= 0 && ReferenceEquals(_pendingRequests[nextIndex], pending))
+                {
+                    _pendingRequests.RemoveAt(nextIndex);
+                    yield break;
+                }
+
+                yield return null;
+            }
+        }
 
         public string GlobalSystemPrompt { get; set; } = "You are a helpful AI assistant.";
 
@@ -44,35 +158,28 @@ namespace EasyLocalLLM.LLM.Ollama
             options ??= new ChatRequestOptions();
             string chatId = options.ChatId ?? Guid.NewGuid().ToString();
 
-            if (_isRunning)
+            bool waitFailed = false;
+            yield return WaitForTurn(chatId, options, error =>
             {
-                if (options.WaitIfBusy)
-                {
-                    while (_isRunning)
-                        yield return null;
-                }
-                else
-                {
-                    callback?.Invoke(null, new ChatError
-                    {
-                        ErrorType = LLMErrorType.Unknown,
-                        Message = "Client is busy",
-                        IsRetryable = false
-                    });
-                    yield break;
-                }
+                waitFailed = true;
+                callback?.Invoke(null, error);
+            });
+            if (waitFailed)
+            {
+                yield break;
             }
 
-            _isRunning = true;
+            _runningChatIds.Add(chatId);
 
             try
             {
-                var history = _historyManager.GetHistory(chatId);
+                var session = _historyManager.GetOrCreateSession(chatId, options.SystemPrompt);
+                var history = session.History;
 
                 // システムプロンプトがなければ追加
                 if (history.Count == 0)
                 {
-                    string systemPrompt = options.SystemPrompt ?? GlobalSystemPrompt;
+                    string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
                     if (!string.IsNullOrEmpty(systemPrompt))
                     {
                         history.Add(new ChatMessage
@@ -149,12 +256,13 @@ namespace EasyLocalLLM.LLM.Ollama
                         hasError = true;
                         errorInfo = error;
                         callback?.Invoke(null, error);
-                    }
+                    },
+                    options.CancelRequested
                 );
             }
             finally
             {
-                _isRunning = false;
+                _runningChatIds.Remove(chatId);
             }
         }
 
@@ -169,35 +277,28 @@ namespace EasyLocalLLM.LLM.Ollama
             options ??= new ChatRequestOptions();
             string chatId = options.ChatId ?? Guid.NewGuid().ToString();
 
-            if (_isRunning)
+            bool waitFailed = false;
+            yield return WaitForTurn(chatId, options, error =>
             {
-                if (options.WaitIfBusy)
-                {
-                    while (_isRunning)
-                        yield return null;
-                }
-                else
-                {
-                    callback?.Invoke(null, new ChatError
-                    {
-                        ErrorType = LLMErrorType.Unknown,
-                        Message = "Client is busy",
-                        IsRetryable = false
-                    });
-                    yield break;
-                }
+                waitFailed = true;
+                callback?.Invoke(null, error);
+            });
+            if (waitFailed)
+            {
+                yield break;
             }
 
-            _isRunning = true;
+            _runningChatIds.Add(chatId);
 
             try
             {
-                var history = _historyManager.GetHistory(chatId);
+                var session = _historyManager.GetOrCreateSession(chatId, options.SystemPrompt);
+                var history = session.History;
 
                 // システムプロンプトがなければ追加
                 if (history.Count == 0)
                 {
-                    string systemPrompt = options.SystemPrompt ?? GlobalSystemPrompt;
+                    string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
                     if (!string.IsNullOrEmpty(systemPrompt))
                     {
                         history.Add(new ChatMessage
@@ -228,6 +329,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                 string fullResponse = "";
                 string fullRole = "assistant";
+                string lastRawChunk = null;
 
                 yield return _httpHelper.ExecuteStreamingWithRetry(
                     url,
@@ -236,6 +338,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     {
                         try
                         {
+                            lastRawChunk = chunk;
                             var chunkJson = JObject.Parse(chunk);
                             var chunkMessage = chunkJson["message"];
 
@@ -283,7 +386,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 Content = fullResponse,
                                 Role = fullRole,
                                 IsFinal = true,
-                                RawResponse = fullResponse
+                                RawResponse = lastRawChunk ?? fullResponse
                             };
 
                             callback?.Invoke(finalResponse, null);
@@ -292,12 +395,13 @@ namespace EasyLocalLLM.LLM.Ollama
                     error =>
                     {
                         callback?.Invoke(null, error);
-                    }
+                    },
+                    options.CancelRequested
                 );
             }
             finally
             {
-                _isRunning = false;
+                _runningChatIds.Remove(chatId);
             }
         }
 

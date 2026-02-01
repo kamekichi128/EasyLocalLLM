@@ -100,7 +100,17 @@ namespace EasyLocalLLM.LLM.Ollama
                 };
 
                 // 環境変数を設定
-                startInfo.EnvironmentVariables["OLLAMA_HOST"] = _config.ServerUrl;
+                if (Uri.TryCreate(_config.ServerUrl, UriKind.Absolute, out var serverUri))
+                {
+                    string hostPort = serverUri.IsDefaultPort
+                        ? serverUri.Host
+                        : $"{serverUri.Host}:{serverUri.Port}";
+                    startInfo.EnvironmentVariables["OLLAMA_HOST"] = hostPort;
+                }
+                else
+                {
+                    startInfo.EnvironmentVariables["OLLAMA_HOST"] = _config.ServerUrl;
+                }
                 startInfo.EnvironmentVariables["OLLAMA_FLASH_ATTENTION"] = "1";
                 startInfo.EnvironmentVariables["OLLAMA_MODELS"] = _config.ModelsDirectory;
 
@@ -161,25 +171,33 @@ namespace EasyLocalLLM.LLM.Ollama
         {
             try
             {
-                string taskkill = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.System),
-                    "taskkill.exe");
-
-                if (!File.Exists(taskkill))
+                if (Application.platform == RuntimePlatform.WindowsPlayer ||
+                    Application.platform == RuntimePlatform.WindowsEditor)
                 {
-                    // taskkill が見つからない場合、直接プロセスを終了
-                    process.Kill();
-                    return;
+                    string taskkill = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.System),
+                        "taskkill.exe");
+
+                    if (!File.Exists(taskkill))
+                    {
+                        // taskkill が見つからない場合、直接プロセスを終了
+                        process.Kill();
+                        return;
+                    }
+
+                    using (var procKiller = new Process())
+                    {
+                        procKiller.StartInfo.FileName = taskkill;
+                        procKiller.StartInfo.Arguments = $"/PID {process.Id} /T /F";
+                        procKiller.StartInfo.CreateNoWindow = true;
+                        procKiller.StartInfo.UseShellExecute = false;
+                        procKiller.Start();
+                        procKiller.WaitForExit();
+                    }
                 }
-
-                using (var procKiller = new Process())
+                else
                 {
-                    procKiller.StartInfo.FileName = taskkill;
-                    procKiller.StartInfo.Arguments = $"/PID {process.Id} /T /F";
-                    procKiller.StartInfo.CreateNoWindow = true;
-                    procKiller.StartInfo.UseShellExecute = false;
-                    procKiller.Start();
-                    procKiller.WaitForExit();
+                    process.Kill();
                 }
             }
             catch (Exception ex)
