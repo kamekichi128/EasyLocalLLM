@@ -108,7 +108,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
             while (true)
             {
-                if (options.CancelRequested?.Invoke() == true)
+                if (options.CancellationToken.IsCancellationRequested)
                 {
                     _pendingRequests.Remove(pending);
                     onError?.Invoke(new ChatError
@@ -257,7 +257,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         errorInfo = error;
                         callback?.Invoke(null, error);
                     },
-                    options.CancelRequested
+                    options.CancellationToken
                 );
             }
             finally
@@ -396,7 +396,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     {
                         callback?.Invoke(null, error);
                     },
-                    options.CancelRequested
+                    options.CancellationToken
                 );
             }
             finally

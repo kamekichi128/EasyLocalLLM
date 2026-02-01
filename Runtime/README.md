@@ -41,9 +41,17 @@ public class ChatManager : MonoBehaviour
         _client = LLMClientFactory.CreateOllamaClient(config);
     }
 }
+
+**現在の実装の制限:**
+- `StartCoroutine` + コールバック形式での処理が必須です
+- async/await は未対応です（今後の拡張予定を参照）
+- キャンセル以外の途中制御はできません
 ```
 
 ### 2. メッセージ送信（一度に完全回答を取得）
+
+コールバックは**1回だけ**呼ばれます。
+短い応答や完全な回答が必要な場合に使用してください。
 
 ```csharp
 void SendMessage()
@@ -65,10 +73,7 @@ void SendMessage()
                 return;
             }
 
-            if (response.IsFinal)
-            {
-                Debug.Log($"Assistant: {response.Content}");
-            }
+            Debug.Log($"Assistant: {response.Content}");
         },
         options
     ));
@@ -76,6 +81,23 @@ void SendMessage()
 ```
 
 ### 3. ストリーミング送信（段階的に回答を受け取る）
+
+コールバックは**複数回**呼ばれます。回答が到着するたびに部分応答が返され、最後に `IsFinal=true` で完了が通知されます。
+長文生成時のUI更新やリアルタイム表示に向いています。
+
+**処理フローの比較：**
+
+```
+非ストリーミング:
+SendMessage() → [サーバ処理...] → コールバック(IsFinal=true) → 完了
+
+ストリーミング:
+SendStreamingMessage() → [サーバ処理開始...] 
+  → コールバック(IsFinal=false, 部分1)
+  → コールバック(IsFinal=false, 部分2)
+  → ... 
+  → コールバック(IsFinal=true, 最終部分) → 完了
+```
 
 ```csharp
 void SendStreamingMessage()
@@ -98,12 +120,12 @@ void SendStreamingMessage()
 
             if (!response.IsFinal)
             {
-                // ストリーミング中の部分応答
+                // 複数回呼ばれる：部分応答
                 Debug.Log($"Receiving: {response.Content}");
             }
             else
             {
-                // 完了
+                // 最後に1回だけ：完全な応答
                 Debug.Log($"Complete: {response.Content}");
             }
         },
@@ -277,19 +299,20 @@ void SendWithPriority()
 
 ### 7. キャンセル
 
-`ChatRequestOptions.CancelRequested` にコールバックを指定すると、
-途中でリクエストを中断できます。
+Unity の標準 `CancellationToken` パターンに対応しています。キャンセルが必要な場合は `CancellationTokenSource` を使用してください。
 
 ```csharp
-private bool _cancel;
+private CancellationTokenSource _cancellationTokenSource;
 
 void SendWithCancel()
 {
-    _cancel = false;
+    // キャンセルトークンソースを作成
+    _cancellationTokenSource = new CancellationTokenSource();
+    
     var options = new ChatRequestOptions
     {
         ChatId = "chat-session-1",
-        CancelRequested = () => _cancel
+        CancellationToken = _cancellationTokenSource.Token
     };
 
     StartCoroutine(_client.SendMessageStreamingAsync(
@@ -308,14 +331,61 @@ void SendWithCancel()
                 }
                 return;
             }
+            
+            Debug.Log($"Receiving: {response.Content}");
         },
         options
     ));
 }
 
-void Cancel()
+// UI ボタン等から呼び出し
+void CancelRequest()
 {
-    _cancel = true;
+    _cancellationTokenSource?.Cancel();
+}
+
+// クリーンアップ
+void OnDestroy()
+{
+    _cancellationTokenSource?.Dispose();
+}
+```
+
+**タイムアウト付きキャンセルの例：**
+
+```csharp
+void SendWithTimeout()
+{
+    // 10秒後に自動キャンセル
+    _cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+    
+    var options = new ChatRequestOptions
+    {
+        ChatId = "chat-session-1",
+        CancellationToken = _cancellationTokenSource.Token
+    };
+
+    StartCoroutine(_client.SendMessageStreamingAsync(
+        "回答を生成して",
+        (response, error) =>
+        {
+            if (error != null)
+            {
+                if (error.ErrorType == LLMErrorType.Cancelled)
+                {
+                    Debug.Log("Request timeout");
+                }
+                else
+                {
+                    Debug.LogError($"Error: {error.Message}");
+                }
+                return;
+            }
+            
+            Debug.Log($"Receiving: {response.Content}");
+        },
+        options
+    ));
 }
 ```
 

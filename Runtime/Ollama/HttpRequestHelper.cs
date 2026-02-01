@@ -27,7 +27,7 @@ namespace EasyLocalLLM.LLM.Ollama
             string jsonBody,
             Action<string> onSuccess,
             Action<ChatError> onError,
-            Func<bool> shouldCancel = null)
+            System.Threading.CancellationToken cancellationToken = default)
         {
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
             int attempt = 0;
@@ -52,7 +52,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     while (!operation.isDone)
                     {
-                        if (shouldCancel?.Invoke() == true)
+                        if (cancellationToken.IsCancellationRequested)
                         {
                             request.Abort();
                             onError?.Invoke(new ChatError
@@ -118,7 +118,7 @@ namespace EasyLocalLLM.LLM.Ollama
             Action<string> onChunk,
             Action<bool> onComplete,
             Action<ChatError> onError,
-            Func<bool> shouldCancel = null)
+            System.Threading.CancellationToken cancellationToken = default)
         {
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
             int attempt = 0;
@@ -145,7 +145,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     while (!operation.isDone)
                     {
-                        if (shouldCancel?.Invoke() == true)
+                        if (cancellationToken.IsCancellationRequested)
                         {
                             request.Abort();
                             onError?.Invoke(new ChatError

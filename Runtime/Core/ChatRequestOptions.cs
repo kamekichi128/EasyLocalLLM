@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 
 namespace EasyLocalLLM.LLM.Core
 {
@@ -48,8 +49,8 @@ namespace EasyLocalLLM.LLM.Core
         public int? MaxHistory { get; set; }
 
         /// <summary>
-        /// キャンセル要求（true で中断）
+        /// キャンセルトークン（CancellationTokenSource.Token を指定）
         /// </summary>
-        public Func<bool> CancelRequested { get; set; }
+        public CancellationToken CancellationToken { get; set; } = CancellationToken.None;
     }
 }
