@@ -417,39 +417,242 @@ public class MultiSessionChat : MonoBehaviour
 
 ### 6. 優先度スケジューリング
 
-`ChatRequestOptions.Priority` が高いほど先に実行されます。
-同一優先度の場合は先着順で実行されます。
+#### 優先度スケジューリングの背景
+
+リソースが限られた環境（GPU キャパシティなど）では、複数のリクエストが同時に到着することがあります。
+このライブラリは以下のようなシナリオを想定しています：
+
+- **高優先度メッセージ**：システム運用やゲーム進行に必須の推論（例：NPCの重要な応答）
+- **低優先度メッセージ**：フレーバー的な推論で、失敗してもゲーム稼働に影響なし（例：雑談NPC）
+
+限られたリソースの中で、重要なメッセージを優先的に処理し、低優先度メッセージはキューで待たせることで、
+システムの安定性と応答性を両立させることができます。
+
+#### デフォルト設定と動作
+
+**デフォルト：**
+- `MaxConcurrentSessions = 1`：同時実行セッションは1つまで
+- 複数リクエストが到着すると、優先度順にキューに格納
+- リソースが解放されたら、次の優先度の高いリクエストを処理
+
+**処理フロー：**
+
+```
+複数リクエスト到着
+  ↓
+優先度順にキューに格納
+  ↓
+リソース確認（MaxConcurrentSessions確認）
+  ↓
+優先度の高い順に実行
+  ├─ 高優先度リクエスト → 即座に実行
+  ├─ 中優先度リクエスト → 前のリクエスト終了まで待機
+  └─ 低優先度リクエスト → さらに奥のキュー
+
+各リクエストの処理完了
+  ↓
+次の優先度リクエストを実行
+```
+
+#### WaitIfBusy の動作
+
+**`WaitIfBusy = true`（推奨）：**
+
+クライアントがビジー中の場合、リクエストをキューに登録して待機します。
 
 ```csharp
 void SendWithPriority()
 {
-    var high = new ChatRequestOptions
+    var systemMessage = new ChatRequestOptions
     {
-        ChatId = "session-high",
-        Priority = 10,
-        WaitIfBusy = true
+        ChatId = "system-npc",
+        Priority = 10,           // 高優先度
+        WaitIfBusy = true        // ビジー中なら待機
     };
 
-    var low = new ChatRequestOptions
+    var flavorMessage = new ChatRequestOptions
     {
-        ChatId = "session-low",
-        Priority = 0,
-        WaitIfBusy = true
+        ChatId = "flavor-npc",
+        Priority = 0,            // 低優先度
+        WaitIfBusy = true        // ビジー中なら待機
     };
 
+    // システムメッセージ（高優先度）を送信
     StartCoroutine(_client.SendMessageAsync(
-        "高優先度のリクエスト",
+        "プレイヤーに与えるべき重要な情報",
         OnResponse,
-        high
+        systemMessage
     ));
 
+    // フレーバーメッセージ（低優先度）を送信
     StartCoroutine(_client.SendMessageAsync(
-        "低優先度のリクエスト",
+        "雑談的な応答",
         OnResponse,
-        low
+        flavorMessage
+    ));
+
+    // systemMessage は即座に実行（優先度が高い）
+    // flavorMessage は systemMessage が終了するまでキューで待機
+}
+```
+
+**`WaitIfBusy = false`（即座エラー）：**
+
+クライアントがビジー中の場合、エラーを返してリクエストを棄却します。
+
+```csharp
+void SendWithoutWaiting()
+{
+    var options = new ChatRequestOptions
+    {
+        ChatId = "session-1",
+        Priority = 0,
+        WaitIfBusy = false       // ビジー中ならエラー
+    };
+
+    StartCoroutine(_client.SendMessageAsync(
+        "メッセージ",
+        (response, error) =>
+        {
+            if (error != null)
+            {
+                if (error.ErrorType == LLMErrorType.Unknown && 
+                    error.Message.Contains("busy"))
+                {
+                    Debug.Log("Client is busy, request was rejected");
+                }
+                return;
+            }
+        },
+        options
     ));
 }
 ```
+
+#### 優先度の設計例
+
+```csharp
+public class PrioritizedChatManager : MonoBehaviour
+{
+    private OllamaClient _client;
+
+    // 優先度定数の定義
+    private const int PRIORITY_CRITICAL = 100;      // ゲーム進行に必須
+    private const int PRIORITY_HIGH = 50;           // 重要なNPC会話
+    private const int PRIORITY_NORMAL = 0;          // 通常のNPC会話
+    private const int PRIORITY_LOW = -50;           // フレーバー会話
+
+    void Start()
+    {
+        var config = new OllamaConfig
+        {
+            ServerUrl = "http://localhost:11434",
+            DefaultModelName = "mistral"
+        };
+        _client = LLMClientFactory.CreateOllamaClient(config);
+    }
+
+    // ゲーム進行に必須のメッセージ
+    void SendCriticalMessage(string message)
+    {
+        var options = new ChatRequestOptions
+        {
+            ChatId = "critical-system",
+            Priority = PRIORITY_CRITICAL,
+            WaitIfBusy = true
+        };
+
+        StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
+    }
+
+    // 重要なNPC会話
+    void SendImportantNPCMessage(string npcId, string message)
+    {
+        var options = new ChatRequestOptions
+        {
+            ChatId = $"npc-{npcId}-important",
+            Priority = PRIORITY_HIGH,
+            WaitIfBusy = true
+        };
+
+        StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
+    }
+
+    // 通常のNPC会話
+    void SendNormalNPCMessage(string npcId, string message)
+    {
+        var options = new ChatRequestOptions
+        {
+            ChatId = $"npc-{npcId}-normal",
+            Priority = PRIORITY_NORMAL,
+            WaitIfBusy = true
+        };
+
+        StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
+    }
+
+    // フレーバー会話（失敗してもOK）
+    void SendFlavorMessage(string npcId, string message)
+    {
+        var options = new ChatRequestOptions
+        {
+            ChatId = $"npc-{npcId}-flavor",
+            Priority = PRIORITY_LOW,
+            WaitIfBusy = false  // ビジー中なら棄却OK
+        };
+
+        StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
+    }
+
+    void OnResponse(ChatResponse response, ChatError error)
+    {
+        if (error != null)
+        {
+            Debug.LogError($"Error: {error.Message}");
+            return;
+        }
+
+        if (response.IsFinal)
+        {
+            Debug.Log($"Response: {response.Content}");
+        }
+    }
+}
+```
+
+#### 複数セッションの同時実行
+
+`MaxConcurrentSessions` を増やすことで、複数セッションを並列実行できます：
+
+```csharp
+var config = new OllamaConfig
+{
+    ServerUrl = "http://localhost:11434",
+    DefaultModelName = "mistral",
+    MaxConcurrentSessions = 2  // 同時に2セッションまで実行
+};
+
+OllamaServerManager.Initialize(config);
+var client = LLMClientFactory.CreateOllamaClient(config);
+
+// この場合、異なるセッションのリクエストは並列実行される
+// 同じセッション内でも、優先度順に処理される
+```
+
+#### スケジューリングの仕様
+
+| 設定 | `WaitIfBusy=true` | `WaitIfBusy=false` |
+|-----|------------------|-------------------|
+| クライアントが空いている | 即座に実行 | 即座に実行 |
+| クライアントがビジー | キューで待機（優先度順） | エラー返却 |
+| 利用シーン | システム必須 / 重要なNPC | フレーバー / 失敗許容 |
+
+#### パフォーマンス最適化のヒント
+
+- **優先度の粗さ**：細かく設定しすぎると管理が複雑。通常は3～5段階で充分
+- **セッション分離**：重要度の異なるメッセージは異なるセッションにする
+- **MaxConcurrentSessions**：GPU容量に応じて調整（1～4が目安）。大きすぎるとメモリ不足やGPU過負荷の原因に
+- **リソース監視**：本番環境ではGPUメモリとシステムメモリの監視を推奨
 
 ### 7. キャンセル
 
