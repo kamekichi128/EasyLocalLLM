@@ -355,6 +355,7 @@ Runtime/LLM/
 | HttpTimeoutSeconds | float | 60.0f | HTTP タイムアウト時間 |
 | DebugMode | bool | false | デバッグログの出力 |
 | AutoStartServer | bool | true | Ollama サーバを自動起動 |
+| EnableHealthCheck | bool | true | サーバ起動後にヘルスチェックを実行 |
 | ExecutablePath | string | - | Ollama 実行ファイルのパス（自動管理時に指定） |
 | ModelsDirectory | string | ./Models | Ollama モデルディレクトリ（OLLAMA_MODELS） |
 | MaxConcurrentSessions | int | 1 | 同時実行可能なセッション数（GPU キャパシティ対応） |

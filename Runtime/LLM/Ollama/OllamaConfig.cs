@@ -58,6 +58,11 @@ namespace EasyLocalLLM.LLM.Ollama
         public bool AutoStartServer { get; set; } = true;
 
         /// <summary>
+        /// サーバ起動後にヘルスチェックを実行するか
+        /// </summary>
+        public bool EnableHealthCheck { get; set; } = true;
+
+        /// <summary>
         /// 同時実行可能なセッション数（1 以上）
         /// </summary>
         public int MaxConcurrentSessions { get; set; } = 1;

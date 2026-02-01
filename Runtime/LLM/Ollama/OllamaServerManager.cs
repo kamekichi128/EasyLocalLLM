@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Collections;
+using UnityEngine.Networking;
 
 namespace EasyLocalLLM.LLM.Ollama
 {
@@ -18,6 +19,7 @@ namespace EasyLocalLLM.LLM.Ollama
         private OllamaConfig _config;
         private Process _process;
         private bool _isRunning = false;
+        private Action<bool> _initializationCallback;
 
         /// <summary>
         /// サーバの起動状態を取得
@@ -25,24 +27,32 @@ namespace EasyLocalLLM.LLM.Ollama
         public bool IsRunning => _isRunning;
 
         /// <summary>
-        /// OllamaServerManager を初期化（設定指定）
+        /// OllamaServerManager を初期化（設定指定 + コールバック）
         /// </summary>
-        public static void Initialize(OllamaConfig config)
+        /// <param name="config">Ollama の設定</param>
+        /// <param name="initializationCallback">初期化完了時のコールバック（成功時 true）</param>
+        public static void Initialize(OllamaConfig config, Action<bool> initializationCallback = null)
         {
             if (_instance != null)
             {
                 UnityEngine.Debug.LogWarning("OllamaServerManager is already initialized");
+                initializationCallback?.Invoke(false);
                 return;
             }
 
             GameObject managerGO = new GameObject("OllamaServerManager");
             _instance = managerGO.AddComponent<OllamaServerManager>();
             _instance._config = config;
+            _instance._initializationCallback = initializationCallback;
             DontDestroyOnLoad(managerGO);
 
             if (config.AutoStartServer)
             {
                 _instance.StartServer();
+            }
+            else
+            {
+                initializationCallback?.Invoke(true);
             }
         }
 
@@ -68,6 +78,7 @@ namespace EasyLocalLLM.LLM.Ollama
             if (_config == null)
             {
                 UnityEngine.Debug.LogError("OllamaServerManager has not been initialized. Call Initialize() first.");
+                _initializationCallback?.Invoke(false);
                 return;
             }
 
@@ -75,6 +86,7 @@ namespace EasyLocalLLM.LLM.Ollama
             {
                 UnityEngine.Debug.LogWarning("ExecutablePath is not set. Server auto-start is skipped.");
                 _isRunning = false;
+                _initializationCallback?.Invoke(false);
                 return;
             }
 
@@ -82,6 +94,7 @@ namespace EasyLocalLLM.LLM.Ollama
             {
                 UnityEngine.Debug.LogError($"Ollama executable not found: {_config.ExecutablePath}");
                 _isRunning = false;
+                _initializationCallback?.Invoke(false);
                 return;
             }
 
@@ -122,11 +135,21 @@ namespace EasyLocalLLM.LLM.Ollama
                 {
                     UnityEngine.Debug.Log($"Ollama server launched with PID: {_process.Id}");
                 }
+
+                if (_config.EnableHealthCheck)
+                {
+                    StartCoroutine(HealthCheckCoroutine());
+                }
+                else
+                {
+                    _initializationCallback?.Invoke(true);
+                }
             }
             catch (Exception ex)
             {
                 UnityEngine.Debug.LogError($"Failed to start Ollama server: {ex.Message}");
                 _isRunning = false;
+                _initializationCallback?.Invoke(false);
             }
         }
 
@@ -205,6 +228,59 @@ namespace EasyLocalLLM.LLM.Ollama
                 UnityEngine.Debug.LogError($"Error killing process tree: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// サーバのヘルスチェック（簡単なリクエストで動作確認）
+        /// </summary>
+        private IEnumerator HealthCheckCoroutine()
+        {
+            int maxAttempts = 30;
+            float delaySeconds = 1.0f;
+            int attempt = 0;
+
+            while (attempt < maxAttempts)
+            {
+                attempt++;
+                yield return new WaitForSeconds(delaySeconds);
+
+                // /api/show で現在のデフォルトモデル情報を取得
+                using (UnityWebRequest request = new UnityWebRequest(_config.ServerUrl + "/api/show", "POST"))
+                {
+                    request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes("{\"model\":\"" + _config.DefaultModelName + "\"}"));
+                    request.downloadHandler = new DownloadHandlerBuffer();
+                    request.SetRequestHeader("Content-Type", "application/json");
+                    request.timeout = 5;
+
+                    var operation = request.SendWebRequest();
+
+                    while (!operation.isDone)
+                    {
+                        yield return null;
+                    }
+
+                    if (request.result == UnityWebRequest.Result.Success)
+                    {
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log("[Ollama] Health check passed - server is ready");
+                        }
+                        _initializationCallback?.Invoke(true);
+                        yield break;
+                    }
+                    else
+                    {
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log($"[Ollama] Health check attempt {attempt}/{maxAttempts} failed: {request.error}");
+                        }
+                    }
+                }
+            }
+
+            UnityEngine.Debug.LogError($"[Ollama] Health check failed after {maxAttempts} attempts");
+            _initializationCallback?.Invoke(false);
+        }
+
 
         private void OnDestroy()
         {
