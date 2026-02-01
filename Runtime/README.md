@@ -240,6 +240,17 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 
 ### 5. セッション管理
 
+#### セッションの概念
+
+`ChatId` で指定されたセッションは、以下の特徴を持ちます：
+
+- **自動作成**：初回の `SendMessageAsync()` / `SendMessageStreamingAsync()` で自動作成
+- **履歴の自動蓄積**：同じ `ChatId` で送信したメッセージと応答は自動的に累積
+- **永続性**：`ClearMessages()` するまでメモリに保持される
+- **独立管理**：異なる `ChatId` はそれぞれ独立した履歴を持つ
+
+#### 基本的なセッション管理
+
 ```csharp
 void ManageSessions()
 {
@@ -248,18 +259,161 @@ void ManageSessions()
     var session2Options = new ChatRequestOptions { ChatId = "session-2" };
 
     // セッション 1 で会話
-    StartCoroutine(_client.SendMessageAsync("セッション1のメッセージ", OnResponse, session1Options));
+    StartCoroutine(_client.SendMessageAsync(
+        "セッション1のメッセージ", 
+        OnResponse, 
+        session1Options
+    ));
 
-    // セッション 2 で会話
-    StartCoroutine(_client.SendMessageAsync("セッション2のメッセージ", OnResponse, session2Options));
+    // セッション 2 で会話（セッション1の履歴とは完全に独立）
+    StartCoroutine(_client.SendMessageAsync(
+        "セッション2のメッセージ", 
+        OnResponse, 
+        session2Options
+    ));
 
-    // セッション 1 の履歴をクリア
-    _client.ClearMessages("session-1");
-
-    // すべての履歴をクリア
-    _client.ClearAllMessages();
+    // セッション 1 の次のメッセージ（自動的に前のやり取りを参照）
+    StartCoroutine(_client.SendMessageAsync(
+        "セッション1の2番目のメッセージ",
+        OnResponse,
+        session1Options  // 同じセッションID
+    ));
 }
 ```
+
+#### 履歴のリセット
+
+**特定のセッションをクリア：**
+
+```csharp
+// セッション 1 の履歴をクリア
+// 以降、同じセッションIDでメッセージを送信すると、
+// 新しいセッションとして再作成される（前の履歴は失われる）
+_client.ClearMessages("session-1");
+```
+
+**すべての履歴をクリア：**
+
+```csharp
+// すべてのセッションをクリア
+// メモリ開放やアプリ終了時に有効
+_client.ClearAllMessages();
+```
+
+#### セッション情報へのアクセス
+
+セッションの状態や履歴情報にアクセスできます：
+
+```csharp
+void InspectSessions()
+{
+    // セッション 1 に関する操作
+    string sessionId = "session-1";
+    
+    // セッションが存在するか確認
+    if (_client.HasSession(sessionId))
+    {
+        Debug.Log("Session exists");
+        
+        // セッションのメッセージ数を確認
+        int messageCount = _client.GetSessionMessageCount(sessionId);
+        Debug.Log($"Message count: {messageCount}");
+        
+        // セッション情報を取得（履歴、作成日時、更新日時等）
+        var session = _client.GetSession(sessionId);
+        Debug.Log($"Created at: {session.CreatedAt}");
+        Debug.Log($"Last updated at: {session.LastUpdatedAt}");
+        Debug.Log($"Messages: {string.Join("\n", session.History)}");
+    }
+    
+    // すべてのセッションIDを取得
+    var allSessions = _client.GetAllSessionIds();
+    foreach (var id in allSessions)
+    {
+        Debug.Log($"Session ID: {id}");
+    }
+}
+```
+
+#### 複数セッションの実践例
+
+```csharp
+public class MultiSessionChat : MonoBehaviour
+{
+    private OllamaClient _client;
+    
+    void Start()
+    {
+        var config = new OllamaConfig
+        {
+            ServerUrl = "http://localhost:11434",
+            DefaultModelName = "mistral"
+        };
+        _client = LLMClientFactory.CreateOllamaClient(config);
+    }
+
+    // ユーザーA との会話セッション
+    void ChatWithUserA()
+    {
+        var userASession = new ChatRequestOptions { ChatId = "user-a-session" };
+        StartCoroutine(_client.SendMessageAsync(
+            "ユーザーAからのメッセージ",
+            OnResponse,
+            userASession
+        ));
+    }
+
+    // ユーザーB との会話セッション
+    void ChatWithUserB()
+    {
+        var userBSession = new ChatRequestOptions { ChatId = "user-b-session" };
+        StartCoroutine(_client.SendMessageAsync(
+            "ユーザーBからのメッセージ",
+            OnResponse,
+            userBSession
+        ));
+    }
+
+    // テーマ別セッション（同じユーザーでも異なるテーマを管理）
+    void ChatAboutTopic(string topic)
+    {
+        var topicSession = new ChatRequestOptions { ChatId = $"topic-{topic}" };
+        StartCoroutine(_client.SendMessageAsync(
+            $"{topic}について教えて",
+            OnResponse,
+            topicSession
+        ));
+    }
+
+    void OnResponse(ChatResponse response, ChatError error)
+    {
+        if (error != null)
+        {
+            Debug.LogError($"Error: {error.Message}");
+            return;
+        }
+        
+        if (response.IsFinal)
+        {
+            Debug.Log($"Response: {response.Content}");
+        }
+    }
+
+    // アプリ終了時
+    void OnApplicationQuit()
+    {
+        _client.ClearAllMessages();  // メモリをクリーンアップ
+    }
+}
+```
+
+#### セッション管理の注意点
+
+- **ChatId が null の場合**：Guid で自動生成される一度限りのセッション
+- **MaxHistory 設定**：デフォルト50メッセージ。超過時は古いメッセージから削除
+- **セッション間の独立性**：あるセッションのシステムプロンプトが他に影響することはない
+- **メモリ管理**：多くのセッションを保持し続けるとメモリ消費が増加。不要なセッションは `ClearMessages()` で削除推奨
+- **セッション情報の取得**：`GetSession()` で返される `ChatSession` オブジェクトから、作成日時（`CreatedAt`）、最終更新日時（`LastUpdatedAt`）、メッセージ履歴（`History`）にアクセス可能
 
 ### 6. 優先度スケジューリング
 

@@ -148,6 +148,42 @@ namespace EasyLocalLLM.LLM.Ollama
         public void ClearMessages(string chatId) => _historyManager.Clear(chatId);
 
         /// <summary>
+        /// セッション情報を取得
+        /// </summary>
+        public ChatSession GetSession(string sessionId)
+        {
+            return _historyManager.GetOrCreateSession(sessionId);
+        }
+
+        /// <summary>
+        /// すべてのセッションIDを取得
+        /// </summary>
+        public IEnumerable<string> GetAllSessionIds()
+        {
+            return _historyManager.GetAllSessionIds();
+        }
+
+        /// <summary>
+        /// セッションが存在するか確認
+        /// </summary>
+        public bool HasSession(string sessionId)
+        {
+            return _historyManager.HasSession(sessionId);
+        }
+
+        /// <summary>
+        /// セッションのメッセージ数を取得
+        /// </summary>
+        public int GetSessionMessageCount(string sessionId)
+        {
+            if (!_historyManager.HasSession(sessionId))
+            {
+                return 0;
+            }
+            return _historyManager.GetHistory(sessionId).Count;
+        }
+
+        /// <summary>
         /// 非同期でメッセージを送信（一度に完全な回答を取得）
         /// </summary>
         public IEnumerator SendMessageAsync(
