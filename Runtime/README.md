@@ -96,9 +96,9 @@ void SendMessage() {
 
 ### 1. 基本的な初期化
 
-基本的な初期化では、開発環境などで、すでに指定のポートでollamaサーバーが立ち上がっており、かつ、モデルもpullされた状態であるものとします。  
-ollama未インストール環境に適用するため、ollama.exeを同梱するパターンは、[こちら](#4-ollama-サーバの自動管理)を参照して環境を構築してください。  
-なお、**Windows以外には現時点では対応していません。**
+Ollama サーバが `localhost:11434` で起動済み、かつモデルがインストール済みであることを前提とします。
+
+**Ollama のセットアップが未完了の場合は、[4. Ollama サーバの自動管理](#4-ollama-サーバの自動管理)を参照してください。**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -122,11 +122,6 @@ public class ChatManager : MonoBehaviour
         _client = LLMClientFactory.CreateOllamaClient(config);
     }
 }
-
-**現在の実装の制限:**
-- `StartCoroutine` + コールバック形式での処理が必須です
-- async/await は未対応です（今後の拡張予定を参照）
-- キャンセル以外の途中制御はできません
 ```
 
 ### 2. メッセージ送信（一度に完全回答を取得）
@@ -1165,6 +1160,370 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 // [Ollama] Response received: {...}
 ```
 
+## 実践例
+
+これまでに学んだ機能を組み合わせた、実際のゲーム開発での応用例を紹介します。
+
+### ゲーム内 NPC 会話システム
+
+実際のゲーム開発でよくあるパターンの実装例です。UI統合、キャンセル処理、エラーハンドリングを含みます。
+
+```csharp
+using EasyLocalLLM.LLM;
+using System.Threading;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class NPCChatSystem : MonoBehaviour
+{
+    [Header("UI References")]
+    [SerializeField] private Text npcDialogueText;
+    [SerializeField] private InputField playerInputField;
+    [SerializeField] private Button sendButton;
+    [SerializeField] private Button cancelButton;
+    
+    private OllamaClient _client;
+    private CancellationTokenSource _cancellationTokenSource;
+    private string _currentNPCId = "friendly-shopkeeper";
+
+    void Start()
+    {
+        // 設定
+        var config = new OllamaConfig
+        {
+            ServerUrl = "http://localhost:11434",
+            DefaultModelName = "mistral",
+            MaxConcurrentSessions = 1,
+            DebugMode = Application.isEditor
+        };
+        
+        _client = LLMClientFactory.CreateOllamaClient(config);
+        
+        // UI イベント設定
+        sendButton.onClick.AddListener(OnSendClicked);
+        cancelButton.onClick.AddListener(OnCancelClicked);
+        cancelButton.gameObject.SetActive(false);
+    }
+
+    void OnSendClicked()
+    {
+        string userMessage = playerInputField.text.Trim();
+        if (string.IsNullOrEmpty(userMessage)) return;
+        
+        // UI を更新
+        playerInputField.text = "";
+        playerInputField.interactable = false;
+        sendButton.interactable = false;
+        cancelButton.gameObject.SetActive(true);
+        npcDialogueText.text = "(考え中...)";
+        
+        // キャンセルトークンを作成
+        _cancellationTokenSource = new CancellationTokenSource();
+        
+        // NPC の応答を取得（ストリーミング）
+        var options = new ChatRequestOptions
+        {
+            ChatId = _currentNPCId,
+            Temperature = 0.8f,
+            Priority = 50,  // 通常優先度
+            WaitIfBusy = true,
+            CancellationToken = _cancellationTokenSource.Token,
+            SystemPrompt = "あなたは親切な雑貨屋の店主です。冒険者に親しみやすく話しかけてください。"
+        };
+        
+        StartCoroutine(_client.SendMessageStreamingAsync(
+            userMessage,
+            OnNPCResponse,
+            options
+        ));
+    }
+
+    void OnNPCResponse(ChatResponse response, ChatError error)
+    {
+        if (error != null)
+        {
+            HandleError(error);
+            ResetUI();
+            return;
+        }
+        
+        // ストリーミングで段階的に表示
+        npcDialogueText.text = response.Content;
+        
+        if (response.IsFinal)
+        {
+            ResetUI();
+        }
+    }
+
+    void OnCancelClicked()
+    {
+        _cancellationTokenSource?.Cancel();
+        npcDialogueText.text = "(会話をキャンセルしました)";
+    }
+
+    void HandleError(ChatError error)
+    {
+        switch (error.ErrorType)
+        {
+            case LLMErrorType.ConnectionFailed:
+                npcDialogueText.text = "(店主は今席を外しているようだ...)";
+                Debug.LogWarning("NPC システムエラー: サーバ接続失敗");
+                break;
+                
+            case LLMErrorType.Cancelled:
+                npcDialogueText.text = "(会話を中断した)";
+                break;
+                
+            default:
+                npcDialogueText.text = "(店主は言葉に詰まっている...)";
+                Debug.LogError($"NPC システムエラー: {error.Message}");
+                break;
+        }
+    }
+
+    void ResetUI()
+    {
+        playerInputField.interactable = true;
+        sendButton.interactable = true;
+        cancelButton.gameObject.SetActive(false);
+    }
+
+    void OnDestroy()
+    {
+        _cancellationTokenSource?.Dispose();
+        _client?.ClearAllMessages();
+    }
+}
+```
+
+### 複数 NPC の並列会話管理
+
+複数の NPC と同時に会話する場合の実装例です。優先度設定とセッション管理の実用例を示しています。
+
+```csharp
+using EasyLocalLLM.LLM;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class MultiNPCManager : MonoBehaviour
+{
+    private OllamaClient _client;
+    private Dictionary<string, NPCProfile> _npcProfiles;
+
+    void Start()
+    {
+        var config = new OllamaConfig
+        {
+            ServerUrl = "http://localhost:11434",
+            DefaultModelName = "mistral",
+            MaxConcurrentSessions = 2  // 2人まで同時会話可能
+        };
+        
+        _client = LLMClientFactory.CreateOllamaClient(config);
+        
+        // NPC プロファイルを定義
+        _npcProfiles = new Dictionary<string, NPCProfile>
+        {
+            ["shopkeeper"] = new NPCProfile
+            {
+                SessionId = "npc-shopkeeper",
+                Priority = 0,  // 通常優先度
+                SystemPrompt = "あなたは親切な雑貨屋の店主です。"
+            },
+            ["quest-giver"] = new NPCProfile
+            {
+                SessionId = "npc-quest-giver",
+                Priority = 100,  // 高優先度（クエスト進行に重要）
+                SystemPrompt = "あなたは重要なクエストを与える賢者です。"
+            },
+            ["random-villager"] = new NPCProfile
+            {
+                SessionId = "npc-villager",
+                Priority = -50,  // 低優先度（フレーバー）
+                SystemPrompt = "あなたは村の住人です。世間話をします。"
+            }
+        };
+    }
+
+    public void TalkToNPC(string npcId, string playerMessage, System.Action<string> onComplete)
+    {
+        if (!_npcProfiles.ContainsKey(npcId))
+        {
+            Debug.LogError($"Unknown NPC: {npcId}");
+            return;
+        }
+        
+        var profile = _npcProfiles[npcId];
+        var options = new ChatRequestOptions
+        {
+            ChatId = profile.SessionId,
+            Temperature = 0.8f,
+            Priority = profile.Priority,
+            WaitIfBusy = true,
+            SystemPrompt = profile.SystemPrompt
+        };
+        
+        StartCoroutine(_client.SendMessageAsync(
+            playerMessage,
+            (response, error) =>
+            {
+                if (error != null)
+                {
+                    Debug.LogError($"NPC {npcId} error: {error.Message}");
+                    onComplete?.Invoke("...");
+                    return;
+                }
+                
+                onComplete?.Invoke(response.Content);
+            },
+            options
+        ));
+    }
+
+    public void ResetNPCMemory(string npcId)
+    {
+        if (_npcProfiles.ContainsKey(npcId))
+        {
+            _client.ClearMessages(_npcProfiles[npcId].SessionId);
+        }
+    }
+
+    private class NPCProfile
+    {
+        public string SessionId;
+        public int Priority;
+        public string SystemPrompt;
+    }
+}
+```
+
+### デバッグ用コンソール
+
+開発中のテスト用コンソールの実装例です。コマンド処理、セッション管理、キャンセル処理を含みます。
+
+```csharp
+using EasyLocalLLM.LLM;
+using System.Threading;
+using UnityEngine;
+
+public class DebugLLMConsole : MonoBehaviour
+{
+    private OllamaClient _client;
+    private CancellationTokenSource _cts;
+    private string _sessionId = "debug-console";
+
+    void Start()
+    {
+        var config = new OllamaConfig
+        {
+            ServerUrl = "http://localhost:11434",
+            DefaultModelName = "mistral",
+            DebugMode = true,
+            MaxRetries = 1  // デバッグ用なのでリトライは少なめ
+        };
+        
+        _client = LLMClientFactory.CreateOllamaClient(config);
+        
+        Debug.Log("=== LLM Debug Console ===");
+        Debug.Log("Commands: /help, /clear, /sessions, /cancel");
+    }
+
+    void Update()
+    {
+        // コンソール入力のシミュレーション（実際は UI から入力）
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            // 例: ProcessCommand("/help");
+        }
+    }
+
+    public void ProcessCommand(string input)
+    {
+        if (input.StartsWith("/"))
+        {
+            HandleCommand(input);
+        }
+        else
+        {
+            SendMessage(input);
+        }
+    }
+
+    void HandleCommand(string command)
+    {
+        switch (command.ToLower())
+        {
+            case "/help":
+                Debug.Log("Commands:\n" +
+                         "/clear - Clear chat history\n" +
+                         "/sessions - List all sessions\n" +
+                         "/cancel - Cancel current request");
+                break;
+                
+            case "/clear":
+                _client.ClearMessages(_sessionId);
+                Debug.Log("Chat history cleared.");
+                break;
+                
+            case "/sessions":
+                var sessions = _client.GetAllSessionIds();
+                Debug.Log($"Active sessions ({sessions.Count}):\n" +
+                         string.Join("\n", sessions));
+                break;
+                
+            case "/cancel":
+                _cts?.Cancel();
+                Debug.Log("Request cancelled.");
+                break;
+                
+            default:
+                Debug.LogWarning($"Unknown command: {command}");
+                break;
+        }
+    }
+
+    void SendMessage(string message)
+    {
+        _cts = new CancellationTokenSource();
+        
+        var options = new ChatRequestOptions
+        {
+            ChatId = _sessionId,
+            Temperature = 0.7f,
+            CancellationToken = _cts.Token
+        };
+        
+        Debug.Log($"User: {message}");
+        
+        StartCoroutine(_client.SendMessageStreamingAsync(
+            message,
+            (response, error) =>
+            {
+                if (error != null)
+                {
+                    Debug.LogError($"Error: {error.Message}");
+                    return;
+                }
+                
+                if (response.IsFinal)
+                {
+                    Debug.Log($"Assistant: {response.Content}");
+                }
+            },
+            options
+        ));
+    }
+
+    void OnDestroy()
+    {
+        _cts?.Dispose();
+    }
+}
+```
+
+**これらの実践例は、`Samples/` フォルダにも実際のシーンと共に含まれています。**
+
 ## クラス構成
 
 ```
@@ -1193,18 +1552,18 @@ Runtime/LLM/
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|-----|----------|------|
-| ServerUrl | string | http://localhost:11434 | Ollama サーバの URL |
-| DefaultModelName | string | mistral | デフォルトのモデル名 |
-| MaxRetries | int | 3 | リトライの最大回数 |
-| RetryDelaySeconds | float | 1.0f | リトライの初期遅延時間 |
-| DefaultSeed | int | -1 | デフォルトシード（-1 でランダム） |
-| HttpTimeoutSeconds | float | 60.0f | HTTP タイムアウト時間 |
-| DebugMode | bool | false | デバッグログの出力 |
-| AutoStartServer | bool | true | Ollama サーバを自動起動 |
-| EnableHealthCheck | bool | true | サーバ起動後にヘルスチェックを実行 |
-| ExecutablePath | string | - | Ollama 実行ファイルのパス（自動管理時に指定） |
-| ModelsDirectory | string | ./Models | Ollama モデルディレクトリ（OLLAMA_MODELS） |
-| MaxConcurrentSessions | int | 1 | 同時実行可能なセッション数（GPU キャパシティ対応） |
+| ServerUrl | string | http://localhost:11434 | Ollama サーバの URL。リモートサーバも指定可能 |
+| DefaultModelName | string | mistral | デフォルトのモデル名。`ollama list` で確認可能 |
+| MaxRetries | int | 3 | リトライの最大回数。ネットワークエラー時の自動再試行回数 |
+| RetryDelaySeconds | float | 1.0f | リトライの初期遅延時間。指数バックオフで増加 |
+| DefaultSeed | int | -1 | デフォルトシード値。-1 でランダム、固定値で再現性確保 |
+| HttpTimeoutSeconds | float | 60.0f | HTTP リクエストのタイムアウト時間（秒） |
+| DebugMode | bool | false | デバッグログの出力。true で詳細なログを表示 |
+| AutoStartServer | bool | true | Ollama サーバを自動起動。false で手動管理 |
+| EnableHealthCheck | bool | true | サーバ起動後にヘルスチェックを実行。接続確認用 |
+| ExecutablePath | string | - | Ollama 実行ファイルのパス。AutoStartServer=true の場合に必要 |
+| ModelsDirectory | string | ./Models | Ollama モデルディレクトリ。環境変数 OLLAMA_MODELS に相当 |
+| MaxConcurrentSessions | int | 1 | 同時実行可能なセッション数。GPU メモリ容量に応じて調整 |
 
 ## デフォルト設定について
 
@@ -1885,368 +2244,6 @@ ollama list
 
 # サーバログを確認（サーバ起動時のウィンドウ）
 ```
-
-## 実践例
-
-### ゲーム内 NPC 会話システム
-
-実際のゲーム開発でよくあるパターンの実装例です。
-
-```csharp
-using EasyLocalLLM.LLM;
-using System.Threading;
-using UnityEngine;
-using UnityEngine.UI;
-
-public class NPCChatSystem : MonoBehaviour
-{
-    [Header("UI References")]
-    [SerializeField] private Text npcDialogueText;
-    [SerializeField] private InputField playerInputField;
-    [SerializeField] private Button sendButton;
-    [SerializeField] private Button cancelButton;
-    
-    private OllamaClient _client;
-    private CancellationTokenSource _cancellationTokenSource;
-    private string _currentNPCId = "friendly-shopkeeper";
-
-    void Start()
-    {
-        // 設定
-        var config = new OllamaConfig
-        {
-            ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
-            MaxConcurrentSessions = 1,
-            DebugMode = Application.isEditor
-        };
-        
-        _client = LLMClientFactory.CreateOllamaClient(config);
-        
-        // UI イベント設定
-        sendButton.onClick.AddListener(OnSendClicked);
-        cancelButton.onClick.AddListener(OnCancelClicked);
-        cancelButton.gameObject.SetActive(false);
-    }
-
-    void OnSendClicked()
-    {
-        string userMessage = playerInputField.text.Trim();
-        if (string.IsNullOrEmpty(userMessage)) return;
-        
-        // UI を更新
-        playerInputField.text = "";
-        playerInputField.interactable = false;
-        sendButton.interactable = false;
-        cancelButton.gameObject.SetActive(true);
-        npcDialogueText.text = "(考え中...)";
-        
-        // キャンセルトークンを作成
-        _cancellationTokenSource = new CancellationTokenSource();
-        
-        // NPC の応答を取得（ストリーミング）
-        var options = new ChatRequestOptions
-        {
-            ChatId = _currentNPCId,
-            Temperature = 0.8f,
-            Priority = 50,  // 通常優先度
-            WaitIfBusy = true,
-            CancellationToken = _cancellationTokenSource.Token,
-            SystemPrompt = "あなたは親切な雑貨屋の店主です。冒険者に親しみやすく話しかけてください。"
-        };
-        
-        StartCoroutine(_client.SendMessageStreamingAsync(
-            userMessage,
-            OnNPCResponse,
-            options
-        ));
-    }
-
-    void OnNPCResponse(ChatResponse response, ChatError error)
-    {
-        if (error != null)
-        {
-            HandleError(error);
-            ResetUI();
-            return;
-        }
-        
-        // ストリーミングで段階的に表示
-        npcDialogueText.text = response.Content;
-        
-        if (response.IsFinal)
-        {
-            ResetUI();
-        }
-    }
-
-    void OnCancelClicked()
-    {
-        _cancellationTokenSource?.Cancel();
-        npcDialogueText.text = "(会話をキャンセルしました)";
-    }
-
-    void HandleError(ChatError error)
-    {
-        switch (error.ErrorType)
-        {
-            case LLMErrorType.ConnectionFailed:
-                npcDialogueText.text = "(店主は今席を外しているようだ...)";
-                Debug.LogWarning("NPC システムエラー: サーバ接続失敗");
-                break;
-                
-            case LLMErrorType.Cancelled:
-                npcDialogueText.text = "(会話を中断した)";
-                break;
-                
-            default:
-                npcDialogueText.text = "(店主は言葉に詰まっている...)";
-                Debug.LogError($"NPC システムエラー: {error.Message}");
-                break;
-        }
-    }
-
-    void ResetUI()
-    {
-        playerInputField.interactable = true;
-        sendButton.interactable = true;
-        cancelButton.gameObject.SetActive(false);
-    }
-
-    void OnDestroy()
-    {
-        _cancellationTokenSource?.Dispose();
-        _client?.ClearAllMessages();
-    }
-}
-```
-
-### 複数 NPC の並列会話管理
-
-複数の NPC と同時に会話する場合の実装例です。
-
-```csharp
-using EasyLocalLLM.LLM;
-using System.Collections.Generic;
-using UnityEngine;
-
-public class MultiNPCManager : MonoBehaviour
-{
-    private OllamaClient _client;
-    private Dictionary<string, NPCProfile> _npcProfiles;
-
-    void Start()
-    {
-        var config = new OllamaConfig
-        {
-            ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
-            MaxConcurrentSessions = 2  // 2人まで同時会話可能
-        };
-        
-        _client = LLMClientFactory.CreateOllamaClient(config);
-        
-        // NPC プロファイルを定義
-        _npcProfiles = new Dictionary<string, NPCProfile>
-        {
-            ["shopkeeper"] = new NPCProfile
-            {
-                SessionId = "npc-shopkeeper",
-                Priority = 0,  // 通常優先度
-                SystemPrompt = "あなたは親切な雑貨屋の店主です。"
-            },
-            ["quest-giver"] = new NPCProfile
-            {
-                SessionId = "npc-quest-giver",
-                Priority = 100,  // 高優先度（クエスト進行に重要）
-                SystemPrompt = "あなたは重要なクエストを与える賢者です。"
-            },
-            ["random-villager"] = new NPCProfile
-            {
-                SessionId = "npc-villager",
-                Priority = -50,  // 低優先度（フレーバー）
-                SystemPrompt = "あなたは村の住人です。世間話をします。"
-            }
-        };
-    }
-
-    public void TalkToNPC(string npcId, string playerMessage, System.Action<string> onComplete)
-    {
-        if (!_npcProfiles.ContainsKey(npcId))
-        {
-            Debug.LogError($"Unknown NPC: {npcId}");
-            return;
-        }
-        
-        var profile = _npcProfiles[npcId];
-        var options = new ChatRequestOptions
-        {
-            ChatId = profile.SessionId,
-            Temperature = 0.8f,
-            Priority = profile.Priority,
-            WaitIfBusy = true,
-            SystemPrompt = profile.SystemPrompt
-        };
-        
-        StartCoroutine(_client.SendMessageAsync(
-            playerMessage,
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"NPC {npcId} error: {error.Message}");
-                    onComplete?.Invoke("...");
-                    return;
-                }
-                
-                onComplete?.Invoke(response.Content);
-            },
-            options
-        ));
-    }
-
-    public void ResetNPCMemory(string npcId)
-    {
-        if (_npcProfiles.ContainsKey(npcId))
-        {
-            _client.ClearMessages(_npcProfiles[npcId].SessionId);
-        }
-    }
-
-    private class NPCProfile
-    {
-        public string SessionId;
-        public int Priority;
-        public string SystemPrompt;
-    }
-}
-```
-
-### デバッグ用コンソール
-
-開発中のテスト用コンソールの実装例です。
-
-```csharp
-using EasyLocalLLM.LLM;
-using System.Threading;
-using UnityEngine;
-
-public class DebugLLMConsole : MonoBehaviour
-{
-    private OllamaClient _client;
-    private CancellationTokenSource _cts;
-    private string _sessionId = "debug-console";
-
-    void Start()
-    {
-        var config = new OllamaConfig
-        {
-            ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
-            DebugMode = true,
-            MaxRetries = 1  // デバッグ用なのでリトライは少なめ
-        };
-        
-        _client = LLMClientFactory.CreateOllamaClient(config);
-        
-        Debug.Log("=== LLM Debug Console ===");
-        Debug.Log("Commands: /help, /clear, /sessions, /cancel");
-    }
-
-    void Update()
-    {
-        // コンソール入力のシミュレーション（実際は UI から入力）
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            // 例: ProcessCommand("/help");
-        }
-    }
-
-    public void ProcessCommand(string input)
-    {
-        if (input.StartsWith("/"))
-        {
-            HandleCommand(input);
-        }
-        else
-        {
-            SendMessage(input);
-        }
-    }
-
-    void HandleCommand(string command)
-    {
-        switch (command.ToLower())
-        {
-            case "/help":
-                Debug.Log("Commands:\n" +
-                         "/clear - Clear chat history\n" +
-                         "/sessions - List all sessions\n" +
-                         "/cancel - Cancel current request");
-                break;
-                
-            case "/clear":
-                _client.ClearMessages(_sessionId);
-                Debug.Log("Chat history cleared.");
-                break;
-                
-            case "/sessions":
-                var sessions = _client.GetAllSessionIds();
-                Debug.Log($"Active sessions ({sessions.Count}):\n" +
-                         string.Join("\n", sessions));
-                break;
-                
-            case "/cancel":
-                _cts?.Cancel();
-                Debug.Log("Request cancelled.");
-                break;
-                
-            default:
-                Debug.LogWarning($"Unknown command: {command}");
-                break;
-        }
-    }
-
-    void SendMessage(string message)
-    {
-        _cts = new CancellationTokenSource();
-        
-        var options = new ChatRequestOptions
-        {
-            ChatId = _sessionId,
-            Temperature = 0.7f,
-            CancellationToken = _cts.Token
-        };
-        
-        Debug.Log($"User: {message}");
-        
-        StartCoroutine(_client.SendMessageStreamingAsync(
-            message,
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-                
-                if (response.IsFinal)
-                {
-                    Debug.Log($"Assistant: {response.Content}");
-                }
-            },
-            options
-        ));
-    }
-
-    void OnDestroy()
-    {
-        _cts?.Dispose();
-    }
-}
-```
-
-これらの実践例は、`Samples/` フォルダにも実際のシーンと共に含まれています。
 
 ## 今後の拡張予定
 
