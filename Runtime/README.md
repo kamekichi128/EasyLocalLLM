@@ -1450,6 +1450,7 @@ public class ChatSessionManager : MonoBehaviour
 
 ```csharp
 using EasyLocalLLM.LLM;
+using System;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
@@ -1465,6 +1466,7 @@ public class NPCChatSystem : MonoBehaviour
     private OllamaClient _client;
     private CancellationTokenSource _cancellationTokenSource;
     private string _currentNPCId = "friendly-shopkeeper";
+    private string _sessionDirectory;
 
     void Start()
     {
@@ -1479,10 +1481,23 @@ public class NPCChatSystem : MonoBehaviour
         
         _client = LLMClientFactory.CreateOllamaClient(config);
         
+        // セッション保存ディレクトリを設定
+        _sessionDirectory = System.IO.Path.Combine(
+            Application.persistentDataPath,
+            "NPCChatSessions"
+        );
+        if (!System.IO.Directory.Exists(_sessionDirectory))
+        {
+            System.IO.Directory.CreateDirectory(_sessionDirectory);
+        }
+        
         // UI イベント設定
         sendButton.onClick.AddListener(OnSendClicked);
         cancelButton.onClick.AddListener(OnCancelClicked);
         cancelButton.gameObject.SetActive(false);
+        
+        // 前回のセッションを復元
+        LoadPreviousSession();
     }
 
     void OnSendClicked()
@@ -1513,9 +1528,33 @@ public class NPCChatSystem : MonoBehaviour
         
         StartCoroutine(_client.SendMessageStreamingAsync(
             userMessage,
-            OnNPCResponse,
+            (response, error) =>
+            {
+                OnNPCResponse(response, error);
+            },
             options
         ));
+    }
+    
+    void LoadPreviousSession()
+    {
+        try
+        {
+            string sessionPath = System.IO.Path.Combine(
+                _sessionDirectory,
+                _currentNPCId + ".json"
+            );
+
+            if (System.IO.File.Exists(sessionPath))
+            {
+                _client.LoadSession(sessionPath, _currentNPCId, encryptionKey: null);
+                Debug.Log($"前回のセッションを復元しました: {_currentNPCId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"セッション復元エラー: {ex.Message}");
+        }
     }
 
     void OnNPCResponse(ChatResponse response, ChatError error)
@@ -1532,7 +1571,27 @@ public class NPCChatSystem : MonoBehaviour
         
         if (response.IsFinal)
         {
+            // 応答完了時にセッションを保存
+            SaveCurrentSession();
             ResetUI();
+        }
+    }
+    
+    void SaveCurrentSession()
+    {
+        try
+        {
+            string sessionPath = System.IO.Path.Combine(
+                _sessionDirectory,
+                _currentNPCId + ".json"
+            );
+
+            _client.SaveSession(sessionPath, _currentNPCId, encryptionKey: null);
+            Debug.Log($"セッションを保存しました: {sessionPath}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"セッション保存エラー: {ex.Message}");
         }
     }
 
@@ -1572,6 +1631,8 @@ public class NPCChatSystem : MonoBehaviour
     void OnDestroy()
     {
         _cancellationTokenSource?.Dispose();
+        // 終了時にセッションを保存
+        SaveCurrentSession();
         _client?.ClearAllMessages();
     }
 }
