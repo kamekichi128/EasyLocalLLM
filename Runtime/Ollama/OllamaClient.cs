@@ -569,5 +569,65 @@ namespace EasyLocalLLM.LLM.Ollama
                 _config.DebugMode = newConfig.DebugMode;
             }
         }
+
+        /// <summary>
+        /// セッション履歴をファイルに保存
+        /// </summary>
+        public void SaveSession(string filePath, string sessionId, string encryptionKey = null)
+        {
+            if (!_historyManager.HasSession(sessionId))
+            {
+                throw new System.InvalidOperationException($"Session '{sessionId}' not found");
+            }
+
+            var session = _historyManager.GetOrCreateSession(sessionId);
+            ChatSessionPersistence.SaveSession(filePath, session, encryptionKey);
+        }
+
+        /// <summary>
+        /// ファイルからセッション履歴を復元
+        /// </summary>
+        public void LoadSession(string filePath, string sessionId, string encryptionKey = null)
+        {
+            var loadedSession = ChatSessionPersistence.LoadSession(filePath, encryptionKey);
+
+            // セッションIDが異なる場合は指定されたIDで上書き
+            if (loadedSession.SessionId != sessionId)
+            {
+                loadedSession.SessionId = sessionId;
+            }
+
+            // 既存のセッション履歴をクリア
+            _historyManager.Clear(sessionId);
+
+            // 読み込んだメッセージを復元
+            foreach (var message in loadedSession.History)
+            {
+                _historyManager.AddMessage(sessionId, message, null);
+            }
+
+            // システムプロンプトを復元
+            var session = _historyManager.GetOrCreateSession(sessionId);
+            if (!string.IsNullOrEmpty(loadedSession.SystemPrompt))
+            {
+                session.SystemPrompt = loadedSession.SystemPrompt;
+            }
+        }
+
+        /// <summary>
+        /// すべてのセッション履歴をディレクトリに保存
+        /// </summary>
+        public void SaveAllSessions(string dirPath, string encryptionKey = null)
+        {
+            ChatSessionPersistence.SaveAllSessions(dirPath, _historyManager, encryptionKey);
+        }
+
+        /// <summary>
+        /// ディレクトリからすべてのセッション履歴を復元
+        /// </summary>
+        public void LoadAllSessions(string dirPath, string encryptionKey = null)
+        {
+            ChatSessionPersistence.LoadAllSessions(dirPath, _historyManager, encryptionKey);
+        }
     }
 }

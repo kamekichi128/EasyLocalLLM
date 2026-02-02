@@ -70,5 +70,35 @@ namespace EasyLocalLLM.LLM.Core
             IProgress<ChatResponse> onProgress,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// セッション履歴をファイルに保存
+        /// </summary>
+        /// <param name="filePath">保存先ファイルパス</param>
+        /// <param name="sessionId">セッションID</param>
+        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        void SaveSession(string filePath, string sessionId, string encryptionKey = null);
+
+        /// <summary>
+        /// ファイルからセッション履歴を復元
+        /// </summary>
+        /// <param name="filePath">読み込むファイルパス</param>
+        /// <param name="sessionId">セッションID</param>
+        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        void LoadSession(string filePath, string sessionId, string encryptionKey = null);
+
+        /// <summary>
+        /// すべてのセッション履歴をディレクトリに保存
+        /// </summary>
+        /// <param name="dirPath">保存先ディレクトリパス</param>
+        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        void SaveAllSessions(string dirPath, string encryptionKey = null);
+
+        /// <summary>
+        /// ディレクトリからすべてのセッション履歴を復元
+        /// </summary>
+        /// <param name="dirPath">読み込むディレクトリパス</param>
+        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        void LoadAllSessions(string dirPath, string encryptionKey = null);
     }
 }
