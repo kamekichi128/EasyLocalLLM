@@ -70,30 +70,34 @@ public class QuickStart : MonoBehaviour
 
 ### ⚠️ 重要な制約
 
-- **async/await 未対応**：`StartCoroutine` + コールバック形式のみサポート
-- **Windows 専用**：現時点では Windows 以外に対応していません
 - **Unity 専用**：UnityWebRequest に依存しているため、Unity 外では動作しません
+- **Windows 専用**：現時点では Windows 以外に対応していません
+- **メインスレッド依存**：Task 版 API も内部的にはコルーチンで動作します
 
-### 処理パターンの制約
+### 処理パターン
 
 ```csharp
-// ❌ これは動作しません（async/await 未対応）
-async Task SendMessageAsync() {
-    var result = await client.SendMessageAsync("Hello");
+// ✅ Task 版 API（await/async）
+async Task SendMessageAsync()
+{
+    var result = await client.SendMessageTaskAsync("Hello");
+    Debug.Log(result.Content);
 }
 
-// ✅ この形式を使用してください
-void SendMessage() {
+// ✅ コルーチン版 API
+void SendMessage()
+{
     StartCoroutine(client.SendMessageAsync(
         "Hello",
-        (response, error) => {
+        (response, error) =>
+        {
             // コールバックで結果を処理
         }
     ));
 }
 ```
 
-**今後の拡張予定**: async/await サポートは検討中です。詳細は[10. 今後の拡張予定](#10-今後の拡張予定)を参照してください。
+**補足**: Task 版 API はコルーチンをブリッジした実装です。Unity 外では動作しません。
 
 ## 4. 使用方法
 
@@ -164,6 +168,27 @@ void SendMessage()
 }
 ```
 
+**Task 版（await/async）**
+
+```csharp
+using EasyLocalLLM.LLM;
+using System.Threading.Tasks;
+using UnityEngine;
+
+async Task SendMessageAsync()
+{
+    var options = new ChatRequestOptions
+    {
+        ChatId = "chat-session-1",
+        Temperature = 0.7f,
+        Seed = 42
+    };
+
+    var response = await _client.SendMessageTaskAsync("こんにちは", options);
+    Debug.Log($"Assistant: {response.Content}");
+}
+```
+
 ### 4.3 ストリーミング送信（段階的に回答を受け取る）
 
 コールバックは**複数回**呼ばれます。回答が到着するたびに部分応答が返され、最後に `IsFinal=true` で完了が通知されます。
@@ -218,6 +243,40 @@ void SendStreamingMessage()
         },
         options
     ));
+}
+```
+
+**Task 版（進捗を受け取る）**
+
+```csharp
+using EasyLocalLLM.LLM;
+using System;
+using System.Threading.Tasks;
+using UnityEngine;
+
+async Task SendStreamingMessageAsync()
+{
+    var options = new ChatRequestOptions
+    {
+        ChatId = "chat-session-1",
+        Temperature = 0.7f
+    };
+
+    var progress = new Progress<ChatResponse>(response =>
+    {
+        if (!response.IsFinal)
+        {
+            Debug.Log($"Receiving: {response.Content}");
+        }
+    });
+
+    var final = await _client.SendMessageStreamingTaskAsync(
+        "日本語で詩を書いてください",
+        progress,
+        options
+    );
+
+    Debug.Log($"Complete: {final.Content}");
 }
 ```
 
@@ -2235,31 +2294,6 @@ ollama list
 ```
 
 ## 10. 今後の拡張予定
-
-### async/await サポート
-
-現在、このライブラリは Unity の Coroutine とコールバックパターンを使用していますが、将来的には `async/await` をサポートする予定です。
-
-**現状の制約：**
-- Unity の Coroutine は `async/await` と直接統合できない
-- UnityWebRequest は本質的に Coroutine ベースで設計されている
-
-**検討中のアプローチ：**
-- `UniTask` のような Unity 向け非同期ライブラリとの統合
-- Task ベースの API を別途提供（既存の Coroutine API と並行）
-
-**利用イメージ（将来）：**
-```csharp
-// 将来サポート予定の構文
-public async Task SendMessageAsync()
-{
-    var client = LLMClientFactory.CreateOllamaClient(config);
-    var response = await client.SendMessageTaskAsync("こんにちは");
-    Debug.Log(response.Content);
-}
-```
-
-### その他の拡張予定
 
 - [ ] **llama.cpp クライアント**：Ollama 以外のバックエンドにも対応
 - [ ] **OpenAI API クライアント**：統一インターフェースで複数のプロバイダーをサポート

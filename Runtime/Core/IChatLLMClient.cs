@@ -1,5 +1,7 @@
 using System;
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace EasyLocalLLM.LLM.Core
 {
@@ -35,6 +37,17 @@ namespace EasyLocalLLM.LLM.Core
             ChatRequestOptions options = null);
 
         /// <summary>
+        /// メッセージを Task で送信（完全回答を取得）
+        /// </summary>
+        /// <param name="message">送信するメッセージ</param>
+        /// <param name="options">リクエストオプション</param>
+        /// <param name="cancellationToken">外部キャンセルトークン</param>
+        Task<ChatResponse> SendMessageTaskAsync(
+            string message,
+            ChatRequestOptions options = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// メッセージをストリーミングで送信（IEnumerator ベース）
         /// </summary>
         /// <param name="message">送信するメッセージ</param>
@@ -44,5 +57,18 @@ namespace EasyLocalLLM.LLM.Core
             string message,
             Action<ChatResponse, ChatError> callback,
             ChatRequestOptions options = null);
+
+        /// <summary>
+        /// メッセージをストリーミングで送信（Task 版）
+        /// </summary>
+        /// <param name="message">送信するメッセージ</param>
+        /// <param name="onProgress">ストリーミング受信時の進捗</param>
+        /// <param name="options">リクエストオプション</param>
+        /// <param name="cancellationToken">外部キャンセルトークン</param>
+        Task<ChatResponse> SendMessageStreamingTaskAsync(
+            string message,
+            IProgress<ChatResponse> onProgress,
+            ChatRequestOptions options = null,
+            CancellationToken cancellationToken = default);
     }
 }

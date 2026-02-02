@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using EasyLocalLLM.LLM.Core;
@@ -180,6 +182,69 @@ namespace EasyLocalLLM.LLM.Ollama
                 return 0;
             }
             return _historyManager.GetHistory(sessionId).Count;
+        }
+
+        private static CancellationToken PrepareCancellationToken(
+            ChatRequestOptions options,
+            CancellationToken externalToken,
+            out CancellationTokenSource linkedSource)
+        {
+            linkedSource = null;
+
+            var optionToken = options.CancellationToken;
+            if (externalToken.CanBeCanceled)
+            {
+                if (optionToken.CanBeCanceled)
+                {
+                    linkedSource = CancellationTokenSource.CreateLinkedTokenSource(optionToken, externalToken);
+                    options.CancellationToken = linkedSource.Token;
+                }
+                else
+                {
+                    options.CancellationToken = externalToken;
+                }
+            }
+
+            return options.CancellationToken;
+        }
+
+        /// <summary>
+        /// メッセージを Task で送信（完全回答を取得）
+        /// </summary>
+        public Task<ChatResponse> SendMessageTaskAsync(
+            string message,
+            ChatRequestOptions options = null,
+            CancellationToken cancellationToken = default)
+        {
+            options ??= new ChatRequestOptions();
+            var token = PrepareCancellationToken(options, cancellationToken, out var linkedSource);
+
+            var tcs = new TaskCompletionSource<ChatResponse>();
+            var registration = token.CanBeCanceled
+                ? token.Register(() => tcs.TrySetCanceled(token))
+                : default;
+
+            CoroutineRunner.Run(SendMessageAsync(
+                message,
+                (response, error) =>
+                {
+                    if (error != null)
+                    {
+                        tcs.TrySetException(new ChatLLMException(error));
+                        return;
+                    }
+
+                    tcs.TrySetResult(response);
+                },
+                options
+            ));
+
+            return tcs.Task.ContinueWith(task =>
+            {
+                registration.Dispose();
+                linkedSource?.Dispose();
+                return task;
+            }, TaskScheduler.Default).Unwrap();
         }
 
         /// <summary>
@@ -437,6 +502,54 @@ namespace EasyLocalLLM.LLM.Ollama
             {
                 _runningChatIds.Remove(chatId);
             }
+        }
+
+        /// <summary>
+        /// メッセージをストリーミングで送信（Task 版）
+        /// </summary>
+        public Task<ChatResponse> SendMessageStreamingTaskAsync(
+            string message,
+            IProgress<ChatResponse> onProgress,
+            ChatRequestOptions options = null,
+            CancellationToken cancellationToken = default)
+        {
+            options ??= new ChatRequestOptions();
+            var token = PrepareCancellationToken(options, cancellationToken, out var linkedSource);
+
+            var tcs = new TaskCompletionSource<ChatResponse>();
+            var registration = token.CanBeCanceled
+                ? token.Register(() => tcs.TrySetCanceled(token))
+                : default;
+
+            CoroutineRunner.Run(SendMessageStreamingAsync(
+                message,
+                (response, error) =>
+                {
+                    if (error != null)
+                    {
+                        tcs.TrySetException(new ChatLLMException(error));
+                        return;
+                    }
+
+                    if (response != null)
+                    {
+                        onProgress?.Report(response);
+
+                        if (response.IsFinal)
+                        {
+                            tcs.TrySetResult(response);
+                        }
+                    }
+                },
+                options
+            ));
+
+            return tcs.Task.ContinueWith(task =>
+            {
+                registration.Dispose();
+                linkedSource?.Dispose();
+                return task;
+            }, TaskScheduler.Default).Unwrap();
         }
 
         /// <summary>
