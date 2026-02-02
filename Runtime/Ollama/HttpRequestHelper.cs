@@ -58,8 +58,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             onError?.Invoke(new ChatError
                             {
                                 ErrorType = LLMErrorType.Cancelled,
-                                Message = "Request cancelled",
-                                IsRetryable = false
+                                Message = $"Request to '{url}' was cancelled by user"
                             });
                             yield break;
                         }
@@ -89,12 +88,13 @@ namespace EasyLocalLLM.LLM.Ollama
 
                         if (attempt >= _config.MaxRetries)
                         {
+                            var errorType = DetermineErrorType(httpStatus, errorMsg);
+                            var detailedMessage = BuildDetailedErrorMessage(errorType, httpStatus, errorMsg, url, _config);
                             var chatError = new ChatError
                             {
-                                ErrorType = DetermineErrorType(httpStatus, errorMsg),
-                                Message = errorMsg,
-                                HttpStatus = httpStatus,
-                                IsRetryable = false
+                                ErrorType = errorType,
+                                Message = detailedMessage,
+                                HttpStatus = httpStatus
                             };
                             onError?.Invoke(chatError);
                             yield break;
@@ -151,8 +151,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             onError?.Invoke(new ChatError
                             {
                                 ErrorType = LLMErrorType.Cancelled,
-                                Message = "Request cancelled",
-                                IsRetryable = false
+                                Message = $"Streaming request to '{url}' was cancelled by user"
                             });
                             onComplete?.Invoke(false);
                             yield break;
@@ -235,12 +234,13 @@ namespace EasyLocalLLM.LLM.Ollama
 
                         if (attempt >= _config.MaxRetries)
                         {
+                            var errorType = DetermineErrorType(httpStatus, errorMsg);
+                            var detailedMessage = BuildDetailedErrorMessage(errorType, httpStatus, errorMsg, url, _config);
                             var chatError = new ChatError
                             {
-                                ErrorType = DetermineErrorType(httpStatus, errorMsg),
-                                Message = errorMsg,
-                                HttpStatus = httpStatus,
-                                IsRetryable = false
+                                ErrorType = errorType,
+                                Message = detailedMessage,
+                                HttpStatus = httpStatus
                             };
                             onError?.Invoke(chatError);
                             onComplete?.Invoke(false);
@@ -274,5 +274,35 @@ namespace EasyLocalLLM.LLM.Ollama
 
             return LLMErrorType.Unknown;
         }
-    }
-}
+
+        /// <summary>
+        /// エラータイプに応じた詳細なエラーメッセージを構築
+        /// </summary>
+        private string BuildDetailedErrorMessage(LLMErrorType errorType, int httpStatus, string originalError, string url, OllamaConfig config)
+        {
+            switch (errorType)
+            {
+                case LLMErrorType.ConnectionFailed:
+                    return $"Cannot connect to Ollama server at '{url}'. " +
+                           $"Please check: (1) Server is running, (2) URL is correct, (3) Firewall settings. " +
+                           $"Original error: {originalError}";
+
+                case LLMErrorType.ServerError:
+                    return $"Ollama server error (HTTP {httpStatus}). " +
+                           $"Please check: (1) Server logs, (2) Model is loaded correctly, (3) Server resources (memory/GPU). " +
+                           $"Original error: {originalError}";
+
+                case LLMErrorType.ModelNotFound:
+                    return $"Model '{config.DefaultModelName}' not found (HTTP {httpStatus}). " +
+                           $"Please run: 'ollama pull {config.DefaultModelName}' or check the model name is correct. " +
+                           $"Use 'ollama list' to see installed models.";
+
+                case LLMErrorType.Timeout:
+                    return $"Request timed out after {config.HttpTimeoutSeconds} seconds. " +
+                           $"Please consider: (1) Increase HttpTimeoutSeconds, (2) Use a smaller model, (3) Check server performance. " +
+                           $"Original error: {originalError}";
+
+                default:
+                    return originalError;
+            }
+        }

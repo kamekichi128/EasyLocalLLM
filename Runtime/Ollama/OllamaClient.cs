@@ -114,8 +114,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     onError?.Invoke(new ChatError
                     {
                         ErrorType = LLMErrorType.Cancelled,
-                        Message = "Request cancelled",
-                        IsRetryable = false
+                        Message = $"Request cancelled for session '{chatId}' by user"
                     });
                     yield break;
                 }
@@ -280,9 +279,8 @@ namespace EasyLocalLLM.LLM.Ollama
                             errorInfo = new ChatError
                             {
                                 ErrorType = LLMErrorType.InvalidResponse,
-                                Message = $"Failed to parse response: {ex.Message}",
-                                Exception = ex,
-                                IsRetryable = false
+                                Message = $"Failed to parse response from model '{options.ModelName ?? _config.DefaultModelName}': {ex.Message}. Check Ollama version compatibility.",
+                                Exception = ex
                             };
                             callback?.Invoke(null, errorInfo);
                         }

@@ -54,16 +54,10 @@ namespace EasyLocalLLM.LLM.Core
         /// </summary>
         public int? HttpStatus { get; set; }
 
-        /// <summary>
-        /// このエラーがリトライ可能か
-        /// </summary>
-        public bool IsRetryable { get; set; }
-
         public override string ToString()
         {
             return $"[{ErrorType}] {Message}" +
-                   (HttpStatus.HasValue ? $" (HTTP {HttpStatus})" : "") +
-                   (IsRetryable ? " (Retryable)" : "");
+                   (HttpStatus.HasValue ? $" (HTTP {HttpStatus})" : "");
         }
     }
 }
