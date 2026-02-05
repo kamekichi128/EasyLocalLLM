@@ -96,8 +96,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     onError?.Invoke(new ChatError
                     {
                         ErrorType = LLMErrorType.Unknown,
-                        Message = "Client is busy",
-                        IsRetryable = false
+                        Message = "Client is busy"
                     });
                     yield break;
                 }
@@ -429,7 +428,6 @@ namespace EasyLocalLLM.LLM.Ollama
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
                 string url = _config.ServerUrl + "/api/chat";
 
-                bool hasError = false;
                 ChatError errorInfo = null;
 
                 yield return _httpHelper.ExecuteWithRetry(
@@ -461,7 +459,6 @@ namespace EasyLocalLLM.LLM.Ollama
                         }
                         catch (Exception ex)
                         {
-                            hasError = true;
                             errorInfo = new ChatError
                             {
                                 ErrorType = LLMErrorType.InvalidResponse,
@@ -473,7 +470,6 @@ namespace EasyLocalLLM.LLM.Ollama
                     },
                     error =>
                     {
-                        hasError = true;
                         errorInfo = error;
                         callback?.Invoke(null, error);
                     },
@@ -713,9 +709,9 @@ namespace EasyLocalLLM.LLM.Ollama
             var loadedSession = ChatSessionPersistence.LoadSession(filePath, encryptionKey);
 
             // セッションIDが異なる場合は指定されたIDで上書き
-            if (loadedSession.SessionId != sessionId)
+            if (loadedSession.Id != sessionId)
             {
-                loadedSession.SessionId = sessionId;
+                loadedSession.Id = sessionId;
             }
 
             // 既存のセッション履歴をクリア

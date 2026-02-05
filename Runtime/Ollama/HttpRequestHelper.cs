@@ -306,3 +306,5 @@ namespace EasyLocalLLM.LLM.Ollama
                     return originalError;
             }
         }
+    }
+}

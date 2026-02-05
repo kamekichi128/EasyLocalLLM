@@ -1,6 +1,7 @@
+using EasyLocalLLM.LLM.Core;
+using Newtonsoft.Json.Linq;
 using System;
 using System.IO;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 namespace EasyLocalLLM.LLM.Manager
@@ -26,11 +27,11 @@ namespace EasyLocalLLM.LLM.Manager
                 // セッションをJSON化
                 var sessionData = new
                 {
-                    session.SessionId,
+                    session.Id,
                     session.SystemPrompt,
                     session.CreatedAt,
                     session.LastUpdatedAt,
-                    History = session.History
+                    session.History
                 };
 
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(
@@ -88,10 +89,9 @@ namespace EasyLocalLLM.LLM.Manager
 
                 var sessionData = JObject.Parse(json);
 
-                var session = new ChatSession(
-                    sessionData["SessionId"]?.ToString() ?? "",
-                    sessionData["SystemPrompt"]?.ToString()
-                );
+                var session = new ChatSession();
+                session.Id = sessionData["SessionId"]?.ToString() ?? "";
+                session.SystemPrompt = sessionData["SystemPrompt"]?.ToString();
 
                 // 日時情報を復元
                 if (DateTime.TryParse(sessionData["CreatedAt"]?.ToString(), out var createdAt))
@@ -110,11 +110,9 @@ namespace EasyLocalLLM.LLM.Manager
                 {
                     foreach (var msgToken in historyArray)
                     {
-                        var message = new ChatMessage
-                        {
-                            Role = msgToken["Role"]?.ToString() ?? "",
-                            Content = msgToken["Content"]?.ToString() ?? ""
-                        };
+                        var message = new ChatMessage();
+                        message.Role = msgToken["Role"]?.ToString() ?? "";
+                        message.Content = msgToken["Content"]?.ToString() ?? "";
                         session.History.Add(message);
                     }
                 }
@@ -193,10 +191,10 @@ namespace EasyLocalLLM.LLM.Manager
                     try
                     {
                         var session = LoadSession(filePath, encryptionKey);
-                        historyManager.Clear(session.SessionId);
+                        historyManager.Clear(session.Id);
                         foreach (var message in session.History)
                         {
-                            historyManager.AddMessage(session.SessionId, message, null);
+                            historyManager.AddMessage(session.Id, message, null);
                         }
                     }
                     catch (Exception ex)

@@ -127,6 +127,5 @@ public class QuickStartTest : MonoBehaviour
         // 完了
         Debug.Log("=== All Quick Tests Passed ===");
         Debug.Log("The new EasyLocalLLM library is working correctly!");
-        Debug.Log("Next step: Check TEST_GUIDE.md for comprehensive tests");
     }
 }
