@@ -1,90 +1,69 @@
 # EasyLocalLLM テストシーン作成手順
 
-Unity エディタでテストシーンを準備するための手順です。
+Unity エディタで統合テストを実行するためのシーン設定手順です。
 
-## シーン 1: NonStreaming Test Scene
+## 概要
+
+このドキュメントでは **QuickStartTest** を使用した統合テストシーンの作成方法を説明します。
+
+より詳細なテスト（単体テスト）を実行したい場合は、[../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) を参照してください。
+
+---
+
+## QuickStart Test Scene（統合テスト）
+
+実際のOllamaサーバーとの通信を確認する統合テストです。
+
+### 前提条件
+
+- ✅ Ollama サーバが起動している（`ollama serve`）
+- ✅ モデルがインストールされている（`ollama pull mistral`）
 
 ### 準備手順
 
 1. **新しいシーンを作成**
    - File → New Scene
-   - 名前: `NonStreamingTestScene.unity`
-   - Assets/EasyLocalLLM/Samples/Scenes/ に保存
+   - 名前: `QuickStartTestScene.unity`
+   - Assets/EasyLocalLLM/Samples/ に保存
 
 2. **GameObject を作成**
    - Hierarchy で右クリック
    - Create Empty
-   - 名前: `NonStreamingTestManager`
+   - 名前: `QuickStartManager`
 
 3. **スクリプトをアタッチ**
    - Inspector で Add Component
-   - Script → `LibraryTestNonStreaming` を検索
+   - Script → `QuickStartTest` を検索
    - アタッチ
 
 4. **実行**
    - Play ボタンをクリック
-   - GUI が表示されます
-   - 各テストボタンをクリック
+   - Console ウィンドウでログを確認
 
-### GUI ボタン
+### テスト内容
 
-| ボタン | 説明 |
-|--------|------|
-| Test 1: Simple Message | 基本的なメッセージ送受信 |
-| Test 2: Temperature 0 | 確定的な応答テスト |
-| Test 3: Session History | 複数メッセージでの履歴管理 |
-| Test 4: Error Handling | エラーハンドリング（意図的に失敗させる） |
-| Test 5: Multiple Sessions | 複数セッション管理 |
-| Clear Output | 出力をクリア |
+QuickStartTest は以下の4つのステップを実行します：
 
----
+| ステップ | 説明 | 期待される出力 |
+|---------|------|--------------|
+| 1 | OllamaClient初期化 | `✓ Client initialized` |
+| 2 | シンプルなメッセージ送信 | `✓ Response received: ...` |
+| 3 | セッション履歴でのフォローアップ | `✓ Follow-up response: ...` |
+| 4 | ストリーミング機能テスト | `✓ Streaming completed!` |
 
-## シーン 2: Streaming Test Scene
+### 成功時の出力例
 
-### 準備手順
+```
+===詳細なテストについて
 
-1. **新しいシーンを作成**
-   - File → New Scene
-   - 名前: `StreamingTestScene.unity`
-   - Assets/EasyLocalLLM/Samples/Scenes/ に保存
+より詳細な単体テスト（Ollama サーバ不要）を実行したい場合：
 
-2. **GameObject を作成**
-   - Hierarchy で右クリック
-   - Create Empty
-   - 名前: `StreamingTestManager`
-
-3. **スクリプトをアタッチ**
-   - Inspector で Add Component
-   - Script → `LibraryTestStreaming` を検索
-   - アタッチ
-
-4. **実行**
-   - Play ボタンをクリック
-   - 各テストボタンをクリック
-
-### GUI ボタン
-
-| ボタン | 説明 |
-|--------|------|
-| Test 1: Simple Streaming | 基本的なストリーミング |
-| Test 2: Long Response Streaming | 長い応答のストリーミング |
-| Test 3: Real-time Display | リアルタイム表示シミュレーション |
-| Test 4: Streaming with History | セッション履歴を含むストリーミング |
-| Clear Output | 出力をクリア |
-
----
-
-## シーン 3: Comparison Test Scene
-
-### 準備手順
-
-1. **新しいシーンを作成**
-   - File → New Scene
-   - 名前: `ComparisonTestScene.unity`
-   - Assets/EasyLocalLLM/Samples/Scenes/ に保存
-
-2. **GameObject を作成**
-   - Hierarchy で右クリック
+- **テスト場所**: [../Test/](../Test/)
+- **実行方法**: [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) を参照
+- **テスト内容**:
+  - NonStreamingTests.cs（7テスト）
+  - StreamingTests.cs（7テスト）
+  - すべてモック実装で動作
    - Create Empty
    - 名前: `ComparisonTestManager`
 
@@ -164,41 +143,32 @@ IsRetryable: True
 ---
 [Test 4] Complete
 ```
+Quick Start ===
+[Step 1] Initializing OllamaClient...
+[Ollama] Sending request (attempt 1/3)
+[Ollama] URL: http://localhost:11434/api/chat
+[Ollama] Response received: {...}
+```
+
+DebugMode=true の場合、詳細なログが表示されます。
 
 ---
 
-## ベストプラクティス
+## テスト結果の記録
 
-### GUI テスト時
-
-1. **テストを一つずつ実行**
-   - 複数同時実行は避ける
-   - 各テスト間に 1-2 秒の待機
-
-2. **出力を記録**
-   - テスト完了後、出力をコピー
-   - スクリーンショットを保存
-
-3. **エラー対応**
-   - ConnectionFailed → Ollama サーバを確認
-   - TimeOut → サーバのリソースを確認
-   - InvalidResponse → DebugMode=true で詳細確認
-
-### パフォーマンス測定
-
-出力に含まれるログから：
+### 成功例
 
 ```
-Chunk 1: 150ms
-Chunk 2: 200ms
-...
-Total Time: 3.5s
+[Step 2] Sending simple message...
+✓ Response received: I'm doing well, thank you for asking! How can I help you today?
 ```
 
----
+### エラー例
 
-## トラブルシューティング
-
+```
+[Step 2] Sending simple message...
+✗ Error: ConnectionFailed - Failed to connect to server
+  HttpStatus: 0
 ### シーンが読み込めない
 
 ```
@@ -214,47 +184,102 @@ error CS0246: The type or namespace name 'LibraryTestNonStreaming' could not be 
 
 **原因**: スクリプトが OnGUI メソッドを持っていない
 
-**確認**:
-```csharp
-void OnGUI()
-{
-    GUILayout.BeginArea(new Rect(10, 10, Screen.width - 20, Screen.height - 20));
-    // ...
-}
+**確認テスト実行時
+
+1. **Ollama サーバを先に起動**
+   ```bash
+   ollama serve
+   ```
+
+2. **モデルを確認**
+   ```bash
+   ollama list
+   ```
+
+3. **テスト実行**
+   - Play ボタンをクリック
+   - Console ウィンドウを開いておく
+
+4. **出力を確認**
+   - 成功: "=== All Quick Tests Passed ===" が表示
+   - 失敗: エラーメッセージを確認
+
+### パフォーマンス測定
+
+QuickStartTest の出力から以下が確認できます：
+
+```
+Total chunks: 15           # ストリーミングのチャンク数
+Response length: 245 chars # 最終レスポンスの長さ
 ```
 
-### テストが開始しない（ボタンをクリックしても反応なし）
+---
 
-**原因**: `_testInProgress` が true のままになっている
+## トラブルシューティング
+
+### ❌ "Failed to connect to server" エラー
+
+**原因**: Ollama サーバが起動していない
 
 **対処法**:
-1. 前のテストが完全に終了するまで待機
-2. シーンを再ロード（Ctrl+R）
-3. Play を再開始
+```bash
+ollama serve
+```
+
+### ❌ "Model not found" エラー
+
+**原因**: 指定されたモデルがダウンロードされていない
+
+**対処法**:
+```bash
+ollama pull mistral
+```
+
+### ❌ Timeout エラー
+
+**原因**: サーバの応答が遅い
+
+**対処法**:
+1. HttpTimeoutSeconds を増やす
+   ```csharp
+   config.HttpTimeoutSeconds = 60; // デフォルト: 30
+   ```
+2. サーバのリソース使用状況を確認
+3. ネットワーク接続を確認
+
+### ❌ Console ログが表示されない
+
+**原因**: Scripting Backend が不正な設定
+
+**対処法**:
+1. Window → General → Console を開く
+2. Debug.Log が有効か確認
+3. Scripting Backend = Mono であることを確認
 
 ---
 
 ## テスト完了後の次のステップ
 
-1. **すべてのテストがパスしたか確認**
-   - チェックリスト（TEST_GUIDE.md 参照）をすべて埋める
+1. **詳細な単体テストを実行**（推奨）
+   - [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) を参照
+   - 全14テスト（NonStreaming 7 + Streaming 7）
 
 2. **パフォーマンスデータを記録**
    - レスポンス時間
    - チャンク数
    - メモリ使用量
 
-3. **ReferenceOnlyDeveloping との置き換え**
-   - ADVSceneController.cs を削除
-   - 新ライブラリを使用する実装に変更
+3. **カスタムシーンでライブラリを使用**
+   - 実際のプロジェクト内で OllamaClient を使用
 
-4. **Asset Store 用ドキュメント整理**
-   - サンプルシーンを Assets/Samples に移動
-   - README を最終化
+4. **本番環境への統合**
+   - ライブラリが完全に動作確認できたら本番環境へ
 
 ---
 
 ## 参考リンク
 
-- [TEST_GUIDE.md](./TEST_GUIDE.md) - 詳細なテスト手順
-- [Runtime/LLM/README.md](../Runtime/LLM/README.md) - API ドキュメント
+- [TEST_GUIDE.md](./TEST_GUIDE.md) - QuickStartTest の詳細ガイド
+- [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) - 詳細な単体テスト実行方法
+- [../Runtime/README.md](../Runtime/README.md) - API ドキュメント
+- [QuickStart.md](../QuickStart.md) - ライブラリの基本使用方法

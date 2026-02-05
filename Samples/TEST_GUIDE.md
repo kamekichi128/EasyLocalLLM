@@ -2,38 +2,37 @@
 
 新しい Runtime ライブラリのテストスクリプトを実行するためのセットアップとガイドです。
 
-## テストスクリプト概要
+## テスト構成
 
-3つのテストスクリプトがあります：
+テストは2つのレベルに分かれています：
 
-### 1. **NonStreamingTest.cs** - 非ストリーミング機能テスト
-- シンプルなメッセージ送信
-- 温度制御（確定的な回答）
-- セッション履歴管理
-- エラーハンドリング
-- 複数セッション管理
+### 1. **Samplesディレクトリ内のテスト** - 統合テスト
+- **QuickStartTest.cs** - 実際のOllamaサーバーとの統合テスト
+  - クライアント初期化
+  - メッセージ送受信
+  - セッション履歴
+  - ストリーミング機能
+  - **所要時間**: ~30秒
+  - **前提条件**: Ollama サーバが起動している
 
-**実行方法**：
-1. 新しいシーンを作成
-2. GameObject を作成
-3. `LibraryTestNonStreaming` スクリプトをアタッチ
-4. ゲームを実行
+### 2. **Test ディレクトリ内のテスト** - 単体テスト（推奨）
+詳細は [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) を参照してください。
 
-### 2. **StreamingTest.cs** - ストリーミング機能テスト
-- シンプルなストリーミング
-- 長い回答のストリーミング
-- リアルタイム表示シミュレーション
-- ストリーミング + セッション履歴
+以下の3つのテストが利用可能です：
 
-**実行方法**：
-1. 新しいシーンを作成
-2. GameObject を作成
-3. `LibraryTestStreaming` スクリプトをアタッチ
-4. ゲームを実行
+**Mock ベース（Ollama 不要）**:
+- **NonStreamingTests.cs** - 7つの非ストリーミング単体テスト
+- **StreamingTests.cs** - 7つのストリーミング単体テスト
+- **MockChatLLMClient.cs** - テスト用モック実装
+
+**テストランナー**:
+- **TestRunner.cs** - Unity Test Runnerが利用できない場合の簡易ランナー
 
 ---
 
-## 前提条件
+## QuickStartTest.cs の実行
+
+### 前提条件
 
 ### 必須
 1. **Ollama サーバが起動していること**
@@ -52,69 +51,50 @@
 ### オプション
 - DebugMode を true に設定してログを確認
 
+###QuickStartTest の実行フロー
+
+### ステップ 1: クライアント初期化
+
+```
+Expected: OllamaClient が正常に初期化される
+Result: "✓ Client initialized" がログに表示
+```
+
+### ステップ 2: シンプルなメッセージ送信
+
+```
+Input: "Hello! What is your name?"
+Expected: AI からの応答を受信
+Result: "✓ Response received: ..." がログに表示
+```
+
+### ステップ 3: セッション履歴でのフォローアップメッセージ
+
+```
+Input: "Can you repeat your name again?"
+Expected: 前のメッセージとのコンテキストを維持
+Result: "✓ Follow-up response: ..." がログに表示
+```
+
+### ステップ 4: ストリーミングテスト
+
+```
+Input: "Tell me a very brief fact about space"
+Expected: 段階的にレスポンスを受信
+Result: "✓ Streaming completed!" がログに表示
+```
+
 ---
 
-## テスト実行フロー
+## 詳細な単体テストの実行
 
-### テスト 1: NonStreaming - Simple Message
+**Ollama サーバを起動したくない場合、またはより詳細なテストを実行したい場合**:
 
-```
-Input: "Hello, how are you?"
-Expected: AI からの応答を受信
-Result: GUI に応答が表示される
-```
+詳細は [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) を参照してください。
 
-### テスト 2: NonStreaming - Deterministic Response
-
-```
-Input: "What is 2+2?"
-Config: Temperature=0.0, Seed=100
-Expected: 毎回同じ応答が返される
-Result: 複数回実行しても同じ結果
-```
-
-### テスト 3: NonStreaming - Session History
-
-```
-Flow:
-1. "My name is Alice" → AI応答
-2. "What is my name?" → "Alice"を覚えている
-Result: AI が履歴から情報を取得
-```
-
-### テスト 4: NonStreaming - Error Handling
-
-```
-Config: ServerUrl = "http://localhost:9999" (存在しないサーバ)
-Expected: 
-  - ErrorType: ConnectionFailed
-  - MaxRetries: 2 回リトライ
-  - IsRetryable: true
-```
-
-### テスト 5: NonStreaming - Multiple Sessions
-
-```
-Flow:
-- Session A: "I like programming"
-- Session B: "I like cooking"
-- Session A: "What is my hobby?" → "programming"を返す
-Result: 複数セッションが独立して管理
-```
-
-### テスト 6: Streaming - Simple Streaming
-
-```
-Input: "Tell me a short joke"
-Expected: ドット (.) で進捗を表示
-Result: 段階的に応答を受信
-```
-
-### テスト 7: Streaming - Long Response
-
-```
-Input: "Explain machine learning in detail"
-Expected: 複数チャンクに分割
+- 7つの非ストリーミング単体テスト
+- 7つのストリーミング単体テスト
+- すべてモックを使用（Ollama 不要）ected: 複数チャンクに分割
 Result: 総チャンク数と最終長を表示
 ```
 
@@ -125,6 +105,8 @@ Input: "Write a haiku about spring"
 Expected: リアルタイムで表示更新
 Result: 段階的に詩が表示される
 ```
+
+---
 
 ---
 
@@ -146,7 +128,6 @@ ollama serve
 **対処法**:
 ```bash
 ollama pull mistral
-ollama pull neural-chat
 ```
 
 ### ❌ Timeout エラー
@@ -158,61 +139,33 @@ ollama pull neural-chat
 2. ネットワーク接続を確認
 3. サーバのリソース使用状況を確認
 
-### ❌ InvalidResponse エラー
-
-**原因**: レスポンス JSON のパース失敗
-
-**対処法**:
-1. DebugMode=true で詳細ログを確認
-2. Ollama バージョンが対応しているか確認
-
----
-
-## 新旧実装の対比表
-
-| 機能 | Legacy (ReferenceOnly) | New Library |
-|------|------------------------|-------------|
-| **メッセージ送信** | `SendMessageToChatbotAtOnce` | `SendMessageAsync` |
-| **ストリーミング** | `SendMessageToChatbotStreaming` | `SendMessageStreamingAsync` |
-| **履歴管理** | 手動（List<ChatMessage>） | 自動（ChatHistoryManager） |
-| **リトライ** | 各メソッド内で実装 | HttpRequestHelper で統一 |
-| **エラー情報** | string のみ | ChatError enum で詳細 |
-| **設定** | ハードコード | OllamaConfig で柔軟 |
-| **サーバ管理** | ChatBotRunner | OllamaServerManager |
-| **セッション** | ID ベース | ChatSession オブジェクト |
-
 ---
 
 ## テスト完了チェックリスト
 
-- [ ] NonStreaming - Simple Message ✅
-- [ ] NonStreaming - Deterministic Response ✅
-- [ ] NonStreaming - Session History ✅
-- [ ] NonStreaming - Error Handling ✅
-- [ ] NonStreaming - Multiple Sessions ✅
-- [ ] Streaming - Simple ✅
-- [ ] Streaming - Long Response ✅
-- [ ] Streaming - Real-time Display ✅
+### QuickStartTest
+- [ ] 実行完了
+- [ ] 4つのステップログが表示される
+- [ ] エラーがない
+- [ ] 完了ログ "=== All Quick Tests Passed ===" が表示される
 
-すべてのテストが ✅ になれば、ライブラリは本番環境で使用可能です。
+### 詳細なテストについて
+詳細な単体テストの実行方法は [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md) を参照してください。
 
 ---
 
 ## 次のステップ
 
-テスト完了後：
+QuickStartTest が成功したら、以下のいずれかを実行してください：
 
-1. **ReferenceOnlyDeveloping の実装を新ライブラリに置き換え**
-   - ADVSceneController → LibraryTestNonStreaming + LibraryTestStreaming に統合
-   - MainSceneController → 新ライブラリで簡潔化
-   - TitleSceneController → 初期化処理を新ライブラリで統一
+1. **詳細な単体テストを実行**（推奨）
+   - Ollama サーバを起動せずにテスト
+   - 7 + 7 = 14個の単体テスト
+   - 詳細: [../Test/TEST_EXECUTION_GUIDE.md](../Test/TEST_EXECUTION_GUIDE.md)
 
-2. **Asset Store 用ドキュメント作成**
-   - Getting Started ガイド
-   - API リファレンス
-   - サンプルプロジェクト
+2. **カスタムシーンでライブラリを使用**
+   - 実際のプロジェクト内でOllamaClientを使用
+   - Runtime/README.md を参照
 
-3. **追加機能の検討**
-   - llama.cpp クライアント対応
-   - async/await 対応
-   - 永続化機能
+3. **本番環境への統合**
+   - ライブラリが完全に動作確認できたら本番環境へ

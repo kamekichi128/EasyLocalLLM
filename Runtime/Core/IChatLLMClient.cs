@@ -100,5 +100,43 @@ namespace EasyLocalLLM.LLM.Core
         /// <param name="dirPath">読み込むディレクトリパス</param>
         /// <param name="encryptionKey">暗号化キー（オプション）</param>
         void LoadAllSessions(string dirPath, string encryptionKey = null);
+
+        /// <summary>
+        /// セッションのシステムプロンプトを設定
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        void SetSessionSystemPrompt(string sessionId, string systemPrompt);
+
+        /// <summary>
+        /// セッションのシステムプロンプトを取得
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        /// <returns>システムプロンプト、セッションが存在しない場合はnull</returns>
+        string GetSessionSystemPrompt(string sessionId);
+
+        /// <summary>
+        /// セッションのシステムプロンプトをリセット（グローバルプロンプトを使用するように）
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        void ResetSessionSystemPrompt(string sessionId);
+
+        /// <summary>
+        /// 複数のセッションに対してシステムプロンプトをバッチ設定
+        /// </summary>
+        /// <param name="sessionIds">セッションIDのリスト</param>
+        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        void SetSystemPromptForMultipleSessions(System.Collections.Generic.IEnumerable<string> sessionIds, string systemPrompt);
+
+        /// <summary>
+        /// すべてのセッションのシステムプロンプトをリセット
+        /// </summary>
+        void ResetAllSessionSystemPrompts();
+
+        /// <summary>
+        /// セッションのシステムプロンプトと履歴をリセット
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        void ClearSessionWithPrompt(string sessionId);
     }
 }

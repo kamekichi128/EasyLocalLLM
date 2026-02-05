@@ -184,6 +184,127 @@ namespace EasyLocalLLM.LLM.Ollama
             return _historyManager.GetHistory(sessionId).Count;
         }
 
+        /// <summary>
+        /// セッションのシステムプロンプトを設定
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        public void SetSessionSystemPrompt(string sessionId, string systemPrompt)
+        {
+            if (string.IsNullOrEmpty(sessionId))
+            {
+                throw new ArgumentException("Session ID cannot be null or empty", nameof(sessionId));
+            }
+
+            var session = _historyManager.GetOrCreateSession(sessionId);
+            session.SystemPrompt = systemPrompt;
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Session '{sessionId}' system prompt updated: {systemPrompt?.Substring(0, Math.Min(50, systemPrompt?.Length ?? 0))}...");
+            }
+        }
+
+        /// <summary>
+        /// セッションのシステムプロンプトを取得
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        /// <returns>システムプロンプト、セッションが存在しない場合はnull</returns>
+        public string GetSessionSystemPrompt(string sessionId)
+        {
+            if (!_historyManager.HasSession(sessionId))
+            {
+                return null;
+            }
+
+            var session = _historyManager.GetOrCreateSession(sessionId);
+            return session.SystemPrompt;
+        }
+
+        /// <summary>
+        /// セッションのシステムプロンプトをリセット（グローバルプロンプトを使用するように）
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        public void ResetSessionSystemPrompt(string sessionId)
+        {
+            if (!_historyManager.HasSession(sessionId))
+            {
+                if (_config.DebugMode)
+                {
+                    UnityEngine.Debug.LogWarning($"[Ollama] Session '{sessionId}' not found");
+                }
+                return;
+            }
+
+            var session = _historyManager.GetOrCreateSession(sessionId);
+            session.SystemPrompt = null;
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Session '{sessionId}' system prompt reset to global");
+            }
+        }
+
+        /// <summary>
+        /// 複数のセッションに対してシステムプロンプトをバッチ設定
+        /// </summary>
+        /// <param name="sessionIds">セッションIDのリスト</param>
+        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        public void SetSystemPromptForMultipleSessions(IEnumerable<string> sessionIds, string systemPrompt)
+        {
+            if (sessionIds == null)
+            {
+                throw new ArgumentNullException(nameof(sessionIds));
+            }
+
+            int count = 0;
+            foreach (var sessionId in sessionIds)
+            {
+                SetSessionSystemPrompt(sessionId, systemPrompt);
+                count++;
+            }
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] System prompt set for {count} sessions");
+            }
+        }
+
+        /// <summary>
+        /// すべてのセッションのシステムプロンプトをリセット
+        /// </summary>
+        public void ResetAllSessionSystemPrompts()
+        {
+            var sessionIds = _historyManager.GetAllSessionIds();
+            int count = 0;
+
+            foreach (var sessionId in sessionIds)
+            {
+                ResetSessionSystemPrompt(sessionId);
+                count++;
+            }
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] System prompt reset for {count} sessions");
+            }
+        }
+
+        /// <summary>
+        /// セッションのシステムプロンプトと履歴をリセット
+        /// </summary>
+        /// <param name="sessionId">セッションID</param>
+        public void ClearSessionWithPrompt(string sessionId)
+        {
+            _historyManager.Clear(sessionId);
+            ResetSessionSystemPrompt(sessionId);
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Session '{sessionId}' cleared with prompt reset");
+            }
+        }
+
         private static CancellationToken PrepareCancellationToken(
             ChatRequestOptions options,
             CancellationToken externalToken,
