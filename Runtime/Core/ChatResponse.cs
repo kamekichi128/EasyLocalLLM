@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
@@ -35,11 +37,17 @@ namespace EasyLocalLLM.LLM.Core
         /// </summary>
         public object RawResponse { get; set; }
 
+        /// <summary>
+        /// LLM がリクエストしたツール呼び出しのリスト
+        /// </summary>
+        public List<ToolCall> ToolCalls { get; set; }
+
         public override string ToString()
         {
             return $"[{Role}] {SessionId} > {Content}" +
                    (IsFinal ? " (Final)" : "") +
-                   (TokenCount.HasValue ? $" ({TokenCount} tokens)" : "");
+                   (TokenCount.HasValue ? $" ({TokenCount} tokens)" : "") +
+                   (ToolCalls != null && ToolCalls.Count > 0 ? $" ({ToolCalls.Count} tool calls)" : "");
         }
     }
 }

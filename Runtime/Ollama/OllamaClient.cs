@@ -18,6 +18,7 @@ namespace EasyLocalLLM.LLM.Ollama
         private readonly OllamaConfig _config;
         private readonly ChatHistoryManager _historyManager;
         private readonly HttpRequestHelper _httpHelper;
+        private readonly ToolManager _toolManager;
         private readonly HashSet<string> _runningSessions = new();
         private readonly List<PendingRequest> _pendingRequests = new();
         private long _pendingSequence = 0;
@@ -142,6 +143,7 @@ namespace EasyLocalLLM.LLM.Ollama
             _config = config ?? new OllamaConfig();
             _historyManager = new ChatHistoryManager();
             _httpHelper = new HttpRequestHelper(_config);
+            _toolManager = new ToolManager(_config.DebugMode);
         }
 
         public void ClearAllMessages() => _historyManager.ClearAll();
@@ -413,74 +415,274 @@ namespace EasyLocalLLM.LLM.Ollama
                 // ユーザーメッセージを追加
                 history.Add(new ChatMessage { Role = "user", Content = message });
 
-                var requestContent = new
+                // Tool対応: ツールループ処理
+                int toolIterations = 0;
+                int maxIterations = options.MaxToolIterations;
+                bool hasToolCalls = true;
+
+                while (hasToolCalls && toolIterations < maxIterations)
                 {
-                    model = options.ModelName ?? _config.DefaultModelName,
-                    messages = history,
-                    stream = false,
-                    options = new
+                    if (options.CancellationToken.IsCancellationRequested)
                     {
-                        seed = options.Seed ?? _config.DefaultSeed,
-                        temperature = options.Temperature
+                        callback?.Invoke(null, new ChatError
+                        {
+                            ErrorType = LLMErrorType.Cancelled,
+                            Message = "Request cancelled"
+                        });
+                        yield break;
                     }
-                };
 
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
-                string url = _config.ServerUrl + "/api/chat";
+                    // 使用するツール一覧を取得
+                    var tools = options.Tools ?? _toolManager.GetAllTools();
 
-                ChatError errorInfo = null;
-
-                yield return _httpHelper.ExecuteWithRetry(
-                    url,
-                    json,
-                    responseBody =>
+                    // リクエスト作成
+                    object requestContent;
+                    if (tools != null && tools.Count > 0)
                     {
-                        try
+                        // ツールを含むリクエスト
+                        requestContent = new
                         {
-                            var chatResponse = JObject.Parse(responseBody);
-                            var chatMessage = chatResponse["message"];
-
-                            var response = new ChatResponse
+                            model = options.ModelName ?? _config.DefaultModelName,
+                            messages = SerializeMessages(history),
+                            stream = false,
+                            tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
+                            options = new
                             {
-                                SessionId = sessionId,
-                                Content = chatMessage?["content"]?.ToString() ?? "",
-                                Role = chatMessage?["role"]?.ToString() ?? "assistant",
-                                IsFinal = true,
-                                RawResponse = responseBody
-                            };
-
-                            // 履歴に追加
-                            _historyManager.AddMessage(sessionId, new ChatMessage
-                            {
-                                Role = response.Role,
-                                Content = response.Content
-                            }, options.MaxHistory);
-
-                            callback?.Invoke(response, null);
-                        }
-                        catch (Exception ex)
-                        {
-                            errorInfo = new ChatError
-                            {
-                                ErrorType = LLMErrorType.InvalidResponse,
-                                Message = $"Failed to parse response from model '{options.ModelName ?? _config.DefaultModelName}': {ex.Message}. Check Ollama version compatibility.",
-                                Exception = ex
-                            };
-                            callback?.Invoke(null, errorInfo);
-                        }
-                    },
-                    error =>
+                                seed = options.Seed ?? _config.DefaultSeed,
+                                temperature = options.Temperature
+                            }
+                        };
+                    }
+                    else
                     {
-                        errorInfo = error;
-                        callback?.Invoke(null, error);
-                    },
-                    options.CancellationToken
-                );
+                        // ツールなしのリクエスト
+                        requestContent = new
+                        {
+                            model = options.ModelName ?? _config.DefaultModelName,
+                            messages = SerializeMessages(history),
+                            stream = false,
+                            options = new
+                            {
+                                seed = options.Seed ?? _config.DefaultSeed,
+                                temperature = options.Temperature
+                            }
+                        };
+                    }
+
+                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
+                    string url = _config.ServerUrl + "/api/chat";
+
+                    ChatError errorInfo = null;
+                    ChatResponse finalResponse = null;
+                    bool requestComplete = false;
+
+                    yield return _httpHelper.ExecuteWithRetry(
+                        url,
+                        json,
+                        responseBody =>
+                        {
+                            try
+                            {
+                                var chatResponse = JObject.Parse(responseBody);
+                                var chatMessage = chatResponse["message"];
+
+                                var response = new ChatResponse
+                                {
+                                    SessionId = sessionId,
+                                    Content = chatMessage?["content"]?.ToString() ?? "",
+                                    Role = chatMessage?["role"]?.ToString() ?? "assistant",
+                                    IsFinal = true,
+                                    RawResponse = responseBody
+                                };
+
+                                // Tool calls を抽出
+                                var toolCallsArray = chatMessage?["tool_calls"] as JArray;
+                                if (toolCallsArray != null && toolCallsArray.Count > 0)
+                                {
+                                    response.ToolCalls = new List<Core.ToolCall>();
+                                    foreach (var tc in toolCallsArray)
+                                    {
+                                        var toolCall = new Core.ToolCall
+                                        {
+                                            ToolCallId = tc["id"]?.ToString(),
+                                            ToolName = tc["function"]?["name"]?.ToString(),
+                                            Arguments = tc["function"]?["arguments"]?.ToString()
+                                        };
+                                        response.ToolCalls.Add(toolCall);
+                                    }
+                                }
+
+                                finalResponse = response;
+                                requestComplete = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                errorInfo = new ChatError
+                                {
+                                    ErrorType = LLMErrorType.InvalidResponse,
+                                    Message = $"Failed to parse response: {ex.Message}",
+                                    Exception = ex
+                                };
+                            }
+                        },
+                        error =>
+                        {
+                            errorInfo = error;
+                            requestComplete = true;
+                        },
+                        options.CancellationToken
+                    );
+
+                    if (errorInfo != null)
+                    {
+                        callback?.Invoke(null, errorInfo);
+                        yield break;
+                    }
+
+                    if (!requestComplete || finalResponse == null)
+                    {
+                        callback?.Invoke(null, new ChatError
+                        {
+                            ErrorType = LLMErrorType.Unknown,
+                            Message = "Request incomplete"
+                        });
+                        yield break;
+                    }
+
+                    // Tool calls の処理
+                    if (finalResponse.ToolCalls != null && finalResponse.ToolCalls.Count > 0)
+                    {
+                        toolIterations++;
+
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log($"[Ollama] Detected {finalResponse.ToolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
+                        }
+
+                        // Assistant メッセージを履歴に追加（tool_calls 付き）
+                        history.Add(new ChatMessage
+                        {
+                            Role = "assistant",
+                            Content = finalResponse.Content,
+                            ToolCalls = finalResponse.ToolCalls
+                        });
+
+                        // 各ツールを実行
+                        foreach (var toolCall in finalResponse.ToolCalls)
+                        {
+                            string toolResult;
+                            try
+                            {
+                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments);
+                            }
+                            catch (Exception ex)
+                            {
+                                toolResult = $"Error: {ex.Message}";
+                                if (_config.DebugMode)
+                                {
+                                    UnityEngine.Debug.LogError($"[Ollama] Tool execution failed: {ex.Message}");
+                                }
+                            }
+
+                            // ツール実行結果を履歴に追加
+                            history.Add(new ChatMessage
+                            {
+                                Role = "tool",
+                                Content = toolResult,
+                                ToolCallId = toolCall.ToolCallId
+                            });
+                        }
+
+                        // 次のループでツール結果を含めて再送
+                        hasToolCalls = true;
+                    }
+                    else
+                    {
+                        // Tool calls がない場合は終了
+                        hasToolCalls = false;
+
+                        // 履歴に追加
+                        _historyManager.AddMessage(sessionId, new ChatMessage
+                        {
+                            Role = finalResponse.Role,
+                            Content = finalResponse.Content
+                        }, options.MaxHistory);
+
+                        callback?.Invoke(finalResponse, null);
+                    }
+                }
+
+                // 最大反復回数に達した場合
+                if (toolIterations >= maxIterations && hasToolCalls)
+                {
+                    if (_config.DebugMode)
+                    {
+                        UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
+                    }
+
+                    callback?.Invoke(null, new ChatError
+                    {
+                        ErrorType = LLMErrorType.Unknown,
+                        Message = $"Max tool iterations ({maxIterations}) reached"
+                    });
+                }
             }
             finally
             {
                 _runningSessions.Remove(sessionId);
             }
+        }
+
+        /// <summary>
+        /// メッセージをシリアライズ（Ollama API 形式）
+        /// </summary>
+        private object[] SerializeMessages(List<ChatMessage> messages)
+        {
+            var result = new List<object>();
+
+            foreach (var msg in messages)
+            {
+                if (msg.Role == "tool")
+                {
+                    // Tool 結果メッセージ
+                    result.Add(new
+                    {
+                        role = "tool",
+                        content = msg.Content,
+                        tool_call_id = msg.ToolCallId
+                    });
+                }
+                else if (msg.ToolCalls != null && msg.ToolCalls.Count > 0)
+                {
+                    // Tool calls を含む Assistant メッセージ
+                    result.Add(new
+                    {
+                        role = msg.Role,
+                        content = msg.Content,
+                        tool_calls = msg.ToolCalls.Select(tc => new
+                        {
+                            id = tc.ToolCallId,
+                            type = "function",
+                            function = new
+                            {
+                                name = tc.ToolName,
+                                arguments = tc.Arguments
+                            }
+                        }).ToArray()
+                    });
+                }
+                else
+                {
+                    // 通常のメッセージ
+                    result.Add(new
+                    {
+                        role = msg.Role,
+                        content = msg.Content
+                    });
+                }
+            }
+
+            return result.ToArray();
         }
 
         /// <summary>
@@ -529,67 +731,193 @@ namespace EasyLocalLLM.LLM.Ollama
                 // ユーザーメッセージを追加
                 history.Add(new ChatMessage { Role = "user", Content = message });
 
-                var requestContent = new
+                // Tool対応: ツールループ処理
+                int toolIterations = 0;
+                int maxIterations = options.MaxToolIterations;
+                bool hasToolCalls = true;
+
+                while (hasToolCalls && toolIterations < maxIterations)
                 {
-                    model = options.ModelName ?? _config.DefaultModelName,
-                    messages = history,
-                    stream = true,
-                    options = new
+                    if (options.CancellationToken.IsCancellationRequested)
                     {
-                        seed = options.Seed ?? _config.DefaultSeed,
-                        temperature = options.Temperature
+                        callback?.Invoke(null, new ChatError
+                        {
+                            ErrorType = LLMErrorType.Cancelled,
+                            Message = "Request cancelled"
+                        });
+                        yield break;
                     }
-                };
 
-                string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
-                string url = _config.ServerUrl + "/api/chat";
+                    // 使用するツール一覧を取得
+                    var tools = options.Tools ?? _toolManager.GetAllTools();
 
-                string fullResponse = "";
-                string fullRole = "assistant";
-                string lastRawChunk = null;
-
-                yield return _httpHelper.ExecuteStreamingWithRetry(
-                    url,
-                    json,
-                    chunk =>
+                    // リクエスト作成
+                    object requestContent;
+                    if (tools != null && tools.Count > 0)
                     {
-                        try
+                        requestContent = new
                         {
-                            lastRawChunk = chunk;
-                            var chunkJson = JObject.Parse(chunk);
-                            var chunkMessage = chunkJson["message"];
-
-                            if (chunkMessage != null)
+                            model = options.ModelName ?? _config.DefaultModelName,
+                            messages = SerializeMessages(history),
+                            stream = true,
+                            tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
+                            options = new
                             {
-                                string content = chunkMessage["content"]?.ToString() ?? "";
-                                string role = chunkMessage["role"]?.ToString() ?? "assistant";
+                                seed = options.Seed ?? _config.DefaultSeed,
+                                temperature = options.Temperature
+                            }
+                        };
+                    }
+                    else
+                    {
+                        requestContent = new
+                        {
+                            model = options.ModelName ?? _config.DefaultModelName,
+                            messages = SerializeMessages(history),
+                            stream = true,
+                            options = new
+                            {
+                                seed = options.Seed ?? _config.DefaultSeed,
+                                temperature = options.Temperature
+                            }
+                        };
+                    }
 
-                                fullResponse += content;
-                                fullRole = role;
+                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
+                    string url = _config.ServerUrl + "/api/chat";
 
-                                var response = new ChatResponse
+                    string fullResponse = "";
+                    string fullRole = "assistant";
+                    string lastRawChunk = null;
+                    List<Core.ToolCall> detectedToolCalls = null;
+                    bool streamComplete = false;
+
+                    yield return _httpHelper.ExecuteStreamingWithRetry(
+                        url,
+                        json,
+                        chunk =>
+                        {
+                            try
+                            {
+                                lastRawChunk = chunk;
+                                var chunkJson = JObject.Parse(chunk);
+                                var chunkMessage = chunkJson["message"];
+
+                                if (chunkMessage != null)
                                 {
-                                    SessionId = sessionId,
-                                    Content = fullResponse,
-                                    Role = fullRole,
-                                    IsFinal = false,
-                                    RawResponse = chunk
-                                };
+                                    string content = chunkMessage["content"]?.ToString() ?? "";
+                                    string role = chunkMessage["role"]?.ToString() ?? "assistant";
 
-                                callback?.Invoke(response, null);
+                                    fullResponse += content;
+                                    fullRole = role;
+
+                                    // Tool calls の検出（最終チャンク）
+                                    var toolCallsArray = chunkMessage["tool_calls"] as JArray;
+                                    if (toolCallsArray != null && toolCallsArray.Count > 0)
+                                    {
+                                        detectedToolCalls = new List<Core.ToolCall>();
+                                        foreach (var tc in toolCallsArray)
+                                        {
+                                            var toolCall = new Core.ToolCall
+                                            {
+                                                ToolCallId = tc["id"]?.ToString(),
+                                                ToolName = tc["function"]?["name"]?.ToString(),
+                                                Arguments = tc["function"]?["arguments"]?.ToString()
+                                            };
+                                            detectedToolCalls.Add(toolCall);
+                                        }
+                                    }
+
+                                    // 進捗コールバック（IsFinal = false）
+                                    var response = new ChatResponse
+                                    {
+                                        SessionId = sessionId,
+                                        Content = fullResponse,
+                                        Role = fullRole,
+                                        IsFinal = false,
+                                        RawResponse = chunk
+                                    };
+
+                                    callback?.Invoke(response, null);
+                                }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            if (_config.DebugMode)
+                            catch (Exception ex)
                             {
-                                UnityEngine.Debug.LogWarning($"[Ollama] Failed to parse chunk: {ex.Message}");
+                                if (_config.DebugMode)
+                                {
+                                    UnityEngine.Debug.LogWarning($"[Ollama] Failed to parse chunk: {ex.Message}");
+                                }
                             }
-                        }
-                    },
-                    isSuccess =>
+                        },
+                        isSuccess =>
+                        {
+                            streamComplete = isSuccess;
+                        },
+                        error =>
+                        {
+                            callback?.Invoke(null, error);
+                        },
+                        options.CancellationToken
+                    );
+
+                    if (!streamComplete)
                     {
-                        if (isSuccess && !string.IsNullOrEmpty(fullResponse))
+                        yield break;
+                    }
+
+                    // Tool calls の処理
+                    if (detectedToolCalls != null && detectedToolCalls.Count > 0)
+                    {
+                        toolIterations++;
+
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log($"[Ollama] Detected {detectedToolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
+                        }
+
+                        // Assistant メッセージを履歴に追加（tool_calls 付き）
+                        history.Add(new ChatMessage
+                        {
+                            Role = "assistant",
+                            Content = fullResponse,
+                            ToolCalls = detectedToolCalls
+                        });
+
+                        // 各ツールを実行
+                        foreach (var toolCall in detectedToolCalls)
+                        {
+                            string toolResult;
+                            try
+                            {
+                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments);
+                            }
+                            catch (Exception ex)
+                            {
+                                toolResult = $"Error: {ex.Message}";
+                                if (_config.DebugMode)
+                                {
+                                    UnityEngine.Debug.LogError($"[Ollama] Tool execution failed: {ex.Message}");
+                                }
+                            }
+
+                            // ツール実行結果を履歴に追加
+                            history.Add(new ChatMessage
+                            {
+                                Role = "tool",
+                                Content = toolResult,
+                                ToolCallId = toolCall.ToolCallId
+                            });
+                        }
+
+                        // 次のループでツール結果を含めて再送
+                        hasToolCalls = true;
+                    }
+                    else
+                    {
+                        // Tool calls がない場合は終了
+                        hasToolCalls = false;
+
+                        if (!string.IsNullOrEmpty(fullResponse))
                         {
                             // 履歴に追加
                             _historyManager.AddMessage(sessionId, new ChatMessage
@@ -610,13 +938,23 @@ namespace EasyLocalLLM.LLM.Ollama
 
                             callback?.Invoke(finalResponse, null);
                         }
-                    },
-                    error =>
+                    }
+                }
+
+                // 最大反復回数に達した場合
+                if (toolIterations >= maxIterations && hasToolCalls)
+                {
+                    if (_config.DebugMode)
                     {
-                        callback?.Invoke(null, error);
-                    },
-                    options.CancellationToken
-                );
+                        UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
+                    }
+
+                    callback?.Invoke(null, new ChatError
+                    {
+                        ErrorType = LLMErrorType.Unknown,
+                        Message = $"Max tool iterations ({maxIterations}) reached"
+                    });
+                }
             }
             finally
             {
@@ -749,5 +1087,69 @@ namespace EasyLocalLLM.LLM.Ollama
         {
             ChatSessionPersistence.LoadAllSessions(dirPath, _historyManager, encryptionKey);
         }
+
+        #region Tool Management
+
+        /// <summary>
+        /// ツールを登録（スキーマ自動生成）
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <param name="description">ツール説明</param>
+        /// <param name="callback">コールバック関数（任意のシグネチャ）</param>
+        public void RegisterTool(string name, string description, Delegate callback)
+        {
+            _toolManager.RegisterTool(name, description, callback);
+        }
+
+        /// <summary>
+        /// ツールを登録（手動スキーマ指定）
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <param name="description">ツール説明</param>
+        /// <param name="inputSchema">JSON Schema</param>
+        /// <param name="callback">コールバック関数</param>
+        public void RegisterTool(string name, string description, object inputSchema, Delegate callback)
+        {
+            _toolManager.RegisterTool(name, description, inputSchema, callback);
+        }
+
+        /// <summary>
+        /// ツールを削除
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <returns>削除に成功した場合 true</returns>
+        public bool UnregisterTool(string name)
+        {
+            return _toolManager.UnregisterTool(name);
+        }
+
+        /// <summary>
+        /// すべてのツールを削除
+        /// </summary>
+        public void RemoveAllTools()
+        {
+            _toolManager.RemoveAllTools();
+        }
+
+        /// <summary>
+        /// 登録済みツール一覧を取得
+        /// </summary>
+        /// <returns>ツール定義のリスト</returns>
+        public List<Core.ToolDefinition> GetRegisteredTools()
+        {
+            return _toolManager.GetAllTools();
+        }
+
+        /// <summary>
+        /// ツールが登録されているか確認
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <returns>登録されている場合 true</returns>
+        public bool HasTool(string name)
+        {
+            return _toolManager.HasTool(name);
+        }
+
+        #endregion
     }
 }

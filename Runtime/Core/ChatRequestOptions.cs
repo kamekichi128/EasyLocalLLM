@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace EasyLocalLLM.LLM.Core
@@ -52,5 +53,16 @@ namespace EasyLocalLLM.LLM.Core
         /// キャンセルトークン（CancellationTokenSource.Token を指定）
         /// </summary>
         public CancellationToken CancellationToken { get; set; } = CancellationToken.None;
+
+        /// <summary>
+        /// このリクエストで使用するツール一覧（null の場合は登録済みツール全てを使用）
+        /// </summary>
+        public List<ToolDefinition> Tools { get; set; }
+
+        /// <summary>
+        /// ツール呼び出しの最大反復回数（デフォルト: 5）
+        /// 無限ループを防ぐために、ツールが繰り返し呼ばれる回数を制限
+        /// </summary>
+        public int MaxToolIterations { get; set; } = 5;
     }
 }
