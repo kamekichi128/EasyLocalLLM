@@ -11,7 +11,7 @@ namespace EasyLocalLLM.LLM.Core
         /// <summary>
         /// チャットセッションID（同じセッション内で履歴を共有）
         /// </summary>
-        public string ChatId { get; set; }
+        public string SessionId { get; set; }
 
         /// <summary>
         /// 使用するモデル名（null の場合はデフォルト）

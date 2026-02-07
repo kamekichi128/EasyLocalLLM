@@ -149,7 +149,7 @@ void SendMessage()
 {
     var options = new ChatRequestOptions
     {
-        ChatId = "chat-session-1",
+        SessionId = "chat-session-1",
         Temperature = 0.7f,
         Seed = 42
     };
@@ -182,7 +182,7 @@ async Task SendMessageAsync()
 {
     var options = new ChatRequestOptions
     {
-        ChatId = "chat-session-1",
+        SessionId = "chat-session-1",
         Temperature = 0.7f,
         Seed = 42
     };
@@ -219,7 +219,7 @@ void SendStreamingMessage()
 {
     var options = new ChatRequestOptions
     {
-        ChatId = "chat-session-1",
+        SessionId = "chat-session-1",
         Temperature = 0.7f
     };
 
@@ -261,7 +261,7 @@ async Task SendStreamingMessageAsync()
 {
     var options = new ChatRequestOptions
     {
-        ChatId = "chat-session-1",
+        SessionId = "chat-session-1",
         Temperature = 0.7f
     };
 
@@ -524,12 +524,12 @@ public class OllamaSetupManager : MonoBehaviour
 
 #### セッションの概念
 
-`ChatId` で指定されたセッションは、以下の特徴を持ちます：
+`SessionId` で指定されたセッションは、以下の特徴を持ちます：
 
 - **自動作成**：初回の `SendMessageAsync()` / `SendMessageStreamingAsync()` で自動作成
-- **履歴の自動蓄積**：同じ `ChatId` で送信したメッセージと応答は自動的に累積
+- **履歴の自動蓄積**：同じ `SessionId` で送信したメッセージと応答は自動的に累積
 - **永続性**：`ClearMessages()` するまでメモリに保持される
-- **独立管理**：異なる `ChatId` はそれぞれ独立した履歴を持つ
+- **独立管理**：異なる `SessionId` はそれぞれ独立した履歴を持つ
 
 #### 基本的なセッション管理
 
@@ -537,8 +537,8 @@ public class OllamaSetupManager : MonoBehaviour
 void ManageSessions()
 {
     // 異なるセッションIDで複数の会話を管理
-    var session1Options = new ChatRequestOptions { ChatId = "session-1" };
-    var session2Options = new ChatRequestOptions { ChatId = "session-2" };
+    var session1Options = new ChatRequestOptions { SessionId = "session-1" };
+    var session2Options = new ChatRequestOptions { SessionId = "session-2" };
 
     // セッション 1 で会話
     StartCoroutine(_client.SendMessageAsync(
@@ -637,7 +637,7 @@ public class MultiSessionChat : MonoBehaviour
     // ユーザーA との会話セッション
     void ChatWithUserA()
     {
-        var userASession = new ChatRequestOptions { ChatId = "user-a-session" };
+        var userASession = new ChatRequestOptions { SessionId = "user-a-session" };
         StartCoroutine(_client.SendMessageAsync(
             "ユーザーAからのメッセージ",
             OnResponse,
@@ -648,7 +648,7 @@ public class MultiSessionChat : MonoBehaviour
     // ユーザーB との会話セッション
     void ChatWithUserB()
     {
-        var userBSession = new ChatRequestOptions { ChatId = "user-b-session" };
+        var userBSession = new ChatRequestOptions { SessionId = "user-b-session" };
         StartCoroutine(_client.SendMessageAsync(
             "ユーザーBからのメッセージ",
             OnResponse,
@@ -659,7 +659,7 @@ public class MultiSessionChat : MonoBehaviour
     // テーマ別セッション（同じユーザーでも異なるテーマを管理）
     void ChatAboutTopic(string topic)
     {
-        var topicSession = new ChatRequestOptions { ChatId = $"topic-{topic}" };
+        var topicSession = new ChatRequestOptions { SessionId = $"topic-{topic}" };
         StartCoroutine(_client.SendMessageAsync(
             $"{topic}について教えて",
             OnResponse,
@@ -688,7 +688,7 @@ public class MultiSessionChat : MonoBehaviour
 
 #### セッション管理の注意点
 
-- **ChatId が null の場合**：Guid で自動生成される一度限りのセッション
+- **SessionId が null の場合**：Guid で自動生成される一度限りのセッション
 - **MaxHistory 設定**：デフォルト50メッセージ。超過時は古いメッセージから削除
 - **セッション間の独立性**：あるセッションのシステムプロンプトが他に影響することはない
 - **メモリ管理**：多くのセッションを保持し続けるとメモリ消費が増加。不要なセッションは `ClearMessages()` で削除推奨
@@ -770,7 +770,7 @@ _client.SetSessionSystemPrompt(
 // ケース1：リクエスト個別プロンプト設定（最優先）
 var options1 = new ChatRequestOptions
 {
-    ChatId = "session-1",
+    SessionId = "session-1",
     SystemPrompt = "You are a beginner-friendly tutor. Explain simply."  // ← これが優先される
 };
 StartCoroutine(_client.SendMessageAsync("プログラミングとは何ですか？", OnResponse, options1));
@@ -778,13 +778,13 @@ StartCoroutine(_client.SendMessageAsync("プログラミングとは何ですか
 
 // ケース2：セッション固有プロンプトのみ使用
 StartCoroutine(_client.SendMessageAsync("C#とJavaの違いは？", OnResponse, 
-    new ChatRequestOptions { ChatId = "session-1" }
+    new ChatRequestOptions { SessionId = "session-1" }
 ));
 // 結果："technical expert" として、技術的に詳しく返答
 
 // ケース3：異なるセッション（セッション固有プロンプト未設定）
 StartCoroutine(_client.SendMessageAsync("こんにちは", OnResponse,
-    new ChatRequestOptions { ChatId = "session-2" }
+    new ChatRequestOptions { SessionId = "session-2" }
 ));
 // 結果：グローバルプロンプト "general assistant" として返答
 ```
@@ -805,7 +805,7 @@ _client.SetSessionSystemPrompt(
 StartCoroutine(_client.SendMessageAsync(
     "頭痛がします。何が原因ですか？",
     OnResponse,
-    new ChatRequestOptions { ChatId = "doctor-session" }
+    new ChatRequestOptions { SessionId = "doctor-session" }
 ));
 ```
 
@@ -899,28 +899,28 @@ void ChatWithMultipleRoles()
     StartCoroutine(_client.SendMessageAsync(
         "血圧が高いです。対策は？",
         OnResponse,
-        new ChatRequestOptions { ChatId = "doctor-session" }
+        new ChatRequestOptions { SessionId = "doctor-session" }
     ));
 
     // エンジニアにコード相談
     StartCoroutine(_client.SendMessageAsync(
         "C#でシングルトンパターンを実装する最善の方法は？",
         OnResponse,
-        new ChatRequestOptions { ChatId = "engineer-session" }
+        new ChatRequestOptions { SessionId = "engineer-session" }
     ));
 
     // 翻訳者に翻訳を依頼
     StartCoroutine(_client.SendMessageAsync(
         "Translate: 'The quick brown fox jumps over the lazy dog.'",
         OnResponse,
-        new ChatRequestOptions { ChatId = "translator-session" }
+        new ChatRequestOptions { SessionId = "translator-session" }
     ));
 
     // カスタマーサポートに問い合わせ
     StartCoroutine(_client.SendMessageAsync(
         "商品が届きません。どうしたらいいですか？",
         OnResponse,
-        new ChatRequestOptions { ChatId = "support-session" }
+        new ChatRequestOptions { SessionId = "support-session" }
     ));
 }
 
@@ -1066,14 +1066,14 @@ void SendWithPriority()
 {
     var systemMessage = new ChatRequestOptions
     {
-        ChatId = "system-npc",
+        SessionId = "system-npc",
         Priority = 10,           // 高優先度（値が大きいほど優先される）
         WaitIfBusy = true        // ビジー中ならキューで待機
     };
 
     var flavorMessage = new ChatRequestOptions
     {
-        ChatId = "flavor-npc",
+        SessionId = "flavor-npc",
         Priority = 0,            // 低優先度（デフォルト値）
         WaitIfBusy = true        // ビジー中ならキューで待機
     };
@@ -1106,7 +1106,7 @@ void SendWithoutWaiting()
 {
     var options = new ChatRequestOptions
     {
-        ChatId = "session-1",
+        SessionId = "session-1",
         Priority = 0,
         WaitIfBusy = false       // ビジー中ならエラー
     };
@@ -1158,7 +1158,7 @@ public class PrioritizedChatManager : MonoBehaviour
     {
         var options = new ChatRequestOptions
         {
-            ChatId = "critical-system",
+            SessionId = "critical-system",
             Priority = PRIORITY_CRITICAL,
             WaitIfBusy = true
         };
@@ -1171,7 +1171,7 @@ public class PrioritizedChatManager : MonoBehaviour
     {
         var options = new ChatRequestOptions
         {
-            ChatId = $"npc-{npcId}-important",
+            SessionId = $"npc-{npcId}-important",
             Priority = PRIORITY_HIGH,
             WaitIfBusy = true
         };
@@ -1184,7 +1184,7 @@ public class PrioritizedChatManager : MonoBehaviour
     {
         var options = new ChatRequestOptions
         {
-            ChatId = $"npc-{npcId}-normal",
+            SessionId = $"npc-{npcId}-normal",
             Priority = PRIORITY_NORMAL,
             WaitIfBusy = true
         };
@@ -1197,7 +1197,7 @@ public class PrioritizedChatManager : MonoBehaviour
     {
         var options = new ChatRequestOptions
         {
-            ChatId = $"npc-{npcId}-flavor",
+            SessionId = $"npc-{npcId}-flavor",
             Priority = PRIORITY_LOW,
             WaitIfBusy = false  // ビジー中なら棄却OK
         };
@@ -1266,7 +1266,7 @@ void SendWithCancel()
     
     var options = new ChatRequestOptions
     {
-        ChatId = "chat-session-1",
+        SessionId = "chat-session-1",
         CancellationToken = _cancellationTokenSource.Token
     };
 
@@ -1316,7 +1316,7 @@ void SendWithTimeout()
     
     var options = new ChatRequestOptions
     {
-        ChatId = "chat-session-1",
+        SessionId = "chat-session-1",
         CancellationToken = _cancellationTokenSource.Token
     };
 
@@ -1405,7 +1405,7 @@ void SendMessageAndHandleError()
 {
     var options = new ChatRequestOptions
     {
-        ChatId = "session-1"
+        SessionId = "session-1"
     };
 
     StartCoroutine(_client.SendMessageAsync(
@@ -1548,7 +1548,7 @@ void SaveAndLoadSession()
     StartCoroutine(client.SendMessageAsync(
         "こんにちは",
         (response, error) => { },
-        new ChatRequestOptions { ChatId = "my-session" }
+        new ChatRequestOptions { SessionId = "my-session" }
     ));
     
     // 後で会話を保存
@@ -1571,7 +1571,7 @@ void RestoreSession()
         (response, error) => {
             Debug.Log($"Assistant: {response.Content}");
         },
-        new ChatRequestOptions { ChatId = "my-session" }
+        new ChatRequestOptions { SessionId = "my-session" }
     ));
 }
 ```
@@ -1730,7 +1730,7 @@ public class ChatSessionManager : MonoBehaviour
                     SaveSession(sessionId);
                 }
             },
-            new ChatRequestOptions { ChatId = sessionId }
+            new ChatRequestOptions { SessionId = sessionId }
         ));
     }
 
@@ -1842,7 +1842,7 @@ public class NPCChatSystem : MonoBehaviour
         // NPC の応答を取得（ストリーミング）
         var options = new ChatRequestOptions
         {
-            ChatId = _currentNPCId,
+            SessionId = _currentNPCId,
             Temperature = 0.8f,
             Priority = 50,  // 通常優先度
             WaitIfBusy = true,
@@ -2022,7 +2022,7 @@ public class MultiNPCManager : MonoBehaviour
         var profile = _npcProfiles[npcId];
         var options = new ChatRequestOptions
         {
-            ChatId = profile.SessionId,
+            SessionId = profile.SessionId,
             Temperature = 0.8f,
             Priority = profile.Priority,
             WaitIfBusy = true,
@@ -2154,7 +2154,7 @@ public class DebugLLMConsole : MonoBehaviour
         
         var options = new ChatRequestOptions
         {
-            ChatId = _sessionId,
+            SessionId = _sessionId,
             Temperature = 0.7f,
             CancellationToken = _cts.Token
         };
@@ -2769,7 +2769,7 @@ public class RobustChatManager : MonoBehaviour
     {
         var options = new ChatRequestOptions
         {
-            ChatId = "session-1"
+            SessionId = "session-1"
         };
 
         StartCoroutine(_client.SendMessageAsync(

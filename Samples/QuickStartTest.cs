@@ -57,7 +57,7 @@ public class QuickStartTest : MonoBehaviour
                     completed = true;
                 }
             },
-            new ChatRequestOptions { ChatId = "quick-test-session" }
+            new ChatRequestOptions { SessionId = "quick-test-session" }
         );
 
         yield return new WaitUntil(() => completed);
@@ -85,7 +85,7 @@ public class QuickStartTest : MonoBehaviour
                     completed = true;
                 }
             },
-            new ChatRequestOptions { ChatId = "quick-test-session" }
+            new ChatRequestOptions { SessionId = "quick-test-session" }
         );
 
         yield return new WaitUntil(() => completed);
@@ -119,7 +119,7 @@ public class QuickStartTest : MonoBehaviour
                     completed = true;
                 }
             },
-            new ChatRequestOptions { ChatId = "quick-test-streaming" }
+            new ChatRequestOptions { SessionId = "quick-test-streaming" }
         );
 
         yield return new WaitUntil(() => completed);

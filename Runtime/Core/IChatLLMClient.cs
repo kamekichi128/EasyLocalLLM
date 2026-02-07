@@ -21,9 +21,9 @@ namespace EasyLocalLLM.LLM.Core
         void ClearAllMessages();
 
         /// <summary>
-        /// 指定された chatId のメッセージ履歴をクリア
+        /// 指定された sessionId のメッセージ履歴をクリア
         /// </summary>
-        void ClearMessages(string chatId);
+        void ClearMessages(string sessionId);
 
         /// <summary>
         /// メッセージを非同期で送信（IEnumerator ベース）

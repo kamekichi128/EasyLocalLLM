@@ -36,13 +36,13 @@ public class GroupChat : MonoBehaviour
        + "受け取ったメッセージや、これまでの流れを受けて、チャットのメッセージを30文字以内で生成してください。\n"
        + "もしも相手の返信をもっと聞きたいなど、特に返信する内容がない場合は「...」と返信してください。";
 
-    private static readonly List<ChatMember> CHAT_MEMBERS = new ()
+    private static readonly List<ChatMember> CHAT_MEMBERS = new()
     {
         new ("アリス", string.Format(SYSTEM_PROMPT_BASE, "アリス", "フレンドリーな16才の女の子", "ボブ")),
         new ("ボブ", string.Format(SYSTEM_PROMPT_BASE, "ボブ", "ちょっとやんちゃな18才の男の子", "アリス"))
     };
 
-    private static readonly Dictionary<string, int> MESSAGE_PRIORITY = new ()
+    private static readonly Dictionary<string, int> MESSAGE_PRIORITY = new()
     {
         { "アリス", 1 },
         { "ボブ", 1 },
@@ -95,7 +95,7 @@ public class GroupChat : MonoBehaviour
         var root = UIDocument.rootVisualElement;
         var sendMessageButton = root.Q<Button>("SendMessageButton");
         var messageInput = root.Q<TextField>("MessageInput");
-        sendMessageButton.clicked += OnSendMessageClicked;        
+        sendMessageButton.clicked += OnSendMessageClicked;
         sendMessageButton.SetEnabled(true);
         messageInput.SetEnabled(true);
     }
@@ -186,15 +186,16 @@ public class GroupChat : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             sender + ":" + message,
             RecieveMessage,
-            new ChatRequestOptions {
-                ChatId = member.Name + "_chat",
+            new ChatRequestOptions
+            {
+                SessionId = member.Name + "_chat",
                 SystemPrompt = member.SystemPrompt,
                 Priority = MESSAGE_PRIORITY[sender],
                 CancellationToken = cancellationTokenSource.Token,
                 WaitIfBusy = false
             }
         ));
-        Debug.Log($"→ Message sent to {member.Name }> {sender} : {message}");
+        Debug.Log($"→ Message sent to {member.Name}> {sender} : {message}");
     }
 
     private void RecieveMessage(ChatResponse response, ChatError error)
@@ -223,7 +224,7 @@ public class GroupChat : MonoBehaviour
         {
             return;
         }
-        var sender = response.ChatId.Replace("_chat", "");
+        var sender = response.SessionId.Replace("_chat", "");
         AddMessage(sender, message);
     }
 

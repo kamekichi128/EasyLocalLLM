@@ -96,7 +96,7 @@ public class SimpleChat : MonoBehaviour
                 Debug.Log($"✓ Response received: {chatResponse.Content}");
                 result.text = chatResponse.Content;
             },
-            new ChatRequestOptions { ChatId = "simple-chat-session" }
+            new ChatRequestOptions { SessionId = "simple-chat-session" }
         ));
     }
 
@@ -127,7 +127,7 @@ public class SimpleChat : MonoBehaviour
                 Debug.Log($"✓ Response received: {chatResponse.Content}");
                 result.text = chatResponse.Content;
             },
-            new ChatRequestOptions { ChatId = "simple-chat-session" }
+            new ChatRequestOptions { SessionId = "simple-chat-session" }
         ));
     }
 

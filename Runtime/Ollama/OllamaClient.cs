@@ -18,19 +18,19 @@ namespace EasyLocalLLM.LLM.Ollama
         private readonly OllamaConfig _config;
         private readonly ChatHistoryManager _historyManager;
         private readonly HttpRequestHelper _httpHelper;
-        private readonly HashSet<string> _runningChatIds = new();
+        private readonly HashSet<string> _runningSessions = new();
         private readonly List<PendingRequest> _pendingRequests = new();
         private long _pendingSequence = 0;
 
         private class PendingRequest
         {
-            public string ChatId { get; }
+            public string SessionId { get; }
             public int Priority { get; }
             public long Order { get; }
 
-            public PendingRequest(string chatId, int priority, long order)
+            public PendingRequest(string sessionId, int priority, long order)
             {
-                ChatId = chatId;
+                SessionId = sessionId;
                 Priority = priority;
                 Order = order;
             }
@@ -54,7 +54,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
         private int GetNextRunnableIndex(int maxConcurrent)
         {
-            if (_runningChatIds.Count >= maxConcurrent)
+            if (_runningSessions.Count >= maxConcurrent)
             {
                 return -1;
             }
@@ -63,7 +63,7 @@ namespace EasyLocalLLM.LLM.Ollama
             for (int i = 0; i < _pendingRequests.Count; i++)
             {
                 var candidate = _pendingRequests[i];
-                if (_runningChatIds.Contains(candidate.ChatId))
+                if (_runningSessions.Contains(candidate.SessionId))
                 {
                     continue;
                 }
@@ -85,13 +85,13 @@ namespace EasyLocalLLM.LLM.Ollama
             return bestIndex;
         }
 
-        private IEnumerator WaitForTurn(string chatId, ChatRequestOptions options, Action<ChatError> onError)
+        private IEnumerator WaitForTurn(string sessionId, ChatRequestOptions options, Action<ChatError> onError)
         {
             int maxConcurrent = Mathf.Max(1, _config.MaxConcurrentSessions);
 
             if (!options.WaitIfBusy)
             {
-                if (_pendingRequests.Count > 0 || _runningChatIds.Contains(chatId) || _runningChatIds.Count >= maxConcurrent)
+                if (_pendingRequests.Count > 0 || _runningSessions.Contains(sessionId) || _runningSessions.Count >= maxConcurrent)
                 {
                     onError?.Invoke(new ChatError
                     {
@@ -104,7 +104,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 yield break;
             }
 
-            var pending = new PendingRequest(chatId, options.Priority, ++_pendingSequence);
+            var pending = new PendingRequest(sessionId, options.Priority, ++_pendingSequence);
             InsertPendingSorted(pending);
 
             while (true)
@@ -115,7 +115,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     onError?.Invoke(new ChatError
                     {
                         ErrorType = LLMErrorType.Cancelled,
-                        Message = $"Request cancelled for session '{chatId}' by user"
+                        Message = $"Request cancelled for session '{sessionId}' by user"
                     });
                     yield break;
                 }
@@ -145,7 +145,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         public void ClearAllMessages() => _historyManager.ClearAll();
-        public void ClearMessages(string chatId) => _historyManager.Clear(chatId);
+        public void ClearMessages(string sessionId) => _historyManager.Clear(sessionId);
 
         /// <summary>
         /// セッション情報を取得
@@ -376,10 +376,10 @@ namespace EasyLocalLLM.LLM.Ollama
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
-            string chatId = options.ChatId ?? Guid.NewGuid().ToString();
+            string sessionId = options.SessionId ?? Guid.NewGuid().ToString();
 
             bool waitFailed = false;
-            yield return WaitForTurn(chatId, options, error =>
+            yield return WaitForTurn(sessionId, options, error =>
             {
                 waitFailed = true;
                 callback?.Invoke(null, error);
@@ -389,11 +389,11 @@ namespace EasyLocalLLM.LLM.Ollama
                 yield break;
             }
 
-            _runningChatIds.Add(chatId);
+            _runningSessions.Add(sessionId);
 
             try
             {
-                var session = _historyManager.GetOrCreateSession(chatId, options.SystemPrompt);
+                var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
                 var history = session.History;
 
                 // システムプロンプトがなければ追加
@@ -442,7 +442,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                             var response = new ChatResponse
                             {
-                                ChatId = chatId,
+                                SessionId = sessionId,
                                 Content = chatMessage?["content"]?.ToString() ?? "",
                                 Role = chatMessage?["role"]?.ToString() ?? "assistant",
                                 IsFinal = true,
@@ -450,7 +450,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             };
 
                             // 履歴に追加
-                            _historyManager.AddMessage(chatId, new ChatMessage
+                            _historyManager.AddMessage(sessionId, new ChatMessage
                             {
                                 Role = response.Role,
                                 Content = response.Content
@@ -479,7 +479,7 @@ namespace EasyLocalLLM.LLM.Ollama
             }
             finally
             {
-                _runningChatIds.Remove(chatId);
+                _runningSessions.Remove(sessionId);
             }
         }
 
@@ -492,10 +492,10 @@ namespace EasyLocalLLM.LLM.Ollama
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
-            string chatId = options.ChatId ?? Guid.NewGuid().ToString();
+            string sessionId = options.SessionId ?? Guid.NewGuid().ToString();
 
             bool waitFailed = false;
-            yield return WaitForTurn(chatId, options, error =>
+            yield return WaitForTurn(sessionId, options, error =>
             {
                 waitFailed = true;
                 callback?.Invoke(null, error);
@@ -505,11 +505,11 @@ namespace EasyLocalLLM.LLM.Ollama
                 yield break;
             }
 
-            _runningChatIds.Add(chatId);
+            _runningSessions.Add(sessionId);
 
             try
             {
-                var session = _historyManager.GetOrCreateSession(chatId, options.SystemPrompt);
+                var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
                 var history = session.History;
 
                 // システムプロンプトがなければ追加
@@ -569,7 +569,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                                 var response = new ChatResponse
                                 {
-                                    ChatId = chatId,
+                                    SessionId = sessionId,
                                     Content = fullResponse,
                                     Role = fullRole,
                                     IsFinal = false,
@@ -592,7 +592,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         if (isSuccess && !string.IsNullOrEmpty(fullResponse))
                         {
                             // 履歴に追加
-                            _historyManager.AddMessage(chatId, new ChatMessage
+                            _historyManager.AddMessage(sessionId, new ChatMessage
                             {
                                 Role = fullRole,
                                 Content = fullResponse
@@ -601,7 +601,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             // 最終チャンク
                             var finalResponse = new ChatResponse
                             {
-                                ChatId = chatId,
+                                SessionId = sessionId,
                                 Content = fullResponse,
                                 Role = fullRole,
                                 IsFinal = true,
@@ -620,7 +620,7 @@ namespace EasyLocalLLM.LLM.Ollama
             }
             finally
             {
-                _runningChatIds.Remove(chatId);
+                _runningSessions.Remove(sessionId);
             }
         }
 

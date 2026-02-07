@@ -123,7 +123,7 @@ client.SetSessionSystemPrompt("teacher",
 StartCoroutine(client.SendMessageAsync(
     "Translate 'Hello' to Japanese",
     (response, error) => Debug.Log(response.Content),
-    new ChatRequestOptions { ChatId = "translator" }
+    new ChatRequestOptions { SessionId = "translator" }
 ));
 ```
 
@@ -245,7 +245,7 @@ client.SetSessionSystemPrompt("temp", "...");
 // 推奨
 var options = new ChatRequestOptions 
 { 
-    ChatId = "programmer",
+    SessionId = "programmer",
     SystemPrompt = "You are a programming expert."
 };
 // または
@@ -253,7 +253,7 @@ client.SetSessionSystemPrompt("programmer", "You are a programming expert.");
 
 // その後のメッセージ送信では SystemPrompt を指定しない
 StartCoroutine(client.SendMessageAsync("Write a function", callback, 
-    new ChatRequestOptions { ChatId = "programmer" }));
+    new ChatRequestOptions { SessionId = "programmer" }));
 ```
 
 ### 3. 不要なセッションはクリア
