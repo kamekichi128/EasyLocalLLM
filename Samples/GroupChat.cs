@@ -44,9 +44,9 @@ public class GroupChat : MonoBehaviour
 
     private static readonly Dictionary<string, int> MESSAGE_PRIORITY = new()
     {
-        { "アリス", 1 },
-        { "ボブ", 1 },
-        { "チャーリー", 0 },
+        { "アリス", 0 },
+        { "ボブ", 0 },
+        { "チャーリー", 1 },
     };
 
     private CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();

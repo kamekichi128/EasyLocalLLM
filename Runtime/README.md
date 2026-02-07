@@ -1999,13 +1999,13 @@ public class MultiNPCManager : MonoBehaviour
             ["quest-giver"] = new NPCProfile
             {
                 SessionId = "npc-quest-giver",
-                Priority = 0,  // 高優先度（クエスト進行に重要）
+                Priority = 100,  // 高優先度（クエスト進行に重要）
                 SystemPrompt = "あなたは重要なクエストを与える賢者です。"
             },
             ["random-villager"] = new NPCProfile
             {
                 SessionId = "npc-villager",
-                Priority = 100,  // 低優先度（フレーバー）
+                Priority = -50,  // 低優先度（フレーバー）
                 SystemPrompt = "あなたは村の住人です。世間話をします。"
             }
         };
