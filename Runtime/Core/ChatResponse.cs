@@ -6,6 +6,11 @@ namespace EasyLocalLLM.LLM.Core
     public class ChatResponse
     {
         /// <summary>
+        /// チャットのID
+        /// </summary>
+        public string ChatId { get; set; }
+
+        /// <summary>
         /// 応答内容（ストリーミング時は部分応答、IsFinal=true で完全応答）
         /// </summary>
         public string Content { get; set; }
@@ -32,7 +37,7 @@ namespace EasyLocalLLM.LLM.Core
 
         public override string ToString()
         {
-            return $"[{Role}] {Content}" +
+            return $"[{Role}] {ChatId} > {Content}" +
                    (IsFinal ? " (Final)" : "") +
                    (TokenCount.HasValue ? $" ({TokenCount} tokens)" : "");
         }

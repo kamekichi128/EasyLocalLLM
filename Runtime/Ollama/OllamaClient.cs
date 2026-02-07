@@ -442,6 +442,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                             var response = new ChatResponse
                             {
+                                ChatId = chatId,
                                 Content = chatMessage?["content"]?.ToString() ?? "",
                                 Role = chatMessage?["role"]?.ToString() ?? "assistant",
                                 IsFinal = true,
@@ -568,6 +569,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                                 var response = new ChatResponse
                                 {
+                                    ChatId = chatId,
                                     Content = fullResponse,
                                     Role = fullRole,
                                     IsFinal = false,
@@ -599,6 +601,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             // 最終チャンク
                             var finalResponse = new ChatResponse
                             {
+                                ChatId = chatId,
                                 Content = fullResponse,
                                 Role = fullRole,
                                 IsFinal = true,
