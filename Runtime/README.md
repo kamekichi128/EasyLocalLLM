@@ -1993,19 +1993,19 @@ public class MultiNPCManager : MonoBehaviour
             ["shopkeeper"] = new NPCProfile
             {
                 SessionId = "npc-shopkeeper",
-                Priority = 0,  // 通常優先度
+                Priority = 50,  // 通常優先度
                 SystemPrompt = "あなたは親切な雑貨屋の店主です。"
             },
             ["quest-giver"] = new NPCProfile
             {
                 SessionId = "npc-quest-giver",
-                Priority = 100,  // 高優先度（クエスト進行に重要）
+                Priority = 0,  // 高優先度（クエスト進行に重要）
                 SystemPrompt = "あなたは重要なクエストを与える賢者です。"
             },
             ["random-villager"] = new NPCProfile
             {
                 SessionId = "npc-villager",
-                Priority = -50,  // 低優先度（フレーバー）
+                Priority = 100,  // 低優先度（フレーバー）
                 SystemPrompt = "あなたは村の住人です。世間話をします。"
             }
         };
@@ -2062,132 +2062,6 @@ public class MultiNPCManager : MonoBehaviour
     }
 }
 ```
-
-### デバッグ用コンソール
-
-開発中のテスト用コンソールの実装例です。コマンド処理、セッション管理、キャンセル処理を含みます。
-
-```csharp
-using EasyLocalLLM.LLM;
-using System.Threading;
-using UnityEngine;
-
-public class DebugLLMConsole : MonoBehaviour
-{
-    private OllamaClient _client;
-    private CancellationTokenSource _cts;
-    private string _sessionId = "debug-console";
-
-    void Start()
-    {
-        var config = new OllamaConfig
-        {
-            ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
-            DebugMode = true,
-            MaxRetries = 1  // デバッグ用なのでリトライは少なめ
-        };
-        
-        _client = LLMClientFactory.CreateOllamaClient(config);
-        
-        Debug.Log("=== LLM Debug Console ===");
-        Debug.Log("Commands: /help, /clear, /sessions, /cancel");
-    }
-
-    void Update()
-    {
-        // コンソール入力のシミュレーション（実際は UI から入力）
-        if (Input.GetKeyDown(KeyCode.Return))
-        {
-            // 例: ProcessCommand("/help");
-        }
-    }
-
-    public void ProcessCommand(string input)
-    {
-        if (input.StartsWith("/"))
-        {
-            HandleCommand(input);
-        }
-        else
-        {
-            SendMessage(input);
-        }
-    }
-
-    void HandleCommand(string command)
-    {
-        switch (command.ToLower())
-        {
-            case "/help":
-                Debug.Log("Commands:\n" +
-                         "/clear - Clear chat history\n" +
-                         "/sessions - List all sessions\n" +
-                         "/cancel - Cancel current request");
-                break;
-                
-            case "/clear":
-                _client.ClearMessages(_sessionId);
-                Debug.Log("Chat history cleared.");
-                break;
-                
-            case "/sessions":
-                var sessions = _client.GetAllSessionIds();
-                Debug.Log($"Active sessions ({sessions.Count}):\n" +
-                         string.Join("\n", sessions));
-                break;
-                
-            case "/cancel":
-                _cts?.Cancel();
-                Debug.Log("Request cancelled.");
-                break;
-                
-            default:
-                Debug.LogWarning($"Unknown command: {command}");
-                break;
-        }
-    }
-
-    void SendMessage(string message)
-    {
-        _cts = new CancellationTokenSource();
-        
-        var options = new ChatRequestOptions
-        {
-            SessionId = _sessionId,
-            Temperature = 0.7f,
-            CancellationToken = _cts.Token
-        };
-        
-        Debug.Log($"User: {message}");
-        
-        StartCoroutine(_client.SendMessageStreamingAsync(
-            message,
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-                
-                if (response.IsFinal)
-                {
-                    Debug.Log($"Assistant: {response.Content}");
-                }
-            },
-            options
-        ));
-    }
-
-    void OnDestroy()
-    {
-        _cts?.Dispose();
-    }
-}
-```
-
-**これらの実践例は、`Samples/` フォルダにも実際のシーンと共に含まれています。**
 
 ## 6. クラス構成
 
