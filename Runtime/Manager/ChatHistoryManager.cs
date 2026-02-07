@@ -79,7 +79,9 @@ namespace EasyLocalLLM.LLM.Manager
             int limit = maxHistory ?? session.MaxHistorySize;
             if (limit > 0 && session.History.Count > limit)
             {
-                session.History.RemoveRange(0, session.History.Count - limit);
+                // 最初のメッセージがシステムプロンプト（Role = "system"）の場合は保護
+                int startIndex = (session.History.Count > 0 && session.History[0].Role == "system") ? 1 : 0;
+                session.History.RemoveRange(startIndex, session.History.Count - limit);
             }
         }
 
