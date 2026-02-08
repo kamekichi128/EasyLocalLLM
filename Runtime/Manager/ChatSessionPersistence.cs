@@ -90,7 +90,7 @@ namespace EasyLocalLLM.LLM.Manager
                 var sessionData = JObject.Parse(json);
 
                 var session = new ChatSession();
-                session.Id = sessionData["SessionId"]?.ToString() ?? "";
+                session.Id = sessionData["Id"]?.ToString() ?? "";
                 session.SystemPrompt = sessionData["SystemPrompt"]?.ToString();
 
                 // 日時情報を復元
@@ -113,6 +113,7 @@ namespace EasyLocalLLM.LLM.Manager
                         var message = new ChatMessage();
                         message.Role = msgToken["Role"]?.ToString() ?? "";
                         message.Content = msgToken["Content"]?.ToString() ?? "";
+                        message.ToolCalls = msgToken["ToolCalls"]?.ToObject<System.Collections.Generic.List<ToolCall>>() ?? null;
                         session.History.Add(message);
                     }
                 }

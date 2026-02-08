@@ -25,10 +25,5 @@ namespace EasyLocalLLM.LLM.Core
         /// ツール呼び出し情報のリスト（assistant がツールを呼び出す場合）
         /// </summary>
         public List<ToolCall> ToolCalls { get; set; }
-
-        /// <summary>
-        /// 対応するツール呼び出しID（tool ロールの場合）
-        /// </summary>
-        public string ToolCallId { get; set; }
     }
 }

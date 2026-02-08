@@ -1,9 +1,0 @@
-<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <ui:VisualElement name="Background" style="flex-grow: 1; background-color: rgb(186, 217, 181);">
-        <ui:ScrollView name="ChatLog" style="flex-grow: 1;" />
-        <ui:VisualElement name="SendingTextArea" style="flex-grow: 0; flex-direction: row; flex-shrink: 0;">
-            <ui:TextField name="MessageInput" style="flex-grow: 1; font-size: 20px;" />
-            <ui:Button text="▲" name="SendMessageButton" />
-        </ui:VisualElement>
-    </ui:VisualElement>
-</ui:UXML>

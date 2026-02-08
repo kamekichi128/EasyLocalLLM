@@ -19,6 +19,7 @@ Ollama を使用してローカル LLM と通信するための Unity ライブ�
   - [4.9 リトライとエラーハンドリング](#49-リトライとエラーハンドリング)
   - [4.10 メッセージ永続化](#410-メッセージ永続化)
   - [4.11 ツール（Function Calling）](#411-ツールfunction-calling)
+  - [4.12 JSON形式のレスポンス指定](#412-json形式のレスポンス指定)
 - [5. 実践例](#5-実践例)
 - [6. クラス構成](#6-クラス構成)
 - [7. 設定オプション](#7-設定オプション)
@@ -2138,6 +2139,329 @@ void RegisterToolWithManualSchema()
 - **デバッグモード**：`DebugMode = true` でツール実行のログを確認可能
 - **戻り値の型**：プリミティブ型、カスタムオブジェクト、配列はすべて自動変換されます
 - **パフォーマンス**：ツール呼び出しは追加の LLM リクエストを伴うため、複数回の往復が発生します
+
+### 4.12 JSON形式のレスポンス指定
+
+LLM からのレスポンスを JSON 形式で取得できます。構造化されたデータが必要な場合や、特定のスキーマに従ったレスポンスを得たい場合に便利です。
+
+#### 基本的な JSON 形式の指定
+
+`Format` プロパティに `ChatRequestOptions.FormatConstants.Json` を指定することで、レスポンスを JSON 形式で受け取れます。
+
+```csharp
+using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using UnityEngine;
+
+public class JsonFormatExample : MonoBehaviour
+{
+    private OllamaClient _client;
+
+    void Start()
+    {
+        _client = LLMClientFactory.CreateOllamaClient(new OllamaConfig
+        {
+            DefaultModelName = "llama3.2",
+            DebugMode = true
+        });
+
+        // JSON 形式でレスポンスを取得
+        var options = new ChatRequestOptions
+        {
+            Format = ChatRequestOptions.FormatConstants.Json
+        };
+
+        StartCoroutine(_client.SendMessageAsync(
+            "Generate a user profile with name, age, and email",
+            (response, error) =>
+            {
+                if (error != null)
+                {
+                    Debug.LogError($"Error: {error.Message}");
+                    return;
+                }
+
+                // レスポンスは JSON 文字列
+                Debug.Log($"JSON Response: {response.Content}");
+                // 例: {"name": "John Doe", "age": 30, "email": "john@example.com"}
+
+                // パースして使用
+                var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
+                string name = json["name"]?.ToString();
+                int age = json["age"]?.Value<int>() ?? 0;
+                Debug.Log($"User: {name}, Age: {age}");
+            },
+            options
+        ));
+    }
+}
+```
+
+#### JSON スキーマを使った詳細な指定
+
+`FormatSchema` プロパティで JSON Schema を指定することで、より厳密な構造を持つレスポンスを得られます。
+
+```csharp
+using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using UnityEngine;
+
+public class JsonSchemaExample : MonoBehaviour
+{
+    private OllamaClient _client;
+
+    void Start()
+    {
+        _client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
+
+        // JSON Schema を指定
+        var options = new ChatRequestOptions
+        {
+            FormatSchema = new
+            {
+                type = "object",
+                properties = new
+                {
+                    name = new { type = "string" },
+                    age = new { type = "number" },
+                    email = new { type = "string" },
+                    isActive = new { type = "boolean" }
+                },
+                required = new[] { "name", "age" }
+            }
+        };
+
+        StartCoroutine(_client.SendMessageAsync(
+            "Create a user profile for a 25-year-old software engineer named Alice",
+            (response, error) =>
+            {
+                if (error == null)
+                {
+                    Debug.Log($"Structured JSON: {response.Content}");
+                    // レスポンスは指定したスキーマに従った JSON
+                }
+            },
+            options
+        ));
+    }
+}
+```
+
+#### 配列を含むスキーマ
+
+```csharp
+void RequestArrayData()
+{
+    var options = new ChatRequestOptions
+    {
+        FormatSchema = new
+        {
+            type = "object",
+            properties = new
+            {
+                teamName = new { type = "string" },
+                members = new
+                {
+                    type = "array",
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            name = new { type = "string" },
+                            role = new { type = "string" },
+                            level = new { type = "number" }
+                        },
+                        required = new[] { "name", "role" }
+                    }
+                }
+            },
+            required = new[] { "teamName", "members" }
+        }
+    };
+
+    StartCoroutine(_client.SendMessageAsync(
+        "Generate a fantasy RPG party with 4 members",
+        (response, error) =>
+        {
+            if (error == null)
+            {
+                var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
+                string teamName = json["teamName"]?.ToString();
+                var members = json["members"] as Newtonsoft.Json.Linq.JArray;
+                
+                Debug.Log($"Team: {teamName}");
+                foreach (var member in members)
+                {
+                    string name = member["name"]?.ToString();
+                    string role = member["role"]?.ToString();
+                    Debug.Log($"- {name} ({role})");
+                }
+            }
+        },
+        options
+    ));
+}
+```
+
+#### ゲームデータ生成の実用例
+
+```csharp
+using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using System;
+using UnityEngine;
+
+[Serializable]
+public class EnemyData
+{
+    public string name;
+    public int health;
+    public int attack;
+    public int defense;
+    public string[] weaknesses;
+}
+
+public class GameDataGenerator : MonoBehaviour
+{
+    private OllamaClient _client;
+
+    void Start()
+    {
+        _client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
+    }
+
+    public void GenerateEnemy(string theme, Action<EnemyData> onComplete)
+    {
+        var options = new ChatRequestOptions
+        {
+            FormatSchema = new
+            {
+                type = "object",
+                properties = new
+                {
+                    name = new { type = "string" },
+                    health = new { type = "number", minimum = 50, maximum = 500 },
+                    attack = new { type = "number", minimum = 10, maximum = 100 },
+                    defense = new { type = "number", minimum = 5, maximum = 50 },
+                    weaknesses = new
+                    {
+                        type = "array",
+                        items = new { type = "string" }
+                    }
+                },
+                required = new[] { "name", "health", "attack", "defense" }
+            }
+        };
+
+        StartCoroutine(_client.SendMessageAsync(
+            $"Generate a {theme} enemy with stats and weaknesses",
+            (response, error) =>
+            {
+                if (error != null)
+                {
+                    Debug.LogError($"Failed to generate enemy: {error.Message}");
+                    return;
+                }
+
+                try
+                {
+                    // JSON をデシリアライズ
+                    var enemyData = Newtonsoft.Json.JsonConvert.DeserializeObject<EnemyData>(response.Content);
+                    Debug.Log($"Generated: {enemyData.name} (HP: {enemyData.health}, ATK: {enemyData.attack})");
+                    onComplete?.Invoke(enemyData);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Failed to parse enemy data: {ex.Message}");
+                }
+            },
+            options
+        ));
+    }
+}
+```
+
+#### Task 版での使用
+
+```csharp
+using EasyLocalLLM.LLM;
+using EasyLocalLLM.LLM.Core;
+using System.Threading.Tasks;
+using UnityEngine;
+
+public class AsyncJsonExample : MonoBehaviour
+{
+    private OllamaClient _client;
+
+    async void Start()
+    {
+        _client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
+
+        var options = new ChatRequestOptions
+        {
+            Format = ChatRequestOptions.FormatConstants.Json
+        };
+
+        try
+        {
+            var response = await _client.SendMessageTaskAsync(
+                "Generate random item data with name, price, and rarity",
+                options
+            );
+
+            var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
+            Debug.Log($"Item: {json["name"]}, Price: {json["price"]}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error: {ex.Message}");
+        }
+    }
+}
+```
+
+#### ストリーミングでの使用
+
+```csharp
+void StreamingJsonExample()
+{
+    var options = new ChatRequestOptions
+    {
+        Format = ChatRequestOptions.FormatConstants.Json
+    };
+
+    StartCoroutine(_client.SendMessageStreamingAsync(
+        "Generate a character profile",
+        (response, error) =>
+        {
+            if (error != null) return;
+
+            if (response.IsFinal)
+            {
+                // 最終的な完全な JSON
+                Debug.Log($"Complete JSON: {response.Content}");
+                var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
+                // 処理...
+            }
+            else
+            {
+                // ストリーミング中の部分的な JSON（表示用）
+                Debug.Log($"Partial: {response.Content}");
+            }
+        },
+        options
+    ));
+}
+```
+
+#### 注意事項
+
+- **FormatSchema と Format の優先順位**：`FormatSchema` が指定されている場合、`Format` は無視されます
+- **対応モデル**：JSON 形式の指定は、対応するモデルでのみ正しく動作します（例: `llama3.2`, `mistral` など）
+- **パース処理**：JSON レスポンスは文字列として返されるため、`Newtonsoft.Json` などでパースが必要です
+- **エラーハンドリング**：スキーマが複雑すぎる場合や、モデルが対応していない場合、エラーが発生する可能性があります
+- **ストリーミング時の注意**：ストリーミングモードでは、`IsFinal = true` の時のみ完全な JSON が保証されます
 
 ## 5. 実践例
 

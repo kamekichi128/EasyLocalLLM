@@ -1,9 +1,10 @@
+using EasyLocalLLM.LLM.Core;
+using EasyLocalLLM.LLM.Factory;
+using EasyLocalLLM.LLM.Ollama;
 using System;
 using System.Collections;
+using UnityEditor.PackageManager;
 using UnityEngine;
-using EasyLocalLLM.LLM.Core;
-using EasyLocalLLM.LLM.Ollama;
-using EasyLocalLLM.LLM.Factory;
 
 /// <summary>
 /// クイックスタート用テストスクリプト
@@ -121,6 +122,47 @@ public class QuickStartTest : MonoBehaviour
             },
             new ChatRequestOptions { SessionId = "quick-test-streaming" }
         );
+
+        yield return new WaitUntil(() => completed);
+
+        // ステップ 5: ツール使用テスト 
+        Debug.Log("[Step 5] Testing tool...");
+
+        completed = false;
+
+        // ツール登録：足し算
+        // スキーマは自動生成され、戻り値も自動的に文字列化
+        client.RegisterTool(
+            name: "add_numbers",
+            description: "Add two numbers together",
+            callback: (Func<int, int, int>)((a, b) => a + b)
+        );
+
+        // ツール登録：現在時刻取得
+        client.RegisterTool(
+            name: "get_current_time",
+            description: "Get the current time",
+            callback: (Func<DateTime>)(() => System.DateTime.Now)  // DateTime も自動変換
+        );
+
+        // LLM にメッセージ送信
+        StartCoroutine(client.SendMessageAsync(
+            "What is 125 + 378? And what time is it now?",
+            (response, error) =>
+            {
+                if (error != null)
+                {
+                    Debug.LogError($"Error: {error.Message}");
+                    completed = true;
+                    return;
+                }
+
+                // LLM がツールを自動的に呼び出して回答
+                Debug.Log($"Assistant: {response.Content}");
+                // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
+                completed = true;
+            }
+        ));
 
         yield return new WaitUntil(() => completed);
 

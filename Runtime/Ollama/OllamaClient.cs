@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -435,38 +436,78 @@ namespace EasyLocalLLM.LLM.Ollama
                     // 使用するツール一覧を取得
                     var tools = options.Tools ?? _toolManager.GetAllTools();
 
+                    // formatフィールドの決定
+                    object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
+
                     // リクエスト作成
                     object requestContent;
                     if (tools != null && tools.Count > 0)
                     {
                         // ツールを含むリクエスト
-                        requestContent = new
+                        if (formatValue != null)
                         {
-                            model = options.ModelName ?? _config.DefaultModelName,
-                            messages = SerializeMessages(history),
-                            stream = false,
-                            tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                            options = new
+                            requestContent = new
                             {
-                                seed = options.Seed ?? _config.DefaultSeed,
-                                temperature = options.Temperature
-                            }
-                        };
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = false,
+                                format = formatValue,
+                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
+                        else
+                        {
+                            requestContent = new
+                            {
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = false,
+                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
                     }
                     else
                     {
                         // ツールなしのリクエスト
-                        requestContent = new
+                        if (formatValue != null)
                         {
-                            model = options.ModelName ?? _config.DefaultModelName,
-                            messages = SerializeMessages(history),
-                            stream = false,
-                            options = new
+                            requestContent = new
                             {
-                                seed = options.Seed ?? _config.DefaultSeed,
-                                temperature = options.Temperature
-                            }
-                        };
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = false,
+                                format = formatValue,
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
+                        else
+                        {
+                            requestContent = new
+                            {
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = false,
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
                     }
 
                     string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
@@ -504,9 +545,8 @@ namespace EasyLocalLLM.LLM.Ollama
                                     {
                                         var toolCall = new Core.ToolCall
                                         {
-                                            ToolCallId = tc["id"]?.ToString(),
                                             ToolName = tc["function"]?["name"]?.ToString(),
-                                            Arguments = tc["function"]?["arguments"]?.ToString()
+                                            Arguments = tc["function"]?["arguments"]
                                         };
                                         response.ToolCalls.Add(toolCall);
                                     }
@@ -573,7 +613,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             string toolResult;
                             try
                             {
-                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments);
+                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments?.ToString());
                             }
                             catch (Exception ex)
                             {
@@ -588,8 +628,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             history.Add(new ChatMessage
                             {
                                 Role = "tool",
-                                Content = toolResult,
-                                ToolCallId = toolCall.ToolCallId
+                                Content = toolResult
                             });
                         }
 
@@ -648,8 +687,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     result.Add(new
                     {
                         role = "tool",
-                        content = msg.Content,
-                        tool_call_id = msg.ToolCallId
+                        content = msg.Content
                     });
                 }
                 else if (msg.ToolCalls != null && msg.ToolCalls.Count > 0)
@@ -661,8 +699,6 @@ namespace EasyLocalLLM.LLM.Ollama
                         content = msg.Content,
                         tool_calls = msg.ToolCalls.Select(tc => new
                         {
-                            id = tc.ToolCallId,
-                            type = "function",
                             function = new
                             {
                                 name = tc.ToolName,
@@ -751,36 +787,76 @@ namespace EasyLocalLLM.LLM.Ollama
                     // 使用するツール一覧を取得
                     var tools = options.Tools ?? _toolManager.GetAllTools();
 
+                    // formatフィールドの決定
+                    object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
+
                     // リクエスト作成
                     object requestContent;
                     if (tools != null && tools.Count > 0)
                     {
-                        requestContent = new
+                        if (formatValue != null)
                         {
-                            model = options.ModelName ?? _config.DefaultModelName,
-                            messages = SerializeMessages(history),
-                            stream = true,
-                            tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                            options = new
+                            requestContent = new
                             {
-                                seed = options.Seed ?? _config.DefaultSeed,
-                                temperature = options.Temperature
-                            }
-                        };
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = true,
+                                format = formatValue,
+                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
+                        else
+                        {
+                            requestContent = new
+                            {
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = true,
+                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
                     }
                     else
                     {
-                        requestContent = new
+                        if (formatValue != null)
                         {
-                            model = options.ModelName ?? _config.DefaultModelName,
-                            messages = SerializeMessages(history),
-                            stream = true,
-                            options = new
+                            requestContent = new
                             {
-                                seed = options.Seed ?? _config.DefaultSeed,
-                                temperature = options.Temperature
-                            }
-                        };
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = true,
+                                format = formatValue,
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
+                        else
+                        {
+                            requestContent = new
+                            {
+                                model = options.ModelName ?? _config.DefaultModelName,
+                                messages = SerializeMessages(history),
+                                stream = true,
+                                options = new
+                                {
+                                    seed = options.Seed ?? _config.DefaultSeed,
+                                    temperature = options.Temperature
+                                }
+                            };
+                        }
                     }
 
                     string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
@@ -820,9 +896,8 @@ namespace EasyLocalLLM.LLM.Ollama
                                         {
                                             var toolCall = new Core.ToolCall
                                             {
-                                                ToolCallId = tc["id"]?.ToString(),
                                                 ToolName = tc["function"]?["name"]?.ToString(),
-                                                Arguments = tc["function"]?["arguments"]?.ToString()
+                                                Arguments = tc["function"]?["arguments"]
                                             };
                                             detectedToolCalls.Add(toolCall);
                                         }
@@ -889,7 +964,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             string toolResult;
                             try
                             {
-                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments);
+                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments?.ToString());
                             }
                             catch (Exception ex)
                             {
@@ -904,8 +979,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             history.Add(new ChatMessage
                             {
                                 Role = "tool",
-                                Content = toolResult,
-                                ToolCallId = toolCall.ToolCallId
+                                Content = toolResult
                             });
                         }
 

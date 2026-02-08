@@ -1,3 +1,5 @@
+using Newtonsoft.Json.Linq;
+
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
@@ -11,18 +13,13 @@ namespace EasyLocalLLM.LLM.Core
         public string ToolName { get; set; }
 
         /// <summary>
-        /// Tool call の一意ID（Ollama レスポンス内に含まれる）
-        /// </summary>
-        public string ToolCallId { get; set; }
-
-        /// <summary>
         /// JSON 形式のツール入力パラメータ
         /// </summary>
-        public string Arguments { get; set; }
+        public JToken Arguments { get; set; }
 
         public override string ToString()
         {
-            return $"ToolCall: {ToolName} (ID: {ToolCallId})";
+            return $"ToolCall: {ToolName}";
         }
     }
 }
