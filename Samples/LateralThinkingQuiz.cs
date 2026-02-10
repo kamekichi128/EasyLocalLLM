@@ -31,7 +31,7 @@ using System.Collections.Generic;
 /// ・チャット履歴表示欄（ChatHistory）
 /// ・真相表示ラベル（TruthLabel）
 /// </summary>
-public class TurtleSoup : MonoBehaviour
+public class LateralThinkingQuiz : MonoBehaviour
 {
     public UIDocument UIDocument;
 
