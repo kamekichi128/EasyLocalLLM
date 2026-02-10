@@ -152,12 +152,13 @@ public class QuickStartTest : MonoBehaviour
             {
                 if (error != null)
                 {
-                    Debug.LogError($"Error: {error.Message}");
+                    Debug.LogError($"✗ Error: {error.Message}");
                     completed = true;
                     return;
                 }
 
                 // LLM がツールを自動的に呼び出して回答
+                Debug.Log($"✓ Tool call passed!");
                 Debug.Log($"Assistant: {response.Content}");
                 // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
                 completed = true;

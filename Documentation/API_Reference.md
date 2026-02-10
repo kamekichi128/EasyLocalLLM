@@ -336,7 +336,7 @@ Assets/StreamingAssets/Ollama/
 
 最も簡単で推奨されるセットアップ方法です。
 
-1. PowerShell を開き、以下を実行（ビルド前）：
+1. PowerShell を開き、以下を実行：
 
 ```powershell
 $env:OLLAMA_MODELS="<プロジェクトパス>\Assets\StreamingAssets\Ollama\models"
@@ -349,6 +349,7 @@ cd "<プロジェクトパス>\Assets\StreamingAssets\Ollama"
 
 ```powershell
 # 利用可能なモデル例：mistral, llama2, neural-chat, dolphin-mixtral など
+cd "<プロジェクトパス>\Assets\StreamingAssets\Ollama"
 .\ollama.exe pull mistral
 ```
 
@@ -1770,6 +1771,10 @@ public class ChatSessionManager : MonoBehaviour
 
 LLM が外部ツールを呼び出すことができる Function Calling 機能に対応しています。
 ユーザーはコールバック関数を登録するだけで、LLM が自動的にツールを使用して回答を生成します。
+
+**📚 詳細ドキュメント：**
+- **[Tools/Design.md](Tools/Design.md)** - 設計ドキュメント（アーキテクチャ、処理フロー、実装詳細）
+- **[Tools/InputSchema_Examples.md](Tools/InputSchema_Examples.md)** - inputSchema の具体例とベストプラクティス
 
 **主な特徴：**
 - ✅ **スキーマ自動生成**：リフレクションでコールバックのシグネチャから JSON Schema を自動生成
@@ -3490,11 +3495,3 @@ ollama list
 # サーバログを確認（サーバ起動時のウィンドウ）
 ```
 
-## 10. 今後の拡張予定
-
-- [x] **async/await サポート**：Task 版 API を追加（実装済み）
-- [x] **メッセージ永続化**：セッション履歴のディスク保存と復元機能（実装済み）
-- [ ] **llama.cpp クライアント**：Ollama 以外のバックエンドにも対応
-- [ ] **OpenAI API クライアント**：統一インターフェースで複数のプロバイダーをサポート
-- [ ] **複数モデルの並列処理**：異なるモデルを同時に実行し、結果を比較
-- [ ] **IAsyncEnumerable サポート**：C# 8 の async stream 対応（ストリーミング向け）
