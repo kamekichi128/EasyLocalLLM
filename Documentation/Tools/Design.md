@@ -204,6 +204,11 @@ public static class ToolSchemaGenerator
 - デフォルト値あり → `required` から除外
 - `[ToolParameter]` Attribute → description に使用
 
+**注意: 現状の自動推定はシンプルな型に限定されます**
+- 複雑なオブジェクト型・ネスト構造・独自クラスは `string` 扱いになる
+- 入力でオブジェクトを渡したい場合は **手動スキーマ指定を推奨**
+- `SimpleChat.cs` の Shop ツールのように、`string` / `int` などのプリミティブ型中心のシグネチャは自動生成で安定
+
 ### 5. `Manager/ToolManager.cs`
 ツールの登録・管理・実行を行うマネージャー。
 

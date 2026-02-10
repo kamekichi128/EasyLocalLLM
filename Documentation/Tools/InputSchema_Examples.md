@@ -44,7 +44,7 @@ client.RegisterTool(
         },
         required = new[] { "expression" }
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         try
         {
@@ -60,7 +60,7 @@ client.RegisterTool(
         {
             return $"Error: {ex.Message}";
         }
-    }
+    })
 );
 ```
 
@@ -96,7 +96,7 @@ client.RegisterTool(
         },
         required = new[] { "query" }  // max_results, language は省略可
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         var json = Newtonsoft.Json.Linq.JObject.Parse(input);
         string query = json["query"].ToString();
@@ -105,7 +105,7 @@ client.RegisterTool(
         
         // 実装例: Webから検索結果を取得
         return $"Found results for '{query}' in {language}";
-    }
+    })
 );
 ```
 
@@ -144,7 +144,7 @@ client.RegisterTool(
         },
         required = new[] { "min", "max", "count" }
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         var json = Newtonsoft.Json.Linq.JObject.Parse(input);
         int min = json["min"].Value<int>();
@@ -157,7 +157,7 @@ client.RegisterTool(
             .ToList();
         
         return string.Join(", ", numbers);
-    }
+    })
 );
 ```
 
@@ -188,7 +188,7 @@ client.RegisterTool(
         },
         required = new[] { "city" }
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         var json = Newtonsoft.Json.Linq.JObject.Parse(input);
         string city = json["city"].ToString();
@@ -196,7 +196,7 @@ client.RegisterTool(
         
         // 実装例
         return $"Weather in {city}: 20°{(unit == "celsius" ? "C" : "F")}";
-    }
+    })
 );
 ```
 
@@ -238,7 +238,7 @@ client.RegisterTool(
         },
         required = new[] { "location_from", "location_to" }
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         var json = Newtonsoft.Json.Linq.JObject.Parse(input);
         
@@ -253,7 +253,7 @@ client.RegisterTool(
         // Haversine 公式で距離計算（例）
         double distance = CalculateHaversineDistance(lat1, lon1, lat2, lon2);
         return $"{distance:F2} km";
-    }
+    })
 );
 ```
 
@@ -288,7 +288,7 @@ client.RegisterTool(
         },
         required = new[] { "texts", "max_length" }
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         var json = Newtonsoft.Json.Linq.JObject.Parse(input);
         var texts = json["texts"].Values<string>().ToList();
@@ -301,7 +301,7 @@ client.RegisterTool(
             : combined;
         
         return summary;
-    }
+    })
 );
 ```
 
@@ -336,7 +336,7 @@ client.RegisterTool(
         },
         required = new[] { "text", "target_language" }
     },
-    callback: (input) =>
+    callback: (Func<object, string>)((input) =>
     {
         var json = Newtonsoft.Json.Linq.JObject.Parse(input);
         string text = json["text"].ToString();
@@ -345,7 +345,7 @@ client.RegisterTool(
         
         // 実装例
         return $"Translated to {targetLang} ({(formal ? "formal" : "casual")}): {text}";
-    }
+    })
 );
 ```
 
