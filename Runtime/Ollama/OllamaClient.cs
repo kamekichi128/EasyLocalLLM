@@ -434,7 +434,11 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
 
                     // 使用するツール一覧を取得
-                    var tools = options.Tools ?? _toolManager.GetAllTools();
+                    var tools = _toolManager.GetAllTools();
+                    if (options.Tools != null && options.Tools.Count > 0)
+                    {
+                        tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
+                    }
 
                     // formatフィールドの決定
                     object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
@@ -785,7 +789,11 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
 
                     // 使用するツール一覧を取得
-                    var tools = options.Tools ?? _toolManager.GetAllTools();
+                    var tools = _toolManager.GetAllTools();
+                    if (options.Tools != null && options.Tools.Count > 0)
+                    {
+                        tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
+                    }
 
                     // formatフィールドの決定
                     object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);

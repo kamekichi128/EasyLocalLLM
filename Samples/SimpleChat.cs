@@ -17,9 +17,10 @@ public class SimpleChat : MonoBehaviour
 
     private OllamaClient client;
 
-    private class AIType {
+    private class AIType
+    {
         public string Name { get; private set; }
-        public string SystemPrompt { get; private set; } 
+        public string SystemPrompt { get; private set; }
         public string Description { get; private set; }
 
         public object FormatSchema { get; private set; }
@@ -206,9 +207,10 @@ public class SimpleChat : MonoBehaviour
                 Debug.Log($"✓ Response received: {chatResponse.Content}");
                 result.text = chatResponse.Content;
             },
-            new ChatRequestOptions {
-                SessionId = currentAIType.Name, 
-                SystemPrompt = currentAIType.SystemPrompt, 
+            new ChatRequestOptions
+            {
+                SessionId = currentAIType.Name,
+                SystemPrompt = currentAIType.SystemPrompt,
                 FormatSchema = currentAIType.FormatSchema
             }
         ));
@@ -269,7 +271,8 @@ public class SimpleChat : MonoBehaviour
     // Custom callbacks for Shopper AI
     int money = 1000;
 
-    private class ShopItem { 
+    private class ShopItem
+    {
         public string Name { get; private set; }
         public int Price { get; private set; }
         public ShopItem(string name, int price)
@@ -279,7 +282,7 @@ public class SimpleChat : MonoBehaviour
         }
     }
 
-    private readonly List<ShopItem> shopItems = new ()
+    private readonly List<ShopItem> shopItems = new()
     {
         new ShopItem("Health Potion", 50),
         new ShopItem("Health Potion", 50),
@@ -348,7 +351,7 @@ public class SimpleChat : MonoBehaviour
             else
             {
                 return "Not enough money to buy " + itemName;
-            }            
+            }
         }
         return "Item " + itemName + " not found";
     }
@@ -397,7 +400,8 @@ public class SimpleChat : MonoBehaviour
         return itemName + "を" + price + "で買い取った";
     }
 
-    private void RemoveAllTools() {
+    private void RemoveAllTools()
+    {
         client.RemoveAllTools();
     }
 
@@ -425,13 +429,15 @@ public class SimpleChat : MonoBehaviour
         {
             client.LoadAllSessions("history.json");
             Debug.Log("✓ History loaded");
-        } catch (Exception e)
+        }
+        catch (Exception e)
         {
             Debug.LogWarning("✗ Failed to load history: " + e.Message);
         }
     }
 
-    private void SaveHistory() {
+    private void SaveHistory()
+    {
         client.SaveAllSessions("history.json");
         Debug.Log("✓ History saved");
     }

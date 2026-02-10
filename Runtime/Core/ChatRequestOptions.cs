@@ -68,7 +68,7 @@ namespace EasyLocalLLM.LLM.Core
         /// <summary>
         /// このリクエストで使用するツール一覧（null の場合は登録済みツール全てを使用）
         /// </summary>
-        public List<ToolDefinition> Tools { get; set; }
+        public List<string> Tools { get; set; }
 
         /// <summary>
         /// ツール呼び出しの最大反復回数（デフォルト: 5）

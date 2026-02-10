@@ -3,6 +3,7 @@ using EasyLocalLLM.LLM.Factory;
 using EasyLocalLLM.LLM.Ollama;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEditor.PackageManager;
 using UnityEngine;
 
@@ -162,6 +163,10 @@ public class QuickStartTest : MonoBehaviour
                 Debug.Log($"Assistant: {response.Content}");
                 // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
                 completed = true;
+            },
+            new ChatRequestOptions
+            {
+                Tools = new List<string> { "add_numbers" },
             }
         ));
 
