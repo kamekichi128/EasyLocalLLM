@@ -36,6 +36,8 @@ public class QuickStart : MonoBehaviour
 
 **前提条件**: Ollama サーバが `localhost:11434` で起動済み、`mistral` モデルがインストール済み
 
+Ollamaサーバ自体のセットアップ、あるいはOllamaサーバを含めたゲームの構築については [Ollama サーバの自動管理](Documentation/API_Reference.md#44-ollama-サーバの自動管理) を参照してください。
+
 ## 💻 動作環境
 
 - **Unity バージョン**: Unity 2021.3 以上推奨
@@ -43,11 +45,11 @@ public class QuickStart : MonoBehaviour
 - **必要なもの**: Ollama サーバ（セットアップ方法は完全ドキュメント参照）
 - **GPU**: 推奨（CPU でも動作しますが、応答速度が遅くなります）
 
-## 📖 完全なドキュメント
+## 📖 ドキュメント
 
 詳細な使用方法、API リファレンス、サンプルコード、トラブルシューティングは以下をご覧ください：
 
-- **[Documentation/API_Reference.md](Documentation/API_Reference.md)** - 完全な技術ドキュメント（すべての機能の詳細）
+- **[Documentation/API_Reference.md](Documentation/API_Reference.md)** - 技術ドキュメント
 - **[Samples/QuickStart.md](Samples/QuickStart.md)** - 初心者向けガイド
 
 ### 主なトピック
