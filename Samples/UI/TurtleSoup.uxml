@@ -1,0 +1,21 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="Background" style="flex-grow: 1; background-color: rgb(255, 255, 255);">
+        <ui:VisualElement style="flex-grow: 0; flex-direction: row; flex-shrink: 0;">
+            <ui:Button text="お題生成" name="PuzzleGenerateButton" enabled="false" style="font-size: 32px; flex-grow: 1;" />
+            <ui:Button text="諦める" name="GiveupButton" enabled="false" style="flex-grow: 1; font-size: 32px;" />
+        </ui:VisualElement>
+        <ui:Label text="（AI初期化中...）" name="PuzzleLabel" style="white-space: normal; font-size: 32px;" />
+        <ui:Label text="Label" name="TruthLabel" style="display: none; white-space: normal; font-size: 32px;" />
+        <ui:ScrollView style="flex-grow: 1; background-color: rgb(19, 19, 19); color: rgb(255, 255, 255);">
+            <ui:Label name="ChatHistory" style="white-space: normal; font-size: 28px;" />
+        </ui:ScrollView>
+        <ui:VisualElement style="flex-grow: 0; flex-direction: row; flex-shrink: 0;">
+            <ui:TextField label="質問" placeholder-text="質問を入力してください" name="PlayerQuestionInput" multiline="true" style="flex-grow: 1; font-size: 28px; white-space: normal; flex-shrink: 1;" />
+            <ui:Button text="送信" name="PlayerQuestionSendButton" />
+        </ui:VisualElement>
+        <ui:VisualElement style="flex-grow: 0; flex-direction: row; flex-shrink: 0;">
+            <ui:TextField label="真相" placeholder-text="真相を入力してください" name="PlayerAnswerInput" multiline="true" style="flex-grow: 1; font-size: 28px; white-space: normal; flex-shrink: 1;" />
+            <ui:Button text="送信" name="PlayerAnswerSendButton" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

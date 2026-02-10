@@ -138,5 +138,47 @@ namespace EasyLocalLLM.LLM.Core
         /// </summary>
         /// <param name="sessionId">セッションID</param>
         void ClearSessionWithPrompt(string sessionId);
+
+        /// <summary>
+        /// ツールを登録（自動スキーマ生成）
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <param name="description">ツール説明</param>
+        /// <param name="callback">コールバック関数（任意のシグネチャ）</param>
+        void RegisterTool(string name, string description, System.Delegate callback);
+
+        /// <summary>
+        /// ツールを登録（手動スキーマ指定）
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <param name="description">ツール説明</param>
+        /// <param name="inputSchema">JSON Schema</param>
+        /// <param name="callback">コールバック関数</param>
+        void RegisterTool(string name, string description, object inputSchema, System.Delegate callback);
+
+        /// <summary>
+        /// ツールを削除
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <returns>削除に成功した場合 true</returns>
+        bool UnregisterTool(string name);
+
+        /// <summary>
+        /// すべてのツールを削除
+        /// </summary>
+        void RemoveAllTools();
+
+        /// <summary>
+        /// 登録済みツール一覧を取得
+        /// </summary>
+        /// <returns>ツール定義のリスト</returns>
+        System.Collections.Generic.List<ToolDefinition> GetRegisteredTools();
+
+        /// <summary>
+        /// ツールが登録されているか確認
+        /// </summary>
+        /// <param name="name">ツール名</param>
+        /// <returns>登録されている場合 true</returns>
+        bool HasTool(string name);
     }
 }
