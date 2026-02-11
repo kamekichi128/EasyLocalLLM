@@ -1,32 +1,32 @@
-# セッションシステムプロンプト設定コマンド
+# Session System Prompt Commands
 
-## 概要
+## Overview
 
-EasyLocalLLM ライブラリに、セッションごとのローカルなシステムプロンプトを設定・管理するコマンドセットが追加されました。
+EasyLocalLLM now includes a command set for configuring and managing session-specific system prompts.
 
-これにより、グローバルなシステムプロンプトを使用しつつ、特定のセッションでは異なるプロンプトを使用できます。
+This lets you use a global system prompt while applying a different prompt for specific sessions.
 
 ---
 
-## 追加されたメソッド
+## Added Methods
 
 ### 1. `SetSessionSystemPrompt(string sessionId, string systemPrompt)`
 
-指定されたセッションのシステムプロンプトを設定します。
+Sets the system prompt for a specific session.
 
-**パラメータ**:
-- `sessionId`: セッションID
-- `systemPrompt`: 設定するシステムプロンプト
+**Parameters**:
+- `sessionId`: Session ID
+- `systemPrompt`: The system prompt to set
 
-**例**:
+**Example**:
 ```csharp
 var client = LLMClientFactory.CreateOllamaClient(config);
 
-// プログラミング専門のプロンプトをセッション A に設定
+// Programming prompt for session A
 client.SetSessionSystemPrompt("session-a", 
     "You are a programming expert. Help with code-related questions.");
 
-// 翻訳専門のプロンプトをセッション B に設定
+// Translation prompt for session B
 client.SetSessionSystemPrompt("session-b", 
     "You are a translation expert. Translate accurately between languages.");
 ```
@@ -35,26 +35,26 @@ client.SetSessionSystemPrompt("session-b",
 
 ### 2. `GetSessionSystemPrompt(string sessionId)`
 
-指定されたセッションのシステムプロンプトを取得します。
+Gets the system prompt for a specific session.
 
-**戻り値**: システムプロンプト、セッションが存在しない場合は `null`
+**Returns**: The system prompt, or `null` if the session does not exist.
 
-**例**:
+**Example**:
 ```csharp
 string prompt = client.GetSessionSystemPrompt("session-a");
-Debug.Log($"Session A プロンプト: {prompt}");
+Debug.Log($"Session A prompt: {prompt}");
 ```
 
 ---
 
 ### 3. `ResetSessionSystemPrompt(string sessionId)`
 
-指定されたセッションのシステムプロンプトをリセットします。
-リセット後、グローバルシステムプロンプトが使用されます。
+Resets the system prompt for a specific session.
+After reset, the global system prompt is used.
 
-**例**:
+**Example**:
 ```csharp
-// セッション A のプロンプトをグローバル設定に戻す
+// Reset session A prompt to the global setting
 client.ResetSessionSystemPrompt("session-a");
 ```
 
@@ -62,15 +62,15 @@ client.ResetSessionSystemPrompt("session-a");
 
 ### 4. `SetSystemPromptForMultipleSessions(IEnumerable<string> sessionIds, string systemPrompt)`
 
-複数のセッションに対して同じシステムプロンプトを一括設定します。
+Sets the same system prompt for multiple sessions at once.
 
-**パラメータ**:
-- `sessionIds`: セッションID のリスト
-- `systemPrompt`: 設定するシステムプロンプト
+**Parameters**:
+- `sessionIds`: List of session IDs
+- `systemPrompt`: The system prompt to set
 
-**例**:
+**Example**:
 ```csharp
-// 複数のセッションに同じプロンプトを設定
+// Apply the same prompt to multiple sessions
 var sessionIds = new[] { "session-1", "session-2", "session-3" };
 client.SetSystemPromptForMultipleSessions(sessionIds, 
     "You are a helpful customer service assistant.");
@@ -80,11 +80,11 @@ client.SetSystemPromptForMultipleSessions(sessionIds,
 
 ### 5. `ResetAllSessionSystemPrompts()`
 
-すべてのセッションのシステムプロンプトをリセットします。
+Resets the system prompts for all sessions.
 
-**例**:
+**Example**:
 ```csharp
-// すべてのセッションをグローバル設定に戻す
+// Reset all sessions to the global prompt
 client.ResetAllSessionSystemPrompts();
 ```
 
@@ -92,34 +92,34 @@ client.ResetAllSessionSystemPrompts();
 
 ### 6. `ClearSessionWithPrompt(string sessionId)`
 
-指定されたセッションの履歴とシステムプロンプットの両方をリセットします。
+Clears both the session history and the session prompt.
 
-**例**:
+**Example**:
 ```csharp
-// セッション A を完全にリセット
+// Fully reset session A
 client.ClearSessionWithPrompt("session-a");
 ```
 
 ---
 
-## 使用パターン
+## Usage Patterns
 
-### パターン1: 異なるロール用のセッション分離
+### Pattern 1: Separate sessions for different roles
 
 ```csharp
-// 翻訳タスク用セッション
+// Translation session
 client.SetSessionSystemPrompt("translator", 
     "You are a professional translator. Translate accurately and naturally.");
 
-// プログラミングヘルプ用セッション
+// Programming help session
 client.SetSessionSystemPrompt("programmer", 
     "You are a senior software engineer. Provide code examples and explanations.");
 
-// レッスン用セッション
+// Teaching session
 client.SetSessionSystemPrompt("teacher", 
     "You are an educational tutor. Explain concepts clearly with examples.");
 
-// 各セッションで独立した会話を実施
+// Independent conversation per session
 StartCoroutine(client.SendMessageAsync(
     "Translate 'Hello' to Japanese",
     (response, error) => Debug.Log(response.Content),
@@ -127,31 +127,31 @@ StartCoroutine(client.SendMessageAsync(
 ));
 ```
 
-### パターン2: 言語別セッション管理
+### Pattern 2: Language-specific sessions
 
 ```csharp
-// 日本語セッション
+// Japanese session
 client.SetSessionSystemPrompt("ja", 
     "You are a helpful assistant. Always respond in Japanese.");
 
-// 英語セッション
+// English session
 client.SetSessionSystemPrompt("en", 
     "You are a helpful assistant. Always respond in English.");
 
-// フランス語セッション
+// French session
 client.SetSessionSystemPrompt("fr", 
     "You are a helpful assistant. Always respond in French.");
 ```
 
-### パターン3: プロジェクトごとのプロンプト設定
+### Pattern 3: Project-specific prompts
 
 ```csharp
-// プロジェクトAのセッション
+// Project A session
 client.SetSessionSystemPrompt("project-a", 
     "Context: You are helping with an educational game project. " +
     "Focus on interactive and engaging explanations.");
 
-// プロジェクトBのセッション
+// Project B session
 client.SetSessionSystemPrompt("project-b", 
     "Context: You are helping with a business analytics project. " +
     "Focus on data-driven insights and technical accuracy.");
@@ -159,29 +159,29 @@ client.SetSessionSystemPrompt("project-b",
 
 ---
 
-## 実装の特徴
+## Implementation Details
 
-### 階層的なプロンプト管理
+### Hierarchical Prompt Management
 
-1. **グローバルレベル**: `GlobalSystemPrompt` プロパティ
-   - すべてのセッションのデフォルト
+1. **Global level**: `GlobalSystemPrompt` property
+   - Default for all sessions
    
-2. **セッションレベル**: `SetSessionSystemPrompt()` メソッド
-   - 特定のセッション専用
-   - グローバルプロンプトをオーバーライド
+2. **Session level**: `SetSessionSystemPrompt()` method
+   - Specific to a session
+   - Overrides the global prompt
 
-3. **リクエストレベル**: `ChatRequestOptions.SystemPrompt`
-   - 単一リクエスト限定
-   - セッションレベルをオーバーライド
+3. **Request level**: `ChatRequestOptions.SystemPrompt`
+   - Applies to a single request
+   - Overrides the session prompt
 
-**優先順位**:
+**Priority order**:
 ```
-リクエストレベル > セッションレベル > グローバルレベル
+Request level > Session level > Global level
 ```
 
-### DebugMode サポート
+### DebugMode Support
 
-`OllamaConfig.DebugMode = true` の場合、以下の操作がログ出力されます：
+If `OllamaConfig.DebugMode = true`, the following actions are logged:
 
 ```csharp
 [Ollama] Session 'session-a' system prompt updated: You are a programming expert...
@@ -192,91 +192,91 @@ client.SetSessionSystemPrompt("project-b",
 
 ---
 
-## 単体テスト
+## Unit Tests
 
-NonStreamingTests.cs に5つのテストが追加されました：
+Five tests were added to `NonStreamingTests.cs`:
 
-| テスト | 説明 |
+| Test | Description |
 |--------|------|
-| Test_SessionSystemPrompt_SetAndRetrieve | プロンプトの設定と取得 |
-| Test_SessionSystemPrompt_Reset | プロンプトのリセット |
-| Test_SetSystemPromptForMultipleSessions | 複数セッションへの一括設定 |
-| Test_ResetAllSessionSystemPrompts | すべてのセッションをリセット |
-| Test_ClearSessionWithPrompt | 履歴とプロンプトをクリア |
+| Test_SessionSystemPrompt_SetAndRetrieve | Set and retrieve prompt |
+| Test_SessionSystemPrompt_Reset | Reset prompt |
+| Test_SetSystemPromptForMultipleSessions | Bulk set prompts |
+| Test_ResetAllSessionSystemPrompts | Reset all prompts |
+| Test_ClearSessionWithPrompt | Clear history and prompt |
 
-**実行方法**:
+**How to run**:
 ```
-Unity Test Runner → PlayMode → NonStreamingTests を実行
+Unity Test Runner -> PlayMode -> Run NonStreamingTests
 ```
 
 ---
 
-## API 互換性
+## API Compatibility
 
-新しいメソッドはすべて `IChatLLMClient` インターフェースに定義されており：
+All new methods are defined in `IChatLLMClient`:
 
-- ✅ `OllamaClient` で実装
-- ✅ `MockChatLLMClient` で実装（テスト用）
-- ✅ 将来のクライアント実装でも対応可能
+- Implemented in `OllamaClient`
+- Implemented in `MockChatLLMClient` (for testing)
+- Supported by future client implementations
 
 ---
 
-## ベストプラクティス
+## Best Practices
 
-### 1. セッションID の命名規則
+### 1. Session ID naming
 
-意味のあるセッションID を使用してコードの可読性を高める：
+Use meaningful session IDs to improve readability:
 
 ```csharp
-// 良い例
+// Good
 client.SetSessionSystemPrompt("translator-en-ja", "...");
 client.SetSessionSystemPrompt("user-support-session-123", "...");
 
-// 避ける
+// Avoid
 client.SetSessionSystemPrompt("session1", "...");
 client.SetSessionSystemPrompt("temp", "...");
 ```
 
-### 2. 設定は一度だけ
+### 2. Set once per session
 
-セッションプロンプトは初回セッション作成時に設定：
+Set session prompts when the session is created:
 
 ```csharp
-// 推奨
+// Recommended
 var options = new ChatRequestOptions 
 { 
     SessionId = "programmer",
     SystemPrompt = "You are a programming expert."
 };
-// または
+// Or
 client.SetSessionSystemPrompt("programmer", "You are a programming expert.");
 
-// その後のメッセージ送信では SystemPrompt を指定しない
+// Do not specify SystemPrompt on subsequent messages
 StartCoroutine(client.SendMessageAsync("Write a function", callback, 
     new ChatRequestOptions { SessionId = "programmer" }));
 ```
 
-### 3. 不要なセッションはクリア
+### 3. Clear unused sessions
 
-メモリ使用量を抑えるため、不要なセッションは削除：
+Clear sessions to reduce memory usage:
 
 ```csharp
-// セッション終了時
+// On session end
 client.ClearSessionWithPrompt("session-id");
 
-// または個別に
+// Or individually
 client.ClearMessages("session-id");
 client.ResetSessionSystemPrompt("session-id");
 ```
 
 ---
 
-## まとめ
+## Summary
 
-セッションシステムプロンプト設定コマンドにより：
+Session system prompt commands allow you to:
 
-✅ 複数のロールを1つのクライアントで管理  
-✅ 言語別セッションを簡単に実装  
-✅ プロジェクト固有のコンテキストをセッションに適用  
-✅ グローバル設定との階層的な管理  
-✅ テストで検証可能な実装  
+- Manage multiple roles within a single client
+- Build language-specific sessions easily
+- Apply project-specific context per session
+- Maintain hierarchical prompt control
+- Validate behavior with tests

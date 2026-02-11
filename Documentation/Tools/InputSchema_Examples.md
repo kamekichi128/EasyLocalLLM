@@ -1,31 +1,32 @@
-# inputSchema の具体的な指定方法
+# How to Define inputSchema
 
-## 概要
-inputSchema は **JSON Schema** 形式で、ツールが受け取るパラメータの構造を定義します。
-Ollama/OpenAI の tools API 対応より。
+## Overview
+
+`inputSchema` uses **JSON Schema** to define the structure of parameters a tool receives.
+This follows the Ollama/OpenAI tools API.
 
 ---
 
-## 基本構造
+## Basic Structure
 
 ```json
 {
   "type": "object",
   "properties": {
     "parameter_name": {
-      "type": "パラメータの型",
-      "description": "説明"
+      "type": "parameter type",
+      "description": "Description"
     }
   },
-  "required": ["必須パラメータ"]
+  "required": ["required parameter"]
 }
 ```
 
 ---
 
-## 実装パターン
+## Implementation Patterns
 
-### **パターン1: 単純な文字列パラメータ（計算式の例）**
+### **Pattern 1: Simple string parameter (expression example)**
 
 ```csharp
 client.RegisterTool(
@@ -52,7 +53,7 @@ client.RegisterTool(
             var json = Newtonsoft.Json.Linq.JObject.Parse(input);
             string expression = json["expression"].ToString();
             
-            // 簡単な計算（実装例）
+            // Simple calculation example
             var result = new System.Data.DataTable().Compute(expression, null);
             return result.ToString();
         }
@@ -66,7 +67,7 @@ client.RegisterTool(
 
 ---
 
-### **パターン2: 複数パラメータ（Webスクレイピング的な例）**
+### **Pattern 2: Multiple parameters (web search style)**
 
 ```csharp
 client.RegisterTool(
@@ -91,10 +92,10 @@ client.RegisterTool(
             {
                 type = "string",
                 description = "Language code (e.g., 'en', 'ja')",
-                @enum = new[] { "en", "ja", "es", "fr" }  // 複数の場合
+                @enum = new[] { "en", "ja", "es", "fr" }
             }
         },
-        required = new[] { "query" }  // max_results, language は省略可
+        required = new[] { "query" }
     },
     callback: (Func<object, string>)((input) =>
     {
@@ -103,7 +104,7 @@ client.RegisterTool(
         int maxResults = json["max_results"]?.Value<int>() ?? 5;
         string language = json["language"]?.ToString() ?? "en";
         
-        // 実装例: Webから検索結果を取得
+        // Example implementation
         return $"Found results for '{query}' in {language}";
     })
 );
@@ -111,7 +112,7 @@ client.RegisterTool(
 
 ---
 
-### **パターン3: 数値範囲の指定**
+### **Pattern 3: Numeric ranges**
 
 ```csharp
 client.RegisterTool(
@@ -139,7 +140,7 @@ client.RegisterTool(
                 type = "integer",
                 description = "How many random numbers to generate",
                 minimum = 1,
-                maximum = 100  // 最大100個まで
+                maximum = 100
             }
         },
         required = new[] { "min", "max", "count" }
@@ -163,7 +164,7 @@ client.RegisterTool(
 
 ---
 
-### **パターン4: クエリパラメータ形式（複数パラメータを一つの文字列として）**
+### **Pattern 4: Query-parameter style (multiple params)**
 
 ```csharp
 client.RegisterTool(
@@ -183,7 +184,7 @@ client.RegisterTool(
             {
                 type = "string",
                 description = "Temperature unit",
-                @enum = new[] { "celsius", "fahrenheit" }  // enum を使用
+                @enum = new[] { "celsius", "fahrenheit" }
             }
         },
         required = new[] { "city" }
@@ -194,15 +195,15 @@ client.RegisterTool(
         string city = json["city"].ToString();
         string unit = json["unit"]?.ToString() ?? "celsius";
         
-        // 実装例
-        return $"Weather in {city}: 20°{(unit == "celsius" ? "C" : "F")}";
+        // Example implementation
+        return $"Weather in {city}: 20{(unit == "celsius" ? "C" : "F")}";
     })
 );
 ```
 
 ---
 
-### **パターン5: 複雑なオブジェクト型（場所情報など）**
+### **Pattern 5: Complex object (location data)**
 
 ```csharp
 client.RegisterTool(
@@ -250,7 +251,7 @@ client.RegisterTool(
         double lat2 = to["latitude"].Value<double>();
         double lon2 = to["longitude"].Value<double>();
         
-        // Haversine 公式で距離計算（例）
+        // Haversine formula example
         double distance = CalculateHaversineDistance(lat1, lon1, lat2, lon2);
         return $"{distance:F2} km";
     })
@@ -259,7 +260,7 @@ client.RegisterTool(
 
 ---
 
-### **パターン6: 配列型パラメータ**
+### **Pattern 6: Array parameters**
 
 ```csharp
 client.RegisterTool(
@@ -295,9 +296,9 @@ client.RegisterTool(
         int maxLength = json["max_length"].Value<int>();
         
         string combined = string.Join(" ", texts);
-        // 簡易要約（実装例）
-        string summary = combined.Length > maxLength 
-            ? combined.Substring(0, maxLength) + "..." 
+        // Simple summary example
+        string summary = combined.Length > maxLength
+            ? combined.Substring(0, maxLength) + "..."
             : combined;
         
         return summary;
@@ -307,7 +308,7 @@ client.RegisterTool(
 
 ---
 
-### **パターン7: 真偽値（ブール）パラメータ**
+### **Pattern 7: Boolean parameter**
 
 ```csharp
 client.RegisterTool(
@@ -343,7 +344,7 @@ client.RegisterTool(
         string targetLang = json["target_language"].ToString();
         bool formal = json["formal"]?.Value<bool>() ?? false;
         
-        // 実装例
+        // Example implementation
         return $"Translated to {targetLang} ({(formal ? "formal" : "casual")}): {text}";
     })
 );
@@ -351,29 +352,29 @@ client.RegisterTool(
 
 ---
 
-## JSON Schema のプロパティ一覧
+## JSON Schema Property Reference
 
-| プロパティ | 説明 | 例 |
-|----------|------|-----|
-| `type` | データ型 | "string", "integer", "number", "boolean", "array", "object" |
-| `description` | パラメータの説明 | "User's email address" |
-| `minimum` | 数値の最小値 | `0` |
-| `maximum` | 数値の最大値 | `100` |
-| `minLength` | 文字列の最小長 | `1` |
-| `maxLength` | 文字列の最大長 | `255` |
-| `enum` | 取りうる値の列挙 | `new[] { "red", "green", "blue" }` |
-| `required` | 必須パラメータのリスト | `new[] { "email", "name" }` |
-| `minItems` | 配列の最小要素数 | `1` |
-| `maxItems` | 配列の最大要素数 | `10` |
-| `items` | 配列の要素の型定義 | `new { type = "string" }` |
-| `properties` | オブジェクトのプロパティ定義 | (ネストされた定義) |
-| `@enum` | C# で enum を使う場合 | `new[] { "option1", "option2" }` |
+| Property | Description | Example |
+|----------|-------------|---------|
+| `type` | Data type | "string", "integer", "number", "boolean", "array", "object" |
+| `description` | Parameter description | "User's email address" |
+| `minimum` | Minimum numeric value | `0` |
+| `maximum` | Maximum numeric value | `100` |
+| `minLength` | Minimum string length | `1` |
+| `maxLength` | Maximum string length | `255` |
+| `enum` | Allowed values | `new[] { "red", "green", "blue" }` |
+| `required` | Required parameters | `new[] { "email", "name" }` |
+| `minItems` | Minimum array length | `1` |
+| `maxItems` | Maximum array length | `10` |
+| `items` | Array item schema | `new { type = "string" }` |
+| `properties` | Object properties | (nested definitions) |
+| `@enum` | Use in C# for enum values | `new[] { "option1", "option2" }` |
 
 ---
 
-## LLM 側での理解
+## How the LLM Interprets inputSchema
 
-LLM は inputSchema を以下のように理解します：
+The LLM interprets inputSchema like this:
 
 ```
 Tool: calculator
@@ -382,41 +383,40 @@ Parameters:
   - expression (string, required): Math expression to evaluate...
 ```
 
-つまり、**説明（description）が明確ほど、LLM が正確にツール呼び出しをします**。
+In short, **clear descriptions lead to more accurate tool calls**.
 
 ---
 
-## ベストプラクティス
+## Best Practices
 
-1. **説明は詳細に** - 例を含めると効果的
+1. **Be specific in descriptions** - examples help
    ```csharp
    description = "Email address in format 'user@example.com'"
    ```
 
-2. **型制限を活用** - minimum/maximum/enum で LLM の誤りを減らす
+2. **Use constraints** - minimum/maximum/enum reduce errors
    ```csharp
    type = "integer",
    minimum = 1,
    maximum = 100
    ```
 
-3. **必須と省略可を明確に** - required に必須のみ入れる
+3. **Separate required and optional** - include only required in `required`
    ```csharp
-   required = new[] { "query" }  // language は省略可
+   required = new[] { "query" }  // language is optional
    ```
 
-4. **複雑さは避ける** - シンプルなスキーマほど LLM が正確
+4. **Avoid complexity** - simpler schemas work best
    ```csharp
-   // ❌ 悪い例
+   // Bad
    properties = new
    {
-       nested_object = new { /* 深いネスト */ }
+       nested_object = new { /* deep nesting */ }
    }
    
-   // ✅ 良い例
+   // Good
    properties = new
    {
        simple_string = new { type = "string" }
    }
    ```
-

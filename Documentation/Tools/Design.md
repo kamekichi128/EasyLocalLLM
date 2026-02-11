@@ -1,30 +1,30 @@
-# Tools（Function Calling）機能 - 概要ガイド
+# Tools (Function Calling) - Overview Guide
 
-## ツール（Function Calling）とは
+## What Are Tools (Function Calling)?
 
-**ツール**（Tools / Function Calling）は、LLM がゲーム内の機能やデータに直接アクセスできるようにする仕組みです。LLM が「プレイヤーの所持金を確認したい」「アイテムを購入したい」などのアクションが必要だと判断すると、あなたが登録した C# 関数を自動的に呼び出します。
+**Tools** (Tools / Function Calling) let the LLM access in-game features and data directly. When the LLM decides it needs an action like "check the player's gold" or "buy an item," it automatically calls a C# function you registered.
 
-### 具体例
+### Example
 
-プレイヤーが NPC に「体力ポーションを3個買いたい」と話しかけた場合：
+If the player says to an NPC, "I want to buy three health potions":
 
-1. LLM が「購入機能が必要」と判断
-2. 登録済みの `BuyItem` 関数を自動呼び出し（`BuyItem("health_potion", 3)`）
-3. 関数が実行結果を返す（例：「購入成功。所持金: 450G」）
-4. LLM がその結果を自然な会話文に変換（「体力ポーションを3個購入しました。残金は450Gです」）
+1. The LLM decides a purchase action is needed.
+2. The registered `BuyItem` function is called automatically (`BuyItem("health_potion", 3)`).
+3. The function returns a result (e.g., "Purchase successful. Gold left: 450G").
+4. The LLM turns that result into a natural reply ("Bought three health potions. You have 450G left.").
 
-これにより、NPC との会話だけでゲーム内の実際の処理を実行できます。
+This lets NPC conversations trigger real gameplay logic.
 
 ---
 
-## 基本的な使い方
+## Basic Usage
 
-### 1. ツールを登録する
+### 1. Register a Tool
 
-`RegisterTool()` で C# 関数を LLM に使えるように登録します：
+Use `RegisterTool()` to make a C# function available to the LLM:
 
 ```csharp
-// 足し算ツールの登録
+// Register an addition tool
 client.RegisterTool(
     name: "add_numbers",
     description: "Add two numbers together",
@@ -32,14 +32,14 @@ client.RegisterTool(
 );
 ```
 
-**重要なポイント：**
-- `name`: ツール名（LLM が呼び出す際に使用）
-- `description`: ツールの説明（LLM がいつ使うべきか判断する材料）
-- `callback`: 実際に実行される関数（`Func<...>` 型でキャスト必須）
+**Key points:**
+- `name`: Tool name used by the LLM when calling it.
+- `description`: Helps the LLM decide when to use the tool.
+- `callback`: The function to execute (cast to `Func<...>`).
 
-### 2. LLM にメッセージを送る
+### 2. Send a Message
 
-通常通りメッセージを送信するだけ。LLM が必要と判断すれば自動的にツールを呼び出します：
+Send messages normally. If the LLM decides a tool is needed, it will call it automatically:
 
 ```csharp
 StartCoroutine(client.SendMessageAsync(
@@ -47,59 +47,59 @@ StartCoroutine(client.SendMessageAsync(
     (response, error) =>
     {
         Debug.Log(response.Content);
-        // 出力例：「125 + 378 = 503 です」
+        // Example output: "125 + 378 = 503"
     }
 ));
 ```
 
 ---
 
-## アーキテクチャ概要
+## Architecture Overview
 ---
 
-## アーキテクチャ概要
+## Architecture Overview
 
-LLM とゲーム機能がどのように連携するかの全体像：
+High-level flow of how the LLM and game features connect:
 
 ```
-プレイヤー → LLM → 「ツールが必要」と判断 → 登録済み関数を自動実行 → 結果を取得 → LLM が最終回答
+Player -> LLM -> "Tool needed" -> Execute registered function -> Get result -> LLM final response
 ```
 
-詳細フロー：
+Detailed flow:
 
 ```
 ┌─────────────────────────────┐
 │     OllamaClient            │
-│  (ToolManager組み込み)       │
+│  (with ToolManager)         │
 ├─────────────────────────────┤
-│ - RegisterTool()            │  ← ツール登録
-│ - SendMessageAsync()        │  ← メッセージ送信
-│ - ツール自動実行            │  ← LLM判断で自動実行
+│ - RegisterTool()            │  <- Tool registration
+│ - SendMessageAsync()        │  <- Send message
+│ - Tool auto-execution       │  <- LLM decides to call tools
 └─────────────────────────────┘
         ↓
 ┌─────────────────────────────┐
 │   Ollama API                │
 ├─────────────────────────────┤
-│ - ツール情報を含むリクエスト  │
-│ - tool_callsレスポンス       │
-│ - 実行結果を含む再リクエスト  │
+│ - Request includes tools    │
+│ - tool_calls in response    │
+│ - Re-request with results   │
 └─────────────────────────────┘
 ```
 
 ---
 
-## 実用的な使用パターン
+## Practical Usage Patterns
 
 ---
 
-## 実用的な使用パターン
+## Practical Usage Patterns
 
-### パターン1: シンプルな計算ツール（1パラメータ）
+### Pattern 1: Simple Calculator Tool (1 parameter)
 
-最もシンプルな例。パラメータが1つで、戻り値も自動変換されます。
+The simplest example. One parameter, and return values are converted automatically.
 
 ```csharp
-// 計算式を評価するツール
+// Tool that evaluates a math expression
 client.RegisterTool(
     name: "calculator",
     description: "Evaluate a math expression like '5+3' or '10*2'",
@@ -107,7 +107,7 @@ client.RegisterTool(
     {
         try
         {
-            // DataTableで計算（実装例）
+            // Example implementation using DataTable
             return new System.Data.DataTable().Compute(expression, null);
         }
         catch (Exception ex)
@@ -117,24 +117,24 @@ client.RegisterTool(
     })
 );
 
-// 使用例
-// プレイヤー: "5 + 3はいくつ？"
-// LLM: calculator("5+3") を呼び出し → 8 → 「5 + 3は8です」
+// Example
+// Player: "What is 5 + 3?"
+// LLM calls calculator("5+3") -> 8 -> "5 + 3 is 8."
 ```
 
-**ポイント：**
-- スキーマは自動生成される
-- `object` 型の戻り値も自動的に文字列化される
+**Notes:**
+- The schema is generated automatically.
+- `object` return values are auto-stringified.
 
-### パターン2: 複数パラメータ＆デフォルト値
+### Pattern 2: Multiple Parameters and Default Values
 
-パラメータが複数あり、一部は省略可能な場合。
+Multiple parameters with optional defaults.
 ```csharp
 var client = new OllamaClient(config);
 
-// Tool1 登録: 計算機能
-// → inputSchema は自動生成（リフレクション使用）
-// → 戻り値も自動的に文字列変換（ToString() 不要）
+// Tool registration: calculator
+// -> inputSchema auto-generated via reflection
+// -> return value auto-converted (no ToString required)
 client.RegisterTool(
     name: "calculator",
     description: "Evaluate a math expression",
@@ -142,7 +142,6 @@ client.RegisterTool(
     {
         try
         {
-            // 戻り値は object でも自動的に文字列化される
             return new System.Data.DataTable().Compute(expression, null);
         }
         catch (Exception ex)
@@ -154,37 +153,36 @@ client.RegisterTool(
 ```
 
 ```csharp
-// Web検索ツール（maxResultsは省略可）
+// Web search tool (maxResults is optional)
 client.RegisterTool(
     name: "search_web",
     description: "Search the web for information",
     callback: (Func<string, int, string>)((string query, int maxResults = 5) =>
     {
-        // 実際の検索処理を実行
         var results = SearchEngine.Search(query, maxResults);
         return $"Found {results.Count} results for '{query}'";
     })
 );
 
-// 使用例
-// プレイヤー: "Unityの最新情報を3件検索して"
-// LLM: search_web("Unity", 3) を呼び出し
-// プレイヤー: "Pythonについて調べて"
-// LLM: search_web("Python") を呼び出し（maxResultsは5がデフォルト）
+// Example
+// Player: "Search Unity news for 3 items"
+// LLM calls search_web("Unity", 3)
+// Player: "Search about Python"
+// LLM calls search_web("Python") with default maxResults=5
 ```
 
-**ポイント：**
-- デフォルト値のあるパラメータは、LLM側で「省略可能」と認識される
-- スキーマ自動生成時に `required` から除外される
+**Notes:**
+- Parameters with default values are treated as optional by the LLM.
+- Auto-generated schema excludes optional parameters from `required`.
 
-### パターン3: パラメータに詳細説明を付ける
+### Pattern 3: Add Detailed Parameter Descriptions
 
-`[ToolParameter]` 属性でパラメータの説明を追加すると、LLM の判断精度が向上します。
+Use `[ToolParameter]` to improve the LLM's accuracy.
 
 ```csharp
 using EasyLocalLLM.LLM.Core;
 
-// 天気情報取得ツール
+// Weather tool
 client.RegisterTool(
     name: "get_weather",
     description: "Get current weather information for a city",
@@ -193,63 +191,62 @@ client.RegisterTool(
         [ToolParameter("Temperature unit: celsius or fahrenheit")] string unit = "celsius"
     ) =>
     {
-        // 実際の天気情報取得処理
         var weather = WeatherAPI.GetWeather(city, unit);
-        return $"Weather in {city}: {weather.Temperature}°{(unit == "celsius" ? "C" : "F")}, {weather.Condition}";
+        return $"Weather in {city}: {weather.Temperature} degrees {(unit == "celsius" ? "C" : "F")}, {weather.Condition}";
     })
 );
 
-// 使用例
-// プレイヤー: "東京の天気を華氏で教えて"
-// LLM: get_weather("Tokyo", "fahrenheit") を呼び出し
+// Example
+// Player: "What's the weather in Tokyo in Fahrenheit?"
+// LLM calls get_weather("Tokyo", "fahrenheit")
 ```
 
-**ポイント：**
-- `[ToolParameter]` で各パラメータの説明を明確化
-- LLM がより正確に判断できるようになる
+**Notes:**
+- `[ToolParameter]` clarifies each parameter.
+- Improves the LLM's tool selection and argument accuracy.
 
-### パターン4: プリミティブ型の戻り値（自動変換）
+### Pattern 4: Primitive Return Types (Auto Conversion)
 
-戻り値が `int`、`bool`、`double` などのプリミティブ型の場合も自動的に文字列化されます。
+Return values like `int`, `bool`, and `double` are automatically converted to strings.
 
 ```csharp
-// 足し算ツール（intを返す）
+// Addition tool (int return)
 client.RegisterTool(
     name: "add_numbers",
     description: "Add two numbers together",
     callback: (Func<int, int, int>)((int a, int b) => a + b)
 );
 
-// 偶数判定ツール（boolを返す）
+// Even check tool (bool return)
 client.RegisterTool(
     name: "is_even",
     description: "Check if a number is even",
     callback: (Func<int, bool>)((int number) => number % 2 == 0)
 );
 
-// 割り算ツール（doubleを返す）
+// Division tool (double return)
 client.RegisterTool(
     name: "divide",
     description: "Divide two numbers",
     callback: (Func<double, double, double>)((double a, double b) => a / b)
 );
 
-// 使用例
-// プレイヤー: "10 + 5はいくつ？"
-// LLM: add_numbers(10, 5) → 15 → 「15です」
-// プレイヤー: "8は偶数？"
-// LLM: is_even(8) → true → 「はい、8は偶数です」
+// Example
+// Player: "What is 10 + 5?"
+// LLM: add_numbers(10, 5) -> 15 -> "15"
+// Player: "Is 8 even?"
+// LLM: is_even(8) -> true -> "Yes, 8 is even."
 
-**ポイント：**
-- `.ToString()` を書く必要なし
-- ライブラリが自動的に文字列化
+**Notes:**
+- No need to call `.ToString()`.
+- The library converts values automatically.
 
-### パターン5: カスタムオブジェクトの戻り値（JSON変換）
+### Pattern 5: Custom Object Return Types (JSON Conversion)
 
-オブジェクトや配列を返す場合、自動的に JSON 文字列にシリアライズされます。
+Objects and arrays are automatically serialized to JSON strings.
 
 ```csharp
-// ユーザー情報取得ツール（オブジェクトを返す）
+// Player info tool (returns object)
 client.RegisterTool(
     name: "get_player_info",
     description: "Get player information by player ID",
@@ -267,7 +264,7 @@ client.RegisterTool(
     })
 );
 
-// インベントリ取得ツール（配列を返す）
+// Inventory tool (returns array)
 client.RegisterTool(
     name: "get_inventory",
     description: "Get all items in player's inventory",
@@ -282,20 +279,16 @@ client.RegisterTool(
     })
 );
 
-// 使用例
-// プレイヤー: "私のステータスを教えて"
-// LLM: get_player_info("player1") を呼び出し
-// → {"id":"player1","name":"勇者","level":15,...} がJSON文字列で返る
-// → LLMが自然な文章に変換: "あなたはレベル15の勇者で、所持金は500Gです…"
+// Example
+// Player: "Show my status"
+// LLM: get_player_info("player1") -> JSON string -> LLM turns into natural text
 ```
 
-**ポイント：**
-- オブジェクトや配列も自動的に JSON 化される
-- LLM が構造化データを理解して自然な文章に変換
+**Notes:**
+- Objects and arrays are auto-converted to JSON.
+- The LLM can interpret structured data into natural responses.
 
-### パターン6: ゲーム内の実用例
-
-実際のゲームでの使用例：
+### Pattern 6: Practical In-Game Example
 
 ```csharp
 public class NPCShopkeeper : MonoBehaviour
@@ -306,14 +299,14 @@ public class NPCShopkeeper : MonoBehaviour
     {
         client = LLMClientFactory.CreateOllamaClient(config);
         
-        // ショップのアイテム一覧を取得
+        // Fetch shop inventory
         client.RegisterTool(
             name: "GetShopItems",
             description: "Get list of items available in the shop",
             callback: (Func<List<ShopItem>>)(() => ShopManager.GetAvailableItems())
         );
         
-        // アイテムを購入
+        // Buy an item
         client.RegisterTool(
             name: "BuyItem",
             description: "Buy an item from the shop",
@@ -329,37 +322,37 @@ public class NPCShopkeeper : MonoBehaviour
     }
 }
 
-// 使用例
-// プレイヤー: "何が売ってる？"
-// → LLM が GetShopItems() を呼び出し、一覧を取得して自然な文章で説明
+// Example
+// Player: "What's for sale?"
+// LLM calls GetShopItems() and explains the list
 //
-// プレイヤー: "体力ポーションを3個ください"
-// → LLM が BuyItem("health_potion", 3) を呼び出し、購入処理を実行
+// Player: "Give me 3 health potions"
+// LLM calls BuyItem("health_potion", 3)
 ```
 
 ---
 
-## スキーマ自動生成の仕組み
+## How Automatic Schema Generation Works
 
-### 自動生成とは
+### What Automatic Generation Means
 
-ツールを登録する際、`inputSchema`（パラメータの型情報）を手動で書く必要はありません。ライブラリがリフレクションを使って自動的に生成します。
+When you register a tool, you do not need to write `inputSchema` manually. The library uses reflection to generate it automatically.
 
-### サポートされる型
+### Supported Types
 
-| C# 型 | JSON Schema 型 | 備考 |
+| C# Type | JSON Schema Type | Notes |
 |-------|---------------|------|
-| `string` | `string` | 文字列 |
-| `int`, `long` | `integer` | 整数 |
-| `double`, `float` | `number` | 浮動小数点数 |
-| `bool` | `boolean` | 真偽値 |
-| `List<T>`, `T[]` | `array` | 配列 |
-| `DateTime` | `string` | ISO 8601 形式 |
-| `Guid` | `string` | GUID 文字列 |
+| `string` | `string` | String |
+| `int`, `long` | `integer` | Integer |
+| `double`, `float` | `number` | Floating point |
+| `bool` | `boolean` | Boolean |
+| `List<T>`, `T[]` | `array` | Array |
+| `DateTime` | `string` | ISO 8601 |
+| `Guid` | `string` | GUID string |
 
-### 自動生成の例
+### Example of Auto-Generated Schema
 
-**コード：**
+**Code:**
 ```csharp
 client.RegisterTool(
     name: "search",
@@ -368,7 +361,7 @@ client.RegisterTool(
 );
 ```
 
-**自動生成されるスキーマ：**
+**Generated schema:**
 ```json
 {
   "type": "object",
@@ -386,11 +379,11 @@ client.RegisterTool(
 }
 ```
 
-`maxResults` はデフォルト値があるため `required` から除外されます。
+`maxResults` has a default value, so it is excluded from `required`.
 
-### 手動スキーマ指定
+### Manual Schema Definition
 
-複雑な入力（ネストしたオブジェクトなど）が必要な場合は、手動でスキーマを指定できます：
+For complex inputs (nested objects, etc.), you can define the schema manually:
 
 ```csharp
 client.RegisterTool(
@@ -417,97 +410,95 @@ client.RegisterTool(
     },
     callback: (Func<string, string>)((string json) =>
     {
-        // JSON を手動パース
+        // Parse JSON manually
         var data = JObject.Parse(json);
-        // 処理...
+        // ...
         return "Character created";
     })
 );
 ```
 
-詳細な手動スキーマの書き方は [InputSchema_Examples.md](InputSchema_Examples.md) を参照してください。
+For more manual schema examples, see [InputSchema_Examples.md](InputSchema_Examples.md).
 
 ---
 
-## 処理フローの理解
+## Understanding the Execution Flow
 
-### 基本的な流れ
-
-```
-1. ツール登録
-   RegisterTool() で関数を登録
-   ↓
-2. メッセージ送信
-   SendMessageAsync("何か質問") を呼び出し
-   ↓
-3. LLM が判断
-   「この質問にはツールが必要」と判断
-   ↓
-4. ツール自動実行
-   登録済み関数を自動呼び出し
-   ↓
-5. 結果を LLM に返す
-   実行結果を含めて再度リクエスト
-   ↓
-6. 最終回答
-   LLM が結果を自然な文章に変換して返答
-```
-
-### 詳細フロー（内部動作）
+### Basic Flow
 
 ```
-[ユーザー] SendMessageAsync("125 + 378は？")
+1. Register tools
+   RegisterTool() registers functions
+   ↓
+2. Send message
+   Call SendMessageAsync("Question")
+   ↓
+3. LLM decides
+   "This question needs a tool"
+   ↓
+4. Tool auto-execution
+   Call the registered function
+   ↓
+5. Return results to LLM
+   Re-request with tool results
+   ↓
+6. Final response
+   LLM produces a natural reply
+```
+
+### Detailed Flow (Internal)
+
+```
+[User] SendMessageAsync("What is 125 + 378?")
     ↓
-[OllamaClient] リクエスト生成
-    - メッセージ: "125 + 378は？"
-    - 利用可能ツール: [add_numbers]
+[OllamaClient] Build request
+    - message: "What is 125 + 378?"
+    - available tools: [add_numbers]
     ↓
-[Ollama API] tool_call を返す
+[Ollama API] returns tool_call
     - tool_name: "add_numbers"
     - arguments: {"a": 125, "b": 378}
     ↓
-[ToolManager] ツール実行
-    - JSON Arguments → C# 型に変換
-    - callback(125, 378) を呼び出し
-    - 戻り値: 503 (int)
-    - int → "503" (string) に変換
+[ToolManager] Execute tool
+    - Convert JSON arguments to C# types
+    - callback(125, 378)
+    - return value: 503 (int)
+    - int -> "503" (string)
     ↓
-[OllamaClient] 結果を含めて再リクエスト
-    - メッセージ履歴
-      - user: "125 + 378は？"
+[OllamaClient] Re-request with result
+    - message history
+      - user: "What is 125 + 378?"
       - tool_result: "503"
     ↓
-[Ollama API] 最終回答を生成
-    - "125 + 378 = 503 です"
+[Ollama API] Final response
+    - "125 + 378 = 503"
     ↓
-[ユーザー] ChatResponse を受け取る
+[User] Receives ChatResponse
 ```
 
-### 複数回のツール呼び出し
+### Multiple Tool Calls
 
-LLM は必要に応じて複数回ツールを呼び出すことができます：
+The LLM can call tools multiple times if needed:
 
 ```
-プレイヤー: "体力ポーションを3個買って、残金を教えて"
+Player: "Buy 3 health potions and tell me the remaining gold"
 ↓
-LLM: BuyItem("health_potion", 3) を呼び出し
-→ "購入成功。残金: 450G"
+LLM: BuyItem("health_potion", 3)
+→ "Purchase successful. Gold left: 450G"
 ↓
-LLM: 最終回答を生成
-→ "体力ポーションを3個購入しました。残金は450Gです"
+LLM: Final response
+→ "Bought three health potions. You have 450G left."
 ```
 
-無限ループを防ぐため、最大反復回数（デフォルト: 5回）が設定されています。
+To prevent infinite loops, a maximum iteration count is set (default: 5).
 
 ---
 
-## ベストプラクティス
+## Best Practices
 
-### 1. ツール名と説明を明確に
+### 1. Use Clear Tool Names and Descriptions
 
-LLM がいつツールを使うべきか判断するため、明確な名前と説明が重要です。
-
-**❌ 悪い例：**
+**Bad:**
 ```csharp
 client.RegisterTool(
     name: "func1",
@@ -516,7 +507,7 @@ client.RegisterTool(
 );
 ```
 
-**✅ 良い例：**
+**Good:**
 ```csharp
 client.RegisterTool(
     name: "get_player_health",
@@ -525,9 +516,7 @@ client.RegisterTool(
 );
 ```
 
-### 2. パラメータ説明を追加する
-
-`[ToolParameter]` で説明を付けると LLM の判断精度が向上します。
+### 2. Add Parameter Descriptions
 
 ```csharp
 client.RegisterTool(
@@ -541,9 +530,7 @@ client.RegisterTool(
 );
 ```
 
-### 3. エラーハンドリングを忘れずに
-
-ツール内でエラーが発生した場合、適切なエラーメッセージを返しましょう。
+### 3. Handle Errors in Tools
 
 ```csharp
 client.RegisterTool(
@@ -573,18 +560,18 @@ client.RegisterTool(
 );
 ```
 
-### 4. プリミティブ型を優先する
+### 4. Prefer Primitive Types
 
-自動スキーマ生成は `string`、`int`、`bool` などのプリミティブ型で最も安定します。
+Auto schema generation works best with primitive types like `string`, `int`, and `bool`.
 
-**✅ 推奨：**
+**Recommended:**
 ```csharp
 callback: (Func<string, int, string>)((string itemName, int quantity) => ...)
 ```
 
-**⚠️ 複雑な型は手動スキーマ推奨：**
+**For complex types, use a manual schema:**
 ```csharp
-// カスタムクラスを入力にする場合は手動スキーマ指定
+// For custom classes, use manual schema and parse JSON manually
 callback: (Func<string, string>)((string json) =>
 {
     var data = JsonConvert.DeserializeObject<ComplexData>(json);
@@ -592,30 +579,30 @@ callback: (Func<string, string>)((string json) =>
 })
 ```
 
-### 5. DebugMode でスキーマを確認
+### 5. Check Auto-Generated Schema with DebugMode
 
-開発時は `DebugMode = true` にすると、自動生成されたスキーマがログ出力されます。
+Enable `DebugMode = true` to log the auto-generated schema during development.
 
 ```csharp
 var config = new OllamaConfig
 {
-    DebugMode = true  // スキーマ確認用
+    DebugMode = true
 };
 ```
 
 ---
 
-## トラブルシューティング
+## Troubleshooting
 
-### Q1: ツールが呼ばれない
+### Q1: Tool is not being called
 
-**原因：**
-- ツールの `description` が不明瞭
-- LLM がツールの必要性を理解できていない
+**Cause:**
+- Tool description is too vague
+- LLM does not realize the tool is needed
 
-**解決策：**
-- より詳細な `description` を書く
-- システムプロンプトでツールの使用を促す
+**Fix:**
+- Write a more detailed description
+- Encourage tool use in the system prompt
 
 ```csharp
 var options = new ChatRequestOptions
@@ -626,14 +613,14 @@ var options = new ChatRequestOptions
 };
 ```
 
-### Q2: 型変換エラーが発生する
+### Q2: Type conversion errors
 
-**原因：**
-- LLM が想定外の型でパラメータを渡している
+**Cause:**
+- The LLM passes unexpected argument types
 
-**解決策：**
-- `DebugMode` でログを確認
-- パラメータの型制約を `[ToolParameter]` で明示
+**Fix:**
+- Check logs with `DebugMode`
+- Clarify parameter types with `[ToolParameter]`
 
 ```csharp
 callback: (Func<string, int, string>)((
@@ -642,58 +629,57 @@ callback: (Func<string, int, string>)((
 ) => ...)
 ```
 
-### Q3: 無限ループになる
+### Q3: Infinite tool loop
 
-**原因：**
-- LLM が同じツールを繰り返し呼び出している
+**Cause:**
+- The LLM keeps calling the same tool repeatedly
 
-**解決策：**
-- `MaxToolIterations` を調整
-- ツールが明確な結果を返すようにする
+**Fix:**
+- Adjust `MaxToolIterations`
+- Ensure tools return clear results
 
 ```csharp
 var options = new ChatRequestOptions
 {
-    MaxToolIterations = 3  // デフォルトは5
+    MaxToolIterations = 3  // Default is 5
 };
 ```
 
-### Q4: 複雑なオブジェクトを入力にしたい
+### Q4: Need complex object input
 
-**原因：**
-- 自動スキーマ生成はプリミティブ型に最適化されている
+**Cause:**
+- Auto schema generation is optimized for primitive types
 
-**解決策：**
-- 手動でスキーマを指定し、JSON 文字列として受け取る
+**Fix:**
+- Provide a manual schema and parse JSON input
 
 ```csharp
 client.RegisterTool(
     name: "complex_tool",
     description: "Tool with complex input",
-    inputSchema: new { /* 手動スキーマ */ },
+    inputSchema: new { /* manual schema */ },
     callback: (Func<string, string>)((string json) =>
     {
         var data = JObject.Parse(json);
-        // 処理...
+        // ...
     })
 );
 ```
 
-詳細は [InputSchema_Examples.md](InputSchema_Examples.md) を参照。
+See [InputSchema_Examples.md](InputSchema_Examples.md) for more details.
 
 ---
 
-## まとめ
+## Summary
 
-EasyLocalLLM のツール機能を使うと：
+With EasyLocalLLM tools:
 
-✅ LLM がゲーム内の機能を直接呼び出せる  
-✅ スキーマは自動生成されるため手間いらず  
-✅ 戻り値も自動変換されるため簡潔に書ける  
-✅ 複雑なゲームロジックと自然な会話を組み合わせ可能  
+- The LLM can call gameplay features directly
+- Schemas are auto-generated to reduce boilerplate
+- Return values are auto-converted
+- Complex game logic can be combined with natural conversation
 
-**次のステップ:**
-- [InputSchema_Examples.md](InputSchema_Examples.md) - 手動スキーマの詳細例
-- [Samples/SimpleChat.cs](../../Samples/SimpleChat.cs) - 実装サンプル
-- [API_Reference.md](../API_Reference.md) - 完全な API リファレンス
-
+**Next steps:**
+- [InputSchema_Examples.md](InputSchema_Examples.md) - Manual schema examples
+- [Samples/SimpleChat.cs](../../Samples/SimpleChat.cs) - Implementation sample
+- [API_Reference.md](../API_Reference.md) - Full API reference

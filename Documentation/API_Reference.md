@@ -1,47 +1,47 @@
-# EasyLocalLLM Runtime Library
+#+#+#+#+## EasyLocalLLM Runtime Library
 
-Ollama を使用してローカル LLM と通信するための Unity ライブラリです。
+EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
 
-## 目次
+## Table of Contents
 
-- [1. 主な機能](#1-主な機能)
-- [2. クイックスタート](#2-クイックスタート)
-- [3. 制限事項](#3-制限事項)
-- [4. 使用方法](#4-使用方法)
-  - [4.1 基本的な初期化](#41-基本的な初期化)
-  - [4.2 メッセージ送信（一度に完全回答を取得）](#42-メッセージ送信一度に完全回答を取得)
-  - [4.3 ストリーミング送信（段階的に回答を受け取る）](#43-ストリーミング送信段階的に回答を受け取る)
-  - [4.4 Ollama サーバの自動管理](#44-ollama-サーバの自動管理)
-  - [4.5 セッション管理](#45-セッション管理)
-  - [4.6 システムプロンプト](#46-システムプロンプト)
-  - [4.7 優先度スケジューリング](#47-優先度スケジューリング)
-  - [4.8 キャンセル](#48-キャンセル)
-  - [4.9 リトライとエラーハンドリング](#49-リトライとエラーハンドリング)
-  - [4.10 メッセージ永続化](#410-メッセージ永続化)
-  - [4.11 ツール（Function Calling）](#411-ツールfunction-calling)
-  - [4.12 JSON形式のレスポンス指定](#412-json形式のレスポンス指定)
-- [5. 実践例](#5-実践例)
-- [6. クラス構成](#6-クラス構成)
-- [7. 設定オプション](#7-設定オプション)
-- [8. デフォルト設定について](#8-デフォルト設定について)
-- [9. エラータイプと対処方法](#9-エラータイプと対処方法)
-- [10. 今後の拡張予定](#10-今後の拡張予定)
+- [1. Main Features](#1-main-features)
+- [2. Quick Start](#2-quick-start)
+- [3. Limitations](#3-limitations)
+- [4. Usage](#4-usage)
+  - [4.1 Basic Initialization](#41-basic-initialization)
+  - [4.2 Send Message (Single Complete Response)](#42-send-message-single-complete-response)
+  - [4.3 Streaming Message (Receive Partial Responses)](#43-streaming-message-receive-partial-responses)
+  - [4.4 Ollama Server Auto-Management](#44-ollama-server-auto-management)
+  - [4.5 Session Management](#45-session-management)
+  - [4.6 System Prompts](#46-system-prompts)
+  - [4.7 Priority Scheduling](#47-priority-scheduling)
+  - [4.8 Cancellation](#48-cancellation)
+  - [4.9 Retry and Error Handling](#49-retry-and-error-handling)
+  - [4.10 Message Persistence](#410-message-persistence)
+  - [4.11 Tools (Function Calling)](#411-tools-function-calling)
+  - [4.12 JSON Response Format](#412-json-response-format)
+- [5. Practical Examples](#5-practical-examples)
+- [6. Class Structure](#6-class-structure)
+- [7. Configuration Options](#7-configuration-options)
+- [8. Default Settings](#8-default-settings)
+- [9. Error Types and Handling](#9-error-types-and-handling)
+- [10. Planned Extensions](#10-planned-extensions)
 
-## 1. 主な機能
+## 1. Main Features
 
-- ✅ **設定管理の外部化**：`OllamaConfig` で柔軟に設定可能
-- ✅ **自動リトライ機能**：リクエスト失敗時の指数バックオフ対応
-- ✅ **ストリーミング対応**：段階的な回答受け取り
-- ✅ **セッション管理**：チャットセッションごとの履歴管理
-- ✅ **セッション固有のシステムプロンプト**：セッションごとに異なるプロンプトを設定可能
-- ✅ **エラーハンドリング**：詳細なエラー情報提供
-- ✅ **サーバライフサイクル管理**：自動起動・停止機能
+- ✅ **Externalized configuration**: Flexible settings via `OllamaConfig`
+- ✅ **Automatic retries**: Exponential backoff on request failures
+- ✅ **Streaming support**: Receive responses incrementally
+- ✅ **Session management**: Per-session chat history
+- ✅ **Session-specific system prompts**: Different prompts per session
+- ✅ **Error handling**: Detailed error information
+- ✅ **Server lifecycle management**: Auto start/stop
 
-## 2. クイックスタート
+## 2. Quick Start
 
-最小限のコードで動作確認できます。
+Validate the setup with minimal code.
 
-**前提条件**: Ollama サーバが `localhost:11434` で起動済み、`mistral` モデルがインストール済み
+**Prerequisites**: Ollama server is running at `localhost:11434`, and the `mistral` model is installed.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -54,65 +54,65 @@ public class QuickStart : MonoBehaviour
         var client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
         
         StartCoroutine(client.SendMessageAsync(
-            "こんにちは",
+            "Hello",
             (response, error) => {
                 if (error != null) {
-                    Debug.LogError($"エラー: {error.Message}");
+                    Debug.LogError($"Error: {error.Message}");
                     return;
                 }
-                Debug.Log($"応答: {response.Content}");
+                Debug.Log($"Response: {response.Content}");
             }
         ));
     }
 }
 ```
 
-**詳しい設定や使い方は、[4.1 基本的な初期化](#41-基本的な初期化)を参照してください。**
+**For detailed setup and usage, see [4.1 Basic Initialization](#41-basic-initialization).**
 
-**Ollama のセットアップが未完了の場合は、[4.4 Ollama サーバの自動管理](#44-ollama-サーバの自動管理)を参照してください。**
+**If Ollama is not set up yet, see [4.4 Ollama Server Auto-Management](#44-ollama-server-auto-management).**
 
-## 3. 制限事項
+## 3. Limitations
 
-### ⚠️ 重要な制約
+### Important Constraints
 
-- **Unity 専用**：UnityWebRequest に依存しているため、Unity 外では動作しません
-- **Windows 専用**：現時点では Windows 以外に対応していません
-- **メインスレッド依存**：Task 版 API も内部的にはコルーチンで動作します
+- **Unity-only**: Depends on UnityWebRequest, so it does not work outside Unity.
+- **Windows-only**: Currently supported on Windows only.
+- **Main-thread dependency**: Task APIs are implemented by bridging coroutines.
 
-### 処理パターン
+### Usage Patterns
 
 ```csharp
-// ✅ Task 版 API（await/async）
+// ✅ Task API (await/async)
 async Task SendMessageAsync()
 {
     var result = await client.SendMessageTaskAsync("Hello");
     Debug.Log(result.Content);
 }
 
-// ✅ コルーチン版 API
+// ✅ Coroutine API
 void SendMessage()
 {
     StartCoroutine(client.SendMessageAsync(
         "Hello",
         (response, error) =>
         {
-            // コールバックで結果を処理
+            // Handle result in callback
         }
     ));
 }
 ```
 
-**補足**: Task 版 API はコルーチンをブリッジした実装です。Unity 外では動作しません。
+**Note**: The Task API bridges coroutines and does not work outside Unity.
 
-## 4. 使用方法
+## 4. Usage
 
-### 4.1 基本的な初期化
+### 4.1 Basic Initialization
 
-クイックスタートではデフォルト設定を使用しましたが、ここでは詳細な設定方法を説明します。
+Quick Start uses the default settings; this section explains full configuration.
 
-**前提条件**: Ollama サーバが `localhost:11434` で起動済み、かつモデルがインストール済みであることを前提とします。
+**Prerequisites**: Ollama server is running at `localhost:11434`, and the model is installed.
 
-**Ollama のセットアップが未完了の場合は、[4. Ollama サーバの自動管理](#4-ollama-サーバの自動管理)を参照してください。**
+**If Ollama is not set up yet, see [4.4 Ollama Server Auto-Management](#44-ollama-server-auto-management).**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -124,7 +124,7 @@ public class ChatManager : MonoBehaviour
 
     void Start()
     {
-        // 設定を作成
+        // Create configuration
         var config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -132,16 +132,16 @@ public class ChatManager : MonoBehaviour
             DebugMode = true
         };
 
-        // クライアントを初期化
+        // Initialize client
         _client = LLMClientFactory.CreateOllamaClient(config);
     }
 }
 ```
 
-### 4.2 メッセージ送信（一度に完全回答を取得）
+### 4.2 Send Message (Single Complete Response)
 
-コールバックは**1回だけ**呼ばれます。
-短い応答や完全な回答が必要な場合に使用してください。
+The callback is called **once**.
+Use this for short responses or when you need the full answer at once.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -157,7 +157,7 @@ void SendMessage()
     };
 
     StartCoroutine(_client.SendMessageAsync(
-        "こんにちは",
+        "Hello",
         (response, error) =>
         {
             if (error != null)
@@ -173,7 +173,7 @@ void SendMessage()
 }
 ```
 
-**Task 版（await/async）**
+**Task API (await/async)**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -189,28 +189,28 @@ async Task SendMessageAsync()
         Seed = 42
     };
 
-    var response = await _client.SendMessageTaskAsync("こんにちは", options);
+    var response = await _client.SendMessageTaskAsync("Hello", options);
     Debug.Log($"Assistant: {response.Content}");
 }
 ```
 
-### 4.3 ストリーミング送信（段階的に回答を受け取る）
+### 4.3 Streaming Message (Receive Partial Responses)
 
-コールバックは**複数回**呼ばれます。回答が到着するたびに部分応答が返され、最後に `IsFinal=true` で完了が通知されます。
-長文生成時のUI更新やリアルタイム表示に向いています。
+The callback is called **multiple times**. Each time a partial response arrives, you get an update; the final callback has `IsFinal=true`.
+This is suitable for long outputs and real-time UI updates.
 
-**処理フローの比較：**
+**Flow comparison:**
 
 ```
-非ストリーミング:
-SendMessage() → [サーバ処理...] → コールバック(IsFinal=true) → 完了
+Non-streaming:
+SendMessage() -> [server processing...] -> callback(IsFinal=true) -> complete
 
-ストリーミング:
-SendStreamingMessage() → [サーバ処理開始...] 
-  → コールバック(IsFinal=false, 部分1)
-  → コールバック(IsFinal=false, 部分2)
-  → ... 
-  → コールバック(IsFinal=true, 最終部分) → 完了
+Streaming:
+SendStreamingMessage() -> [server starts processing...]
+  -> callback(IsFinal=false, chunk 1)
+  -> callback(IsFinal=false, chunk 2)
+  -> ...
+  -> callback(IsFinal=true, final chunk) -> complete
 ```
 
 ```csharp
@@ -226,7 +226,7 @@ void SendStreamingMessage()
     };
 
     StartCoroutine(_client.SendMessageStreamingAsync(
-        "日本語で詩を書いてください",
+        "Write a poem",
         (response, error) =>
         {
             if (error != null)
@@ -237,12 +237,12 @@ void SendStreamingMessage()
 
             if (!response.IsFinal)
             {
-                // 複数回呼ばれる：部分応答
+                // Called multiple times: partial response
                 Debug.Log($"Receiving: {response.Content}");
             }
             else
             {
-                // 最後に1回だけ：完全な応答
+                // Called once at the end: complete response
                 Debug.Log($"Complete: {response.Content}");
             }
         },
@@ -251,7 +251,7 @@ void SendStreamingMessage()
 }
 ```
 
-**Task 版（進捗を受け取る）**
+**Task API (receive progress)**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -276,7 +276,7 @@ async Task SendStreamingMessageAsync()
     });
 
     var final = await _client.SendMessageStreamingTaskAsync(
-        "日本語で詩を書いてください",
+        "Write a poem",
         progress,
         options
     );
@@ -285,125 +285,125 @@ async Task SendStreamingMessageAsync()
 }
 ```
 
-### 4.4 Ollama サーバの自動管理
+### 4.4 Ollama Server Auto-Management
 
-#### セットアップ方法の選択
+#### Choose a Setup Method
 
-Ollama をアプリケーションに組み込む場合、モデルの取得方法で2つのパターンがあります。
-自分の環境に合わせて選択してください。
+When embedding Ollama in your application, there are two ways to obtain models.
+Pick the approach that fits your environment.
 
-**方法 A: `ollama pull` コマンド（推奨・簡単）**
-- ✅ セットアップが簡単
-- ✅ 自動的に最適化される
-- ✅ モデルアップデートが容易
-- ❌ ネットワークダウンロードが必要（初回は時間がかかる可能性）
+**Method A: `ollama pull` (recommended, easiest)**
+- ✅ Easy setup
+- ✅ Automatically optimized
+- ✅ Easy model updates
+- ❌ Requires network download (first time can take a while)
 
-**方法 B: GGUF ファイルを直接配置（カスタマイズ・特殊用途）**
-- ✅ モデルを自由にカスタマイズできる
-- ✅ Ollama未対応のカスタムモデルを使用可能
-- ❌ セットアップが複雑
-- ❌ 事前準備（GGUF ダウンロード）が必要
+**Method B: Place GGUF files directly (custom/special use)**
+- ✅ Fully customizable models
+- ✅ Use custom models not supported by Ollama
+- ❌ More complex setup
+- ❌ Requires manual GGUF downloads
 
-**推奨される使い分け：**
+**Recommended usage:**
 
-| シナリオ | 推奨方法 | 理由 |
+| Scenario | Recommended | Reason |
 |--------|--------|------|
-| 通常のケース | 方法 A | セットアップが簡単。ほとんどの場合これで十分 |
-| Ollama未対応のカスタムモデルを使う | 方法 B | 独自のGGUFファイルを使用可能 |
-| モデル動作を細かくカスタマイズしたい | 方法 B | Modelfile でパラメータを調整可能 |
+| Typical use | Method A | Simple and sufficient in most cases |
+| Custom models not supported by Ollama | Method B | Use your own GGUF file |
+| Fine-grained model customization | Method B | Tune parameters via Modelfile |
 
-**ほとんどのケースで方法Aを推奨します。** 方法Bは、特定のGGUFファイルやModelfileのカスタマイズが必要な場合のみ使用してください。
+**Method A is recommended for most cases.** Use Method B only when a specific GGUF or Modelfile customization is required.
 
-#### セットアップ手順
+#### Setup Steps
 
-**ステップ 0: 共通準備**
+**Step 0: Common preparation**
 
-1. [Ollama 公式ウェブサイト](https://ollama.ai) から Windows スタンドアロンバイナリをダウンロード
-   - [GitHub のリリースページ](https://github.com/ollama/ollama/releases)
-   - 通常は `ollama-windows-amd64.zip` のような形式
-   - AMD Radeon GPU の場合：`ollama-windows-amd64-rocm.zip` もダウンロード
+1. Download the Windows standalone binary from the [Ollama website](https://ollama.ai)
+   - [GitHub releases](https://github.com/ollama/ollama/releases)
+   - Typically named like `ollama-windows-amd64.zip`
+   - For AMD Radeon GPU: also download `ollama-windows-amd64-rocm.zip`
 
-2. Unity プロジェクト内に以下のディレクトリ構造を作成：
+2. Create the following directory structure in your Unity project:
 
 ```
 Assets/StreamingAssets/Ollama/
-├── ollama.exe                    # Ollama バイナリ
-├── lib /                         # Ollama が利用するライブラリ
-└── models/                       # モデルディレクトリ（初期状態で空）
+├── ollama.exe                    # Ollama binary
+├── lib /                         # Libraries used by Ollama
+└── models/                       # Model directory (empty initially)
 ```
 
-**方法 A: `ollama pull` コマンド（推奨）**
+**Method A: `ollama pull` (recommended)**
 
-最も簡単で推奨されるセットアップ方法です。
+This is the easiest and recommended setup.
 
-1. PowerShell を開き、以下を実行：
+1. Open PowerShell and run:
 
 ```powershell
-$env:OLLAMA_MODELS="<プロジェクトパス>\Assets\StreamingAssets\Ollama\models"
+$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\Ollama\models"
 mkdir $env:OLLAMA_MODELS
-cd "<プロジェクトパス>\Assets\StreamingAssets\Ollama"
+cd "<ProjectPath>\Assets\StreamingAssets\Ollama"
 .\ollama.exe serve
 ```
 
-2. 別の PowerShell ウィンドウで以下を実行：
+2. In a separate PowerShell window, run:
 
 ```powershell
-# 利用可能なモデル例：mistral, llama2, neural-chat, dolphin-mixtral など
-cd "<プロジェクトパス>\Assets\StreamingAssets\Ollama"
+# Example models: mistral, llama2, neural-chat, dolphin-mixtral, etc.
+cd "<ProjectPath>\Assets\StreamingAssets\Ollama"
 .\ollama.exe pull mistral
 ```
 
-3. ダウンロードが完了するまで待機（モデルサイズによって数分～数時間）
+3. Wait until the download completes (minutes to hours depending on model size)
 
-4. 完了後、両方のウィンドウを閉じる
+4. Close both windows when finished
 
-5. `StreamingAssets/Ollama/models/` に `blobs/` と `manifests/` ディレクトリが自動生成される
+5. `StreamingAssets/Ollama/models/` will now contain `blobs/` and `manifests/`
 
-**モデル選択ガイド：**
+**Model selection guide:**
 
 ```
-小型（軽量・高速）
-├── mistral (7B)          推奨。バランスが良い
-├── neural-chat (7B)      会話に最適化
-└── phi (2.7B)            最も軽量
+Small (lightweight, fast)
+├── mistral (7B)          Recommended balance
+├── neural-chat (7B)      Optimized for chat
+└── phi (2.7B)            Lightest option
 
-中型（標準）
-├── llama2 (13B)          高精度が必要な場合
-└── dolphin-mixtral (8x7B) 高性能が必要な場合（メモリ消費大）
+Medium (standard)
+├── llama2 (13B)          Higher accuracy
+└── dolphin-mixtral (8x7B) High performance (high memory)
 
-大型（高精度・高メモリ消費）
-└── llama2 (70B)          研究用途。GPUメモリ24GB以上推奨
+Large (high accuracy, high memory)
+└── llama2 (70B)          Research use; 24GB+ GPU memory recommended
 ```
 
-**方法 B: GGUF ファイルを直接配置（カスタマイズ対応）**
+**Method B: Place GGUF files directly (custom setup)**
 
-モデルをカスタマイズしたい場合や、Ollama未対応のモデルを使用する場合に使用します。
+Use this if you want custom models or models not supported by Ollama.
 
-**ステップ 1: GGUF ファイルのダウンロード**
+**Step 1: Download a GGUF file**
 
-GGUF 形式のモデルファイルを以下のサイトからダウンロードします：
+Download a GGUF model from these sources:
 
-- [Hugging Face](https://huggingface.co/models?search=gguf) - 最大リソース
-- [GGUF Zoo](https://ggml.ai) - 最適化されたモデル集
+- [Hugging Face](https://huggingface.co/models?search=gguf) - Largest collection
+- [GGUF Zoo](https://ggml.ai) - Curated and optimized models
 
-例：mistral モデルをダウンロード
-1. [Hugging Face 上の mistral](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF) にアクセス
-2. `mistral-7b-instruct-v0.1.Q4_K_M.gguf`（推奨：バランスが良い）をダウンロード
-   - `Q4_K_M` = 4-bit 量子化。品質とサイズのバランスが最適
-   - `Q5_K_M` = 5-bit 量子化。高品質だがサイズが大きい
-   - `Q2_K` = 2-bit 量子化。軽量だが精度低下
+Example: download a mistral model
+1. Open [mistral on Hugging Face](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF)
+2. Download `mistral-7b-instruct-v0.1.Q4_K_M.gguf` (recommended balance)
+   - `Q4_K_M` = 4-bit quantization, best size-quality balance
+   - `Q5_K_M` = 5-bit quantization, higher quality, larger size
+   - `Q2_K` = 2-bit quantization, smaller but lower accuracy
 
-3. ダウンロード後、以下に配置：
+3. Place it here:
 ```
 Assets/StreamingAssets/Ollama/models/mistral/
 └── mistral-7b-instruct-v0.1.Q4_K_M.gguf
 ```
 
-**ステップ 2: Modelfile の作成**
+**Step 2: Create a Modelfile**
 
-GGUF ファイルと同じディレクトリに `Modelfile` を作成します。
+Create a `Modelfile` in the same directory as the GGUF file.
 
-**基本テンプレート：**
+**Basic template:**
 ```
 FROM ./your-model-name.Q4_K_M.gguf
 
@@ -412,39 +412,39 @@ PARAMETER top_k 40
 PARAMETER top_p 0.9
 ```
 
-**Modelfile パラメータの説明：**
+**Modelfile parameter reference:**
 
-| パラメータ | デフォルト | 説明 | 推奨値 |
+| Parameter | Default | Description | Recommended |
 |----------|----------|------|--------|
-| `temperature` | 0.8 | 回答の多様性（低=確定的、高=多様） | 0.7～1.0 |
-| `top_k` | 40 | 上位k個の選択肢から選ぶ | 30～50 |
-| `top_p` | 0.9 | 累積確率p以上の選択肢から選ぶ | 0.85～0.95 |
-| `repeat_penalty` | 1.0 | 繰り返しの抑制（1.0=なし、1.1=強め） | 1.0～1.2 |
+| `temperature` | 0.8 | Response diversity (low = deterministic, high = diverse) | 0.7 to 1.0 |
+| `top_k` | 40 | Choose from top-k candidates | 30 to 50 |
+| `top_p` | 0.9 | Choose from cumulative probability p | 0.85 to 0.95 |
+| `repeat_penalty` | 1.0 | Repetition penalty (1.0 = none, 1.1 = stronger) | 1.0 to 1.2 |
 
-**ステップ 3: Ollama にモデルを登録**
+**Step 3: Register the model with Ollama**
 
-PowerShell で以下を実行：
+Run the following in PowerShell:
 
 ```powershell
-$env:OLLAMA_MODELS="<プロジェクトパス>\Assets\StreamingAssets\Ollama\models"
-cd "<プロジェクトパス>\Assets\StreamingAssets\Ollama\models\mistral"
+$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\Ollama\models"
+cd "<ProjectPath>\Assets\StreamingAssets\Ollama\models\mistral"
 ..\..\ollama.exe create mistral -f ./Modelfile
 ```
 
-**ステップ 4: 登録確認**
+**Step 4: Verify registration**
 
 ```powershell
-# 登録済みモデル一覧を確認
+# List registered models
 ..\..\ollama.exe list
 ```
 
-出力例：
+Example output:
 ```
 NAME                                    ID              SIZE
 mistral:latest                          a1b2c3d4...     3.5GB
 ```
 
-**ステップ 5: Unity での設定**
+**Step 5: Configure in Unity**
 
 ```csharp
 var config = new OllamaConfig
@@ -452,7 +452,7 @@ var config = new OllamaConfig
     ServerUrl = "http://localhost:11434",
     ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
     ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-    DefaultModelName = "mistral",  // 登録したモデル名
+    DefaultModelName = "mistral",  // Registered model name
     AutoStartServer = true,
     DebugMode = true
 };
@@ -461,35 +461,35 @@ OllamaServerManager.Initialize(config);
 var client = LLMClientFactory.CreateOllamaClient(config);
 ```
 
-#### トラブルシューティング
+#### Troubleshooting
 
-**Q: モデルダウンロードが遅い**
-- A: インターネット接続速度を確認。大型モデルは数GB～数十GBあります。
+**Q: Model download is slow**
+- A: Check your internet connection. Large models can be several GB to tens of GB.
 
-**Q: "ollama.exe serve" がエラーになる**
-- A: ポート 11434 が既に使用されていないか確認。`netstat -an | findstr :11434`
+**Q: "ollama.exe serve" fails**
+- A: Ensure port 11434 is not already in use. `netstat -an | findstr :11434`
 
-**Q: Modelfile 作成時に "not found" エラー**
-- A: GGUF ファイルのパスが相対パスになっているか確認。`./` で始まる相対パスを使用。
+**Q: "not found" error when creating Modelfile**
+- A: Ensure the GGUF file path is relative and starts with `./`.
 
-**Q: メモリ不足エラー**
-- A: より小さな量子化版を使用（Q2_K → Q4_K_M など）。または`MaxConcurrentSessions`を1に。
+**Q: Out-of-memory error**
+- A: Use a smaller quantized model (e.g., Q2_K -> Q4_K_M) or set `MaxConcurrentSessions` to 1.
 
-**Q: モデルのカスタマイズ例をもっと見たい**
-- A: 公式ガイド：[Ollama Modelfile](https://github.com/ollama/ollama/blob/main/docs/modelfile.md)
+**Q: Want more model customization examples**
+- A: Official guide: [Ollama Modelfile](https://github.com/ollama/ollama/blob/main/docs/modelfile.md)
 
-#### 推奨セットアップ（ゲーム開発向け）
+#### Recommended setup (game development)
 
 ```csharp
 public class OllamaSetupManager : MonoBehaviour
 {
     void Start()
     {
-        // 環境に応じた設定を選択
+        // Choose settings based on environment
         OllamaConfig config;
 
 #if UNITY_EDITOR
-        // 開発環境：デバッグモード有効
+        // Development: enable debug mode
         config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -502,7 +502,7 @@ public class OllamaSetupManager : MonoBehaviour
             EnableHealthCheck = true
         };
 #else
-        // ビルド版：ログ最小化
+        // Build: minimize logs
         config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -523,95 +523,94 @@ public class OllamaSetupManager : MonoBehaviour
 }
 ```
 
-### 4.5 セッション管理
+### 4.5 Session Management
 
-#### セッションの概念
+#### Session concept
 
-`SessionId` で指定されたセッションは、以下の特徴を持ちます：
+Sessions identified by `SessionId` have the following behavior:
 
-- **自動作成**：初回の `SendMessageAsync()` / `SendMessageStreamingAsync()` で自動作成
-- **履歴の自動蓄積**：同じ `SessionId` で送信したメッセージと応答は自動的に累積
-- **永続性**：`ClearMessages()` するまでメモリに保持される
-- **独立管理**：異なる `SessionId` はそれぞれ独立した履歴を持つ
+- **Auto-create**: Created on first `SendMessageAsync()` / `SendMessageStreamingAsync()`.
+- **Auto-accumulate history**: Messages and responses for the same `SessionId` are stored.
+- **Persistence**: Kept in memory until `ClearMessages()` is called.
+- **Isolation**: Different `SessionId` values maintain separate histories.
 
-#### 基本的なセッション管理
+#### Basic session management
 
 ```csharp
 void ManageSessions()
 {
-    // 異なるセッションIDで複数の会話を管理
+    // Manage multiple conversations by session ID
     var session1Options = new ChatRequestOptions { SessionId = "session-1" };
     var session2Options = new ChatRequestOptions { SessionId = "session-2" };
 
-    // セッション 1 で会話
+    // Conversation in session 1
     StartCoroutine(_client.SendMessageAsync(
-        "セッション1のメッセージ", 
-        OnResponse, 
+        "Message for session 1",
+        OnResponse,
         session1Options
     ));
 
-    // セッション 2 で会話（セッション1の履歴とは完全に独立）
+    // Conversation in session 2 (fully independent from session 1)
     StartCoroutine(_client.SendMessageAsync(
-        "セッション2のメッセージ", 
-        OnResponse, 
+        "Message for session 2",
+        OnResponse,
         session2Options
     ));
 
-    // セッション 1 の次のメッセージ（自動的に前のやり取りを参照）
+    // Next message in session 1 (automatically references previous history)
     StartCoroutine(_client.SendMessageAsync(
-        "セッション1の2番目のメッセージ",
+        "Second message in session 1",
         OnResponse,
-        session1Options  // 同じセッションID
+        session1Options  // Same session ID
     ));
 }
 ```
 
-#### 履歴のリセット
+#### Reset history
 
-**特定のセッションをクリア：**
+**Clear a specific session:**
 
 ```csharp
-// セッション 1 の履歴をクリア
-// 以降、同じセッションIDでメッセージを送信すると、
-// 新しいセッションとして再作成される（前の履歴は失われる）
+// Clear session 1 history
+// The next message with the same session ID will create a new session
 _client.ClearMessages("session-1");
 ```
 
-**すべての履歴をクリア：**
+**Clear all history:**
 
 ```csharp
-// すべてのセッションをクリア
-// メモリ開放やアプリ終了時に有効
+// Clear all sessions
+// Useful for memory cleanup or app shutdown
 _client.ClearAllMessages();
 ```
 
-#### セッション情報へのアクセス
+#### Access session information
 
-セッションの状態や履歴情報にアクセスできます：
+You can access session state and history details:
 
 ```csharp
 void InspectSessions()
 {
-    // セッション 1 に関する操作
+    // Work with session 1
     string sessionId = "session-1";
     
-    // セッションが存在するか確認
+    // Check if session exists
     if (_client.HasSession(sessionId))
     {
         Debug.Log("Session exists");
         
-        // セッションのメッセージ数を確認
+        // Get message count
         int messageCount = _client.GetSessionMessageCount(sessionId);
         Debug.Log($"Message count: {messageCount}");
         
-        // セッション情報を取得（履歴、作成日時、更新日時等）
+        // Retrieve session info (history, created/updated timestamps, etc.)
         var session = _client.GetSession(sessionId);
         Debug.Log($"Created at: {session.CreatedAt}");
         Debug.Log($"Last updated at: {session.LastUpdatedAt}");
         Debug.Log($"Messages: {string.Join("\n", session.History)}");
     }
     
-    // すべてのセッションIDを取得
+    // Get all session IDs
     var allSessions = _client.GetAllSessionIds();
     foreach (var id in allSessions)
     {
@@ -620,7 +619,7 @@ void InspectSessions()
 }
 ```
 
-#### 複数セッションの実践例
+#### Practical example: multiple sessions
 
 ```csharp
 public class MultiSessionChat : MonoBehaviour
@@ -637,34 +636,34 @@ public class MultiSessionChat : MonoBehaviour
         _client = LLMClientFactory.CreateOllamaClient(config);
     }
 
-    // ユーザーA との会話セッション
+    // Conversation session for User A
     void ChatWithUserA()
     {
         var userASession = new ChatRequestOptions { SessionId = "user-a-session" };
         StartCoroutine(_client.SendMessageAsync(
-            "ユーザーAからのメッセージ",
+            "Message from User A",
             OnResponse,
             userASession
         ));
     }
 
-    // ユーザーB との会話セッション
+    // Conversation session for User B
     void ChatWithUserB()
     {
         var userBSession = new ChatRequestOptions { SessionId = "user-b-session" };
         StartCoroutine(_client.SendMessageAsync(
-            "ユーザーBからのメッセージ",
+            "Message from User B",
             OnResponse,
             userBSession
         ));
     }
 
-    // テーマ別セッション（同じユーザーでも異なるテーマを管理）
+    // Topic-based sessions (same user, different topics)
     void ChatAboutTopic(string topic)
     {
         var topicSession = new ChatRequestOptions { SessionId = $"topic-{topic}" };
         StartCoroutine(_client.SendMessageAsync(
-            $"{topic}について教えて",
+            $"Tell me about {topic}",
             OnResponse,
             topicSession
         ));
@@ -674,161 +673,161 @@ public class MultiSessionChat : MonoBehaviour
     {
         if (error != null)
         {
-            Debug.LogError($"エラー: {error.Message}");
+            Debug.LogError($"Error: {error.Message}");
             return;
         }
         
-        Debug.Log($"応答: {response.Content}");
+        Debug.Log($"Response: {response.Content}");
     }
 
-    // アプリ終了時
+    // On app quit
     void OnApplicationQuit()
     {
-        _client.ClearAllMessages();  // メモリをクリーンアップ
+        _client.ClearAllMessages();  // Clean up memory
     }
 }
 ```
 
-#### セッション管理の注意点
+#### Session management notes
 
-- **SessionId が null の場合**：Guid で自動生成される一度限りのセッション
-- **MaxHistory 設定**：デフォルト50メッセージ。超過時は古いメッセージから削除
-- **セッション間の独立性**：あるセッションのシステムプロンプトが他に影響することはない
-- **メモリ管理**：多くのセッションを保持し続けるとメモリ消費が増加。不要なセッションは `ClearMessages()` で削除推奨
-- **セッション情報の取得**：`GetSession()` で返される `ChatSession` オブジェクトから、作成日時（`CreatedAt`）、最終更新日時（`LastUpdatedAt`）、メッセージ履歴（`History`）にアクセス可能
+- **If `SessionId` is null**: A one-time session is created with an auto-generated Guid.
+- **MaxHistory**: Default is 50 messages; oldest messages are removed when exceeded.
+- **Isolation**: A system prompt in one session does not affect another session.
+- **Memory**: Keeping many sessions increases memory usage; clear unused sessions with `ClearMessages()`.
+- **Session info**: `GetSession()` returns a `ChatSession` with `CreatedAt`, `LastUpdatedAt`, and `History`.
 
-### 4.6 システムプロンプト
+### 4.6 System Prompts
 
-#### システムプロンプトとは
+#### What is a system prompt?
 
-**システムプロンプト**は、LLM に対して「どのような役割や性格で返答するか」を指示するための特別なプロンプトです。ユーザーメッセージとは異なり、会話全体を通じて LLM の動作を制御します。
+**System prompts** tell the LLM what role or personality to adopt. Unlike user messages, they influence the entire conversation.
 
-**基本的な役割：**
+**Core roles:**
 
-- **キャラクター・ロール定義**：「医師として」「カスタマーサポートとして」などの役割を付与
-- **回答スタイル指定**：「簡潔に答える」「詳しく説明する」などのトーンを制御
-- **機能制限**：「このトピックについてのみ答える」など、回答範囲を限定
-- **言語・フォーマット指定**：「日本語で答える」「JSON形式で返す」など
+- **Role definition**: "Act as a doctor" or "Act as customer support".
+- **Response style**: "Be concise" or "Explain in detail".
+- **Scope restriction**: "Only answer about this topic".
+- **Language/format**: "Respond in Japanese" or "Return JSON".
 
-**具体的な例：**
+**Example:**
 
-医師ロールの場合、以下のようなシステムプロンプトを設定します：
+For a doctor role:
 
 ```
 "You are a professional medical advisor. Provide accurate medical information but always 
-remind the user to consult a real doctor for serious conditions. Respond in Japanese."
+remind the user to consult a real doctor for serious conditions."
 ```
 
-ユーザーが「頭痛がします」と聞くと、LLM は医師の立場で回答します。
-一方、「プログラミングを教えてください」と聞くと、医師の性格を保ちながら、その質問には適切に対応します。
+If the user says "I have a headache," the LLM responds as a doctor.
+If the user asks "Teach me programming," the LLM keeps the doctor persona but answers appropriately.
 
-#### グローバルシステムプロンプト（全セッション共通）
+#### Global system prompt (all sessions)
 
-すべてのセッションに適用される共通プロンプトは `OllamaConfig` で設定します。
+Set a shared prompt for all sessions via `OllamaConfig`:
 
 ```csharp
 var config = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
     Model = "mistral",
-    GlobalSystemPrompt = "You are a helpful assistant. Always be polite, accurate, and respond in Japanese."
+    GlobalSystemPrompt = "You are a helpful assistant. Always be polite, accurate."
 };
 
 var client = LLMClientFactory.CreateOllamaClient(config);
 ```
 
-このグローバルプロンプトは、セッション固有またはリクエスト個別のプロンプトが設定されていない場合に使用されます。
+The global prompt is used only when no session-specific or request-level prompt is set.
 
-**グローバルプロンプト設定のベストプラクティス：**
+**Best practices for global prompts:**
 
-- **言語指定**：「Always respond in Japanese」など、使用言語を統一
-- **基本的な倫理観**：「Be honest and helpful」などの基本姿勢
-- **応答形式**：デフォルトの返答スタイル（詳細/簡潔など）
+- **Language**: Keep the response language consistent.
+- **Ethics**: Set the baseline tone and honesty.
+- **Style**: Define default verbosity (detailed vs concise).
 
-#### セッション固有のシステムプロンプト
+#### Session-specific system prompts
 
-セッション固有のシステムプロンプトを設定することで、同じアプリケーション内で異なるロールやキャラクターを管理できます。例えば、医師、エンジニア、顧客サポートなど、複数の専門家を同時に管理できます。
+Session prompts let you manage multiple roles within a single application (doctor, engineer, support, etc.).
 
-**プロンプトの優先度（高い順）：**
+**Prompt priority (highest first):**
 
-1. **リクエスト個別のシステムプロンプト**：`ChatRequestOptions.SystemPrompt`（1回のリクエストのみに適用）
-2. **セッション固有のシステムプロンプト**：`SetSessionSystemPrompt()` で設定（そのセッション内のすべてのメッセージに適用）
-3. **グローバルシステムプロンプト**：`OllamaConfig.GlobalSystemPrompt`（全セッション共通）
+1. **Request-level prompt**: `ChatRequestOptions.SystemPrompt` (single request only)
+2. **Session-level prompt**: set via `SetSessionSystemPrompt()` (applies to the session)
+3. **Global prompt**: `OllamaConfig.GlobalSystemPrompt` (all sessions)
 
-**例：優先度のデモンストレーション**
+**Example: priority demonstration**
 
 ```csharp
-// グローバル設定（すべてのセッション共通）
+// Global setting (shared by all sessions)
 var config = new OllamaConfig
 {
     GlobalSystemPrompt = "You are a general assistant."
 };
 
-// セッション固有プロンプトを設定
+// Set session-specific prompt
 _client.SetSessionSystemPrompt(
     "session-1",
     "You are a technical expert. Explain complex topics with technical depth."
 );
 
-// ケース1：リクエスト個別プロンプト設定（最優先）
+// Case 1: request-level prompt (highest priority)
 var options1 = new ChatRequestOptions
 {
     SessionId = "session-1",
-    SystemPrompt = "You are a beginner-friendly tutor. Explain simply."  // ← これが優先される
+    SystemPrompt = "You are a beginner-friendly tutor. Explain simply."  // Highest priority
 };
-StartCoroutine(_client.SendMessageAsync("プログラミングとは何ですか？", OnResponse, options1));
-// 結果："beginner-friendly tutor" として、簡単な説明で返答
+StartCoroutine(_client.SendMessageAsync("What is programming?", OnResponse, options1));
+// Result: responds as a beginner-friendly tutor
 
-// ケース2：セッション固有プロンプトのみ使用
-StartCoroutine(_client.SendMessageAsync("C#とJavaの違いは？", OnResponse, 
+// Case 2: session-level prompt only
+StartCoroutine(_client.SendMessageAsync("What is the difference between C# and Java?", OnResponse,
     new ChatRequestOptions { SessionId = "session-1" }
 ));
-// 結果："technical expert" として、技術的に詳しく返答
+// Result: responds as a technical expert
 
-// ケース3：異なるセッション（セッション固有プロンプト未設定）
-StartCoroutine(_client.SendMessageAsync("こんにちは", OnResponse,
+// Case 3: different session (no session-specific prompt)
+StartCoroutine(_client.SendMessageAsync("Hello", OnResponse,
     new ChatRequestOptions { SessionId = "session-2" }
 ));
-// 結果：グローバルプロンプト "general assistant" として返答
+// Result: responds as the global prompt "general assistant"
 ```
 
-#### セッション固有プロンプトの設定
+#### Set session-specific prompts
 
-**単一セッションへのプロンプト設定：**
+**Single session:**
 
 ```csharp
-// セッション "doctor-session" にカスタムシステムプロンプトを設定
+// Set a custom system prompt for "doctor-session"
 _client.SetSessionSystemPrompt(
     "doctor-session",
     "You are a professional medical advisor. Provide accurate medical information. " +
-    "Always remind the user to consult a real doctor for serious conditions. Respond in Japanese."
+    "Always remind the user to consult a real doctor for serious conditions."
 );
 
-// このセッションでメッセージを送信（医師として返答）
+// Send a message within this session (doctor role)
 StartCoroutine(_client.SendMessageAsync(
-    "頭痛がします。何が原因ですか？",
+    "I have a headache. What could be the cause?",
     OnResponse,
     new ChatRequestOptions { SessionId = "doctor-session" }
 ));
 ```
 
-**複数セッションへの一括設定：**
+**Multiple sessions at once:**
 
 ```csharp
-// 複数のセッションに同じプロンプトを設定（効率的なロール初期化）
+// Set the same prompt across multiple sessions (efficient role init)
 var sessionIds = new List<string> { "support-1", "support-2", "support-3" };
 _client.SetSystemPromptForMultipleSessions(
     sessionIds,
-    "You are a helpful customer support specialist. Respond concisely and professionally in Japanese."
+    "You are a helpful customer support specialist. Respond concisely and professionally."
 );
 ```
 
-#### セッション固有プロンプトの取得と管理
+#### Retrieve and manage session prompts
 
-**プロンプトの取得：**
+**Retrieve:**
 
 ```csharp
-// セッション "doctor-session" のシステムプロンプトを取得
+// Get the system prompt for "doctor-session"
 string prompt = _client.GetSessionSystemPrompt("doctor-session");
 if (prompt != null)
 {
@@ -840,143 +839,141 @@ else
 }
 ```
 
-**セッション固有プロンプトのリセット：**
+**Reset:**
 
 ```csharp
-// セッション固有プロンプトを削除（グローバルプロンプトに戻す）
+// Remove the session-specific prompt (revert to global prompt)
 _client.ResetSessionSystemPrompt("doctor-session");
-// 以降、このセッションではグローバルプロンプトが使用される
+// This session now uses the global prompt
 ```
 
-**すべてのセッション固有プロンプトをリセット：**
+**Reset all session prompts:**
 
 ```csharp
-// すべてのセッション固有プロンプトを削除
+// Remove all session-specific prompts
 _client.ResetAllSessionSystemPrompts();
-// アプリケーション全体でグローバルプロンプトのみが使用される
+// Only the global prompt remains
 ```
 
-#### 実践例：複数ロールの管理
-
-異なるロール（キャラクター）を複数管理する具体的な例です：
+#### Practical example: managing multiple roles
 
 ```csharp
 void InitializeMultipleRoles()
 {
-    // 医師ロール
+    // Doctor role
     _client.SetSessionSystemPrompt(
         "doctor-session",
         "You are a professional medical advisor. Provide evidence-based medical information. " +
-        "Always remind users to consult a licensed physician for serious health concerns. Respond in Japanese."
+        "Always remind users to consult a licensed physician for serious health concerns."
     );
 
-    // ソフトウェアエンジニアロール
+    // Software engineer role
     _client.SetSessionSystemPrompt(
         "engineer-session",
         "You are an expert software engineer with 10 years of experience. " +
         "Help users with coding problems, design patterns, best practices, and architecture decisions. " +
-        "Prefer modern C# patterns and explain trade-offs. Respond in Japanese."
+        "Prefer modern C# patterns and explain trade-offs."
     );
 
-    // 日本語翻訳者ロール
+    // Translator role
     _client.SetSessionSystemPrompt(
         "translator-session",
-        "You are a professional Japanese translator with expertise in technical translation. " +
+        "You are a professional English-Japanese translator with expertise in technical translation. " +
         "Translate accurately while preserving meaning, nuance, and context. " +
         "Maintain consistency in technical terminology."
     );
 
-    // 顧客サポートロール
+    // Customer support role
     _client.SetSessionSystemPrompt(
         "support-session",
         "You are a friendly and professional customer support specialist. " +
         "Help customers with common questions and issues. Be empathetic and solution-focused. " +
-        "Respond in Japanese with a warm tone."
+        "Respond with a warm tone."
     );
 }
 
-// 各ロールとの会話
+// Chat with each role
 void ChatWithMultipleRoles()
 {
-    // 医師に医学について相談
+    // Ask a doctor about medical concerns
     StartCoroutine(_client.SendMessageAsync(
-        "血圧が高いです。対策は？",
+        "My blood pressure is high. What should I do?",
         OnResponse,
         new ChatRequestOptions { SessionId = "doctor-session" }
     ));
 
-    // エンジニアにコード相談
+    // Ask an engineer about code
     StartCoroutine(_client.SendMessageAsync(
-        "C#でシングルトンパターンを実装する最善の方法は？",
+        "What is the best way to implement a singleton in C#?",
         OnResponse,
         new ChatRequestOptions { SessionId = "engineer-session" }
     ));
 
-    // 翻訳者に翻訳を依頼
+    // Ask a translator to translate
     StartCoroutine(_client.SendMessageAsync(
         "Translate: 'The quick brown fox jumps over the lazy dog.'",
         OnResponse,
         new ChatRequestOptions { SessionId = "translator-session" }
     ));
 
-    // カスタマーサポートに問い合わせ
+    // Ask customer support
     StartCoroutine(_client.SendMessageAsync(
-        "商品が届きません。どうしたらいいですか？",
+        "My order hasn't arrived. What should I do?",
         OnResponse,
         new ChatRequestOptions { SessionId = "support-session" }
     ));
 }
 
-// クリーンアップ
+// Cleanup
 void CleanupRoles()
 {
-    // 各ロールセッションの履歴をクリア
+    // Clear history for each role session
     _client.ClearMessages("doctor-session");
     _client.ClearMessages("engineer-session");
     _client.ClearMessages("translator-session");
     _client.ClearMessages("support-session");
     
-    // または、セッション固有プロンプトのみリセット（履歴は残す）
+    // Or reset only the prompts (keep history)
     _client.ResetAllSessionSystemPrompts();
 }
 ```
 
-#### セッション固有プロンプトの活用シーン
+#### When to use session-specific prompts
 
-| シーン | 例 | 利点 |
+| Scenario | Example | Benefit |
 |------|-------|------|
-| マルチキャラクター会話 | ゲーム内の複数のNPC | 各キャラクターの個性を表現 |
-| ロールプレイング | 異なるペルソナ | 会話品質の向上 |
-| ドメイン別の専門家 | 医師、弁護士、エンジニア | 各分野での信頼性 |
-| 言語別対応 | 日本語、英語、中国語セッション | 言語ごとの最適化 |
-| トーン制御 | 丁寧/カジュアル/フォーマル | 状況に応じた適切な対応 |
-| A/Bテスト | 異なるプロンプト版 | 品質測定と改善 |
+| Multi-character conversations | Multiple NPCs in a game | Preserve unique personalities |
+| Roleplay | Different personas | Better conversation quality |
+| Domain experts | Doctor, lawyer, engineer | More reliable responses by role |
+| Language handling | Japanese, English, Chinese sessions | Language-optimized behavior |
+| Tone control | Polite/casual/formal | Context-appropriate responses |
+| A/B testing | Different prompt versions | Measure and improve quality |
 
-#### 設計のベストプラクティス
+#### Design best practices
 
-**1. プロンプトテンプレート化**
+**1. Prompt templates**
 
 ```csharp
-// プロンプトテンプレートを定義
+// Define prompt templates
 public static class SystemPromptTemplates
 {
-    public const string Doctor = 
-        "You are a professional medical advisor. Respond in Japanese. " +
+    public const string Doctor =
+        "You are a professional medical advisor. " +
         "Always recommend consulting a real doctor for serious conditions.";
     
-    public const string Engineer = 
-        "You are an expert software engineer. Provide technical depth. Respond in Japanese.";
+    public const string Engineer =
+        "You are an expert software engineer. Provide technical depth.";
     
-    public const string CustomerSupport = 
+    public const string CustomerSupport =
         "You are a helpful customer support agent. Be empathetic and professional.";
 }
 
-// 利用
+// Use
 _client.SetSessionSystemPrompt("doctor-1", SystemPromptTemplates.Doctor);
 _client.SetSessionSystemPrompt("engineer-1", SystemPromptTemplates.Engineer);
 ```
 
-**2. セッション設定クラス**
+**2. Session configuration class**
 
 ```csharp
 public class SessionConfig
@@ -993,10 +990,10 @@ void SetupSession(SessionConfig config)
 }
 ```
 
-**3. プロンプトの動的カスタマイズ**
+**3. Dynamic prompt customization**
 
 ```csharp
-// ユーザー設定に応じてプロンプトをカスタマイズ
+// Customize prompts based on user settings
 string CreateCustomPrompt(string baseProfession, string tonePreference, string language)
 {
     return $"You are a {baseProfession}. Your tone should be {tonePreference}. " +
@@ -1005,64 +1002,63 @@ string CreateCustomPrompt(string baseProfession, string tonePreference, string l
 
 _client.SetSessionSystemPrompt(
     "custom-session",
-    CreateCustomPrompt("technical writer", "casual and friendly", "Japanese")
+    CreateCustomPrompt("technical writer", "casual and friendly", "English")
 );
 ```
 
-#### 注意点と制限事項
+#### Notes and limitations
 
-- **優先度の理解**：リクエスト個別プロンプトが最優先。セッション固有プロンプトが未設定の場合のみグローバルプロンプトが使用される
-- **プロンプト衝突**：同じセッションで複数プロンプトを使い分けたい場合、`ChatRequestOptions.SystemPrompt` で上書き可能
-- **メモリ管理**：セッションを削除（`ClearMessages()`）するとプロンプトも自動削除
-- **プロンプト長制限**：非常に長いプロンプトは LLM コンテキストを圧迫するため、適度な長さに保つ
-- **一括設定の効率性**：`SetSystemPromptForMultipleSessions()` で大量セッション初期化可能。1000以上のセッション初期化時に有効
+- **Priority awareness**: Request-level prompts take highest priority. The global prompt is used only when no session prompt is set.
+- **Prompt overrides**: Use `ChatRequestOptions.SystemPrompt` to override within a single request.
+- **Memory**: Clearing sessions with `ClearMessages()` also removes session prompts.
+- **Prompt length**: Very long prompts reduce available context; keep them concise.
+- **Bulk init**: `SetSystemPromptForMultipleSessions()` is efficient for large batches (1000+ sessions).
 
-詳細なAPIリファレンスは [SessionSystemPrompt.md](SessionSystemPrompt.md) を参照してください。
+See [SessionSystemPrompt.md](SessionSystemPrompt.md) for the detailed API reference.
 
-### 4.8 優先度スケジューリング
+### 4.7 Priority Scheduling
 
-#### 優先度スケジューリングの背景
+#### Why priority scheduling
 
-リソースが限られた環境（GPU キャパシティなど）では、複数のリクエストが同時に到着することがあります。
-このライブラリは以下のようなシナリオを想定しています：
+In resource-constrained environments (GPU capacity, etc.), multiple requests can arrive at the same time.
+This library assumes scenarios like:
 
-- **高優先度メッセージ**：システム運用やゲーム進行に必須の推論（例：NPCの重要な応答）
-- **低優先度メッセージ**：フレーバー的な推論で、失敗してもゲーム稼働に影響なし（例：雑談NPC）
+- **High-priority messages**: Critical inference for system operation or game progression (e.g., key NPC responses).
+- **Low-priority messages**: Flavor text where failure does not impact gameplay (e.g., small talk NPCs).
 
-限られたリソースの中で、重要なメッセージを優先的に処理し、低優先度メッセージはキューで待たせることで、
-システムの安定性と応答性を両立させることができます。
+By prioritizing important messages and queueing low-priority ones, you can keep the system stable and responsive.
 
-#### デフォルト設定と動作
+#### Default behavior
 
-**デフォルト：**
-- `MaxConcurrentSessions = 1`：同時実行セッションは1つまで
-- 複数リクエストが到着すると、優先度順にキューに格納
-- リソースが解放されたら、次の優先度の高いリクエストを処理
+**Defaults:**
+- `MaxConcurrentSessions = 1`: Only one session runs at a time.
+- Multiple requests are queued in priority order.
+- When resources free up, the next highest priority request runs.
 
-**処理フロー：**
+**Flow:**
 
 ```
-複数リクエスト到着
+Multiple requests arrive
   ↓
-優先度順にキューに格納
+Queued by priority
   ↓
-リソース確認（MaxConcurrentSessions確認）
+Check resources (MaxConcurrentSessions)
   ↓
-優先度の高い順に実行
-  ├─ 高優先度リクエスト → 即座に実行
-  ├─ 中優先度リクエスト → 前のリクエスト終了まで待機
-  └─ 低優先度リクエスト → さらに奥のキュー
+Execute by priority
+  ├─ High priority -> runs immediately
+  ├─ Medium priority -> waits for previous request
+  └─ Low priority -> waits further back in queue
 
-各リクエストの処理完了
+Each request completes
   ↓
-次の優先度リクエストを実行
+Next priority request runs
 ```
 
-#### WaitIfBusy の動作
+#### WaitIfBusy behavior
 
-**`WaitIfBusy = true`（推奨）：**
+**`WaitIfBusy = true` (recommended):**
 
-クライアントがビジー中の場合、リクエストをキューに登録して待機します。
+If the client is busy, the request is queued and waits.
 
 ```csharp
 void SendWithPriority()
@@ -1070,39 +1066,39 @@ void SendWithPriority()
     var systemMessage = new ChatRequestOptions
     {
         SessionId = "system-npc",
-        Priority = 10,           // 高優先度（値が大きいほど優先される）
-        WaitIfBusy = true        // ビジー中ならキューで待機
+        Priority = 10,           // Higher number = higher priority
+        WaitIfBusy = true        // Queue when busy
     };
 
     var flavorMessage = new ChatRequestOptions
     {
         SessionId = "flavor-npc",
-        Priority = 0,            // 低優先度（デフォルト値）
-        WaitIfBusy = true        // ビジー中ならキューで待機
+        Priority = 0,            // Low priority (default)
+        WaitIfBusy = true        // Queue when busy
     };
 
-    // システムメッセージ（高優先度）を送信
+    // High-priority system message
     StartCoroutine(_client.SendMessageAsync(
-        "プレイヤーに与えるべき重要な情報",
+        "Important information for the player",
         OnResponse,
         systemMessage
     ));
 
-    // フレーバーメッセージ（低優先度）を送信
+    // Low-priority flavor message
     StartCoroutine(_client.SendMessageAsync(
-        "雑談的な応答",
+        "Casual small talk",
         OnResponse,
         flavorMessage
     ));
 
-    // systemMessage は即座に実行（優先度が高い）
-    // flavorMessage は systemMessage が終了するまでキューで待機
+    // systemMessage runs immediately (higher priority)
+    // flavorMessage waits until systemMessage finishes
 }
 ```
 
-**`WaitIfBusy = false`（即座エラー）：**
+**`WaitIfBusy = false` (immediate error):**
 
-クライアントがビジー中の場合、エラーを返してリクエストを棄却します。
+If the client is busy, the request is rejected with an error.
 
 ```csharp
 void SendWithoutWaiting()
@@ -1111,16 +1107,16 @@ void SendWithoutWaiting()
     {
         SessionId = "session-1",
         Priority = 0,
-        WaitIfBusy = false       // ビジー中ならエラー
+        WaitIfBusy = false       // Error if busy
     };
 
     StartCoroutine(_client.SendMessageAsync(
-        "メッセージ",
+        "Message",
         (response, error) =>
         {
             if (error != null)
             {
-                if (error.ErrorType == LLMErrorType.Unknown && 
+                if (error.ErrorType == LLMErrorType.Unknown &&
                     error.Message.Contains("busy"))
                 {
                     Debug.Log("Client is busy, request was rejected");
@@ -1133,18 +1129,18 @@ void SendWithoutWaiting()
 }
 ```
 
-#### 優先度の設計例
+#### Priority design example
 
 ```csharp
 public class PrioritizedChatManager : MonoBehaviour
 {
     private OllamaClient _client;
 
-    // 優先度定数の定義
-    private const int PRIORITY_CRITICAL = 100;      // ゲーム進行に必須
-    private const int PRIORITY_HIGH = 50;           // 重要なNPC会話
-    private const int PRIORITY_NORMAL = 0;          // 通常のNPC会話
-    private const int PRIORITY_LOW = -50;           // フレーバー会話
+    // Priority constants
+    private const int PRIORITY_CRITICAL = 100;      // Required for game progression
+    private const int PRIORITY_HIGH = 50;           // Important NPC conversations
+    private const int PRIORITY_NORMAL = 0;          // Normal NPC conversations
+    private const int PRIORITY_LOW = -50;           // Flavor conversations
 
     void Start()
     {
@@ -1156,7 +1152,7 @@ public class PrioritizedChatManager : MonoBehaviour
         _client = LLMClientFactory.CreateOllamaClient(config);
     }
 
-    // ゲーム進行に必須のメッセージ
+    // Critical message
     void SendCriticalMessage(string message)
     {
         var options = new ChatRequestOptions
@@ -1169,7 +1165,7 @@ public class PrioritizedChatManager : MonoBehaviour
         StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
     }
 
-    // 重要なNPC会話
+    // Important NPC conversation
     void SendImportantNPCMessage(string npcId, string message)
     {
         var options = new ChatRequestOptions
@@ -1182,7 +1178,7 @@ public class PrioritizedChatManager : MonoBehaviour
         StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
     }
 
-    // 通常のNPC会話
+    // Normal NPC conversation
     void SendNormalNPCMessage(string npcId, string message)
     {
         var options = new ChatRequestOptions
@@ -1195,14 +1191,14 @@ public class PrioritizedChatManager : MonoBehaviour
         StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
     }
 
-    // フレーバー会話（失敗してもOK）
+    // Flavor conversation (okay to drop)
     void SendFlavorMessage(string npcId, string message)
     {
         var options = new ChatRequestOptions
         {
             SessionId = $"npc-{npcId}-flavor",
             Priority = PRIORITY_LOW,
-            WaitIfBusy = false  // ビジー中なら棄却OK
+            WaitIfBusy = false  // Drop if busy
         };
 
         StartCoroutine(_client.SendMessageAsync(message, OnResponse, options));
@@ -1212,59 +1208,59 @@ public class PrioritizedChatManager : MonoBehaviour
     {
         if (error != null)
         {
-            Debug.LogError($"エラー: {error.Message}");
+            Debug.LogError($"Error: {error.Message}");
             return;
         }
 
-        Debug.Log($"応答: {response.Content}");
+        Debug.Log($"Response: {response.Content}");
     }
 }
 ```
 
-#### 複数セッションの同時実行
+#### Concurrent sessions
 
-`MaxConcurrentSessions` を増やすことで、複数セッションを並列実行できます：
+Increase `MaxConcurrentSessions` to run sessions in parallel:
 
 ```csharp
 var config = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
-    MaxConcurrentSessions = 2  // 同時に2セッションまで実行
+    MaxConcurrentSessions = 2  // Run up to 2 sessions concurrently
 };
 
 OllamaServerManager.Initialize(config);
 var client = LLMClientFactory.CreateOllamaClient(config);
 
-// この場合、異なるセッションのリクエストは並列実行される
-// 同じセッション内でも、優先度順に処理される
+// Requests from different sessions will run in parallel
+// Within the same session, requests still respect priority
 ```
 
-#### スケジューリングの仕様
+#### Scheduling behavior summary
 
-| 設定 | `WaitIfBusy=true` | `WaitIfBusy=false` |
+| Setting | `WaitIfBusy=true` | `WaitIfBusy=false` |
 |-----|------------------|-------------------|
-| クライアントが空いている | 即座に実行 | 即座に実行 |
-| クライアントがビジー | キューで待機（優先度順） | エラー返却 |
-| 利用シーン | システム必須 / 重要なNPC | フレーバー / 失敗許容 |
+| Client is idle | Run immediately | Run immediately |
+| Client is busy | Queue by priority | Return error |
+| Use cases | System-critical / important NPCs | Flavor / acceptable failure |
 
-#### パフォーマンス最適化のヒント
+#### Performance tips
 
-- **優先度の粗さ**：細かく設定しすぎると管理が複雑。通常は3～5段階で充分
-- **セッション分離**：重要度の異なるメッセージは異なるセッションにする
-- **MaxConcurrentSessions**：GPU容量に応じて調整（1～4が目安）。大きすぎるとメモリ不足やGPU過負荷の原因に
-- **リソース監視**：本番環境ではGPUメモリとシステムメモリの監視を推奨
+- **Keep priorities coarse**: Too many levels increase complexity; 3-5 levels is usually enough.
+- **Separate sessions**: Put different importance levels in different sessions.
+- **MaxConcurrentSessions**: Tune to GPU capacity (1-4 typical). Too high can cause OOM or overload.
+- **Monitor resources**: In production, watch GPU and system memory.
 
-### 4.9 キャンセル
+### 4.8 Cancellation
 
-Unity の標準 `CancellationToken` パターンに対応しています。キャンセルが必要な場合は `CancellationTokenSource` を使用してください。
+Supports the standard Unity `CancellationToken` pattern. Use `CancellationTokenSource` when cancellation is needed.
 
 ```csharp
 private CancellationTokenSource _cancellationTokenSource;
 
 void SendWithCancel()
 {
-    // キャンセルトークンソースを作成
+    // Create cancellation token source
     _cancellationTokenSource = new CancellationTokenSource();
     
     var options = new ChatRequestOptions
@@ -1274,7 +1270,7 @@ void SendWithCancel()
     };
 
     StartCoroutine(_client.SendMessageStreamingAsync(
-        "長い回答を生成して",
+        "Generate a long response",
         (response, error) =>
         {
             if (error != null)
@@ -1296,25 +1292,25 @@ void SendWithCancel()
     ));
 }
 
-// UI ボタン等から呼び出し
+// Call from a UI button, etc.
 void CancelRequest()
 {
     _cancellationTokenSource?.Cancel();
 }
 
-// クリーンアップ
+// Cleanup
 void OnDestroy()
 {
     _cancellationTokenSource?.Dispose();
 }
 ```
 
-**タイムアウト付きキャンセルの例：**
+**Cancellation with timeout:**
 
 ```csharp
 void SendWithTimeout()
 {
-    // 10秒後に自動キャンセル
+    // Auto-cancel after 10 seconds
     _cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
     
     var options = new ChatRequestOptions
@@ -1324,7 +1320,7 @@ void SendWithTimeout()
     };
 
     StartCoroutine(_client.SendMessageStreamingAsync(
-        "回答を生成して",
+        "Generate a response",
         (response, error) =>
         {
             if (error != null)
@@ -1347,61 +1343,61 @@ void SendWithTimeout()
 }
 ```
 
-### 4.10 リトライとエラーハンドリング
+### 4.9 Retry and Error Handling
 
-#### 自動リトライのしくみ
+#### How automatic retries work
 
-このライブラリは、ネットワークエラーやサーバの一時的な不具合に対して自動的にリトライを行います。
-以下のエラーが発生した場合、`MaxRetries` の回数まで自動的に再試行されます：
+This library automatically retries transient failures such as network errors or temporary server issues.
+The following errors are retried up to `MaxRetries`:
 
-**自動リトライの対象エラー：**
-- `ConnectionFailed`：サーバ接続失敗（タイムアウト、接続拒否など）
-- `ServerError`：サーバ側エラー（HTTP 500, 503など）
-- `Timeout`：リクエストタイムアウト
+**Retryable errors:**
+- `ConnectionFailed`: Server connection failure (timeouts, refused connections, etc.)
+- `ServerError`: Server-side error (HTTP 500, 503, etc.)
+- `Timeout`: Request timeout
 
-リトライは内部で自動的に処理され、**呼び出し元にはリトライ結果のみが返されます**。
+Retries are handled internally, and **callers only receive the final result**.
 
-#### グローバルリトライ設定
+#### Global retry settings
 
-`OllamaConfig` で全リクエストのリトライ動作を設定できます：
+Configure retry behavior in `OllamaConfig`:
 
 ```csharp
 var config = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
-    MaxRetries = 3,              // 最大3回までリトライ
-    RetryDelaySeconds = 1.0f,    // 初期遅延1秒
-    HttpTimeoutSeconds = 60.0f   // リクエストタイムアウト60秒
+    MaxRetries = 3,              // Retry up to 3 times
+    RetryDelaySeconds = 1.0f,    // Initial delay 1s
+    HttpTimeoutSeconds = 60.0f   // Request timeout 60s
 };
 
 var client = LLMClientFactory.CreateOllamaClient(config);
 
-// リトライ設定を後から更新することも可能
+// You can also update retry settings later
 config.MaxRetries = 5;
 config.RetryDelaySeconds = 2.0f;
 ```
 
-#### リトライ戦略：指数バックオフ
+#### Retry strategy: exponential backoff
 
-自動リトライは指数バックオフを使用します。遅延時間は以下のように計算されます：
+Automatic retry uses exponential backoff. Delay is calculated as:
 
 ```
-待機時間 = RetryDelaySeconds × 2^(試行回数-1)
+Delay = RetryDelaySeconds × 2^(attempt-1)
 
-例）RetryDelaySeconds=1.0 の場合：
-  1回目失敗 → 1秒待機してリトライ
-  2回目失敗 → 2秒待機してリトライ
-  3回目失敗 → 4秒待機してリトライ
-  MaxRetries に達したため、エラーを呼び出し元に返却
+Example when RetryDelaySeconds = 1.0:
+  Attempt 1 fails -> wait 1s, retry
+  Attempt 2 fails -> wait 2s, retry
+  Attempt 3 fails -> wait 4s, retry
+  MaxRetries reached -> return error
 ```
 
-この仕組みにより、サーバ負荷が高い時期に多くのリクエストが集中するのを緩和できます。
+This reduces request bursts during high load.
 
-#### リトライ終了後のエラー処理
+#### Handling errors after retries
 
-呼び出し元に返却されるエラーは、すべて `MaxRetries` 回のリトライを経たものです。
-つまり、ネットワークの一時的な問題ではなく、**より根本的な問題**が発生していることを意味します。
+Errors returned to callers already exhausted `MaxRetries`.
+This indicates a **non-transient problem**.
 
 ```csharp
 void SendMessageAndHandleError()
@@ -1412,19 +1408,19 @@ void SendMessageAndHandleError()
     };
 
     StartCoroutine(_client.SendMessageAsync(
-        "メッセージ",
+        "Message",
         (response, error) =>
         {
             if (error != null)
             {
-                // ここに到達するエラーは、すべて MaxRetries 回のリトライ後
+                // Errors here have already retried up to MaxRetries
                 Debug.LogError($"Error after retries: {error.Message}");
                 
                 HandleError(error);
                 return;
             }
 
-            Debug.Log($"応答: {response.Content}");
+            Debug.Log($"Response: {response.Content}");
         },
         options
     ));
@@ -1436,7 +1432,7 @@ void HandleError(ChatError error)
     {
         case LLMErrorType.ConnectionFailed:
         case LLMErrorType.Timeout:
-            // 複数回のリトライ後もネットワークエラーが継続
+            // Network errors persisted after retries
             Debug.LogError(
                 "Server is not responding. Please check:\n" +
                 "1. Ollama server is running\n" +
@@ -1446,7 +1442,6 @@ void HandleError(ChatError error)
             break;
 
         case LLMErrorType.ServerError:
-            // サーバエラーが継続している
             Debug.LogError(
                 $"Server error (HTTP {error.HttpStatus}). " +
                 "Please check server logs and health status."
@@ -1478,37 +1473,37 @@ void HandleError(ChatError error)
 }
 ```
 
-#### エラータイプ別の対応ガイド
+#### Error handling guide
 
-| エラータイプ | リトライ対象 | 呼び出し元での対応 |
+| Error type | Retried | Caller response |
 |-----------|----------|------------|
-| `ConnectionFailed` | ✅ | サーバ起動確認、ネットワーク確認 |
-| `ServerError` | ✅ | サーバログ確認、サーバ再起動検討 |
-| `Timeout` | ✅ | `HttpTimeoutSeconds` を延長、サーバ性能確認 |
-| `ModelNotFound` | ❌ | `ollama pull` でモデル導入 |
-| `InvalidResponse` | ❌ | Ollama バージョン確認 |
-| `Cancelled` | ❌ | UI適切に更新（ユーザー意図） |
-| `Unknown` | ❌ | デバッグモードで詳細ログ確認 |
+| `ConnectionFailed` | ✅ | Check server and network |
+| `ServerError` | ✅ | Check server logs, consider restart |
+| `Timeout` | ✅ | Increase `HttpTimeoutSeconds`, check server performance |
+| `ModelNotFound` | ❌ | Install model with `ollama pull` |
+| `InvalidResponse` | ❌ | Check Ollama version |
+| `Cancelled` | ❌ | Update UI (user intent) |
+| `Unknown` | ❌ | Enable debug logs for details |
 
-#### リトライ設定の推奨値
+#### Recommended retry settings
 
-| シナリオ | MaxRetries | RetryDelaySeconds | HttpTimeoutSeconds |
+| Scenario | MaxRetries | RetryDelaySeconds | HttpTimeoutSeconds |
 |--------|-----------|-----------------|-----------------|
-| 安定環境（LAN） | 2 | 0.5 | 30 |
-| 通常環境（ローカルLLM） | 3 | 1.0 | 60 |
-| 不安定環境 | 5 | 2.0 | 90 |
-| リソース制約環境 | 1 | 0.2 | 20 |
+| Stable environment (LAN) | 2 | 0.5 | 30 |
+| Typical local LLM | 3 | 1.0 | 60 |
+| Unstable environment | 5 | 2.0 | 90 |
+| Resource-constrained | 1 | 0.2 | 20 |
 
-#### ベストプラクティス
+#### Best practices
 
-- **設定は初期化時に**：アプリ起動時に `OllamaConfig` で一度設定すれば、あとは自動処理
-- **デバッグモードの活用**：`DebugMode = true` にするとリトライの詳細がログに出力される
-- **ヘルスチェック機能**：`EnableHealthCheck = true` でサーバ起動後に自動チェック
-- **エラーログ記録**：本番環境では、リトライ終了後のエラーを詳細に記録して分析
+- **Set during initialization**: Configure once in `OllamaConfig` at app start.
+- **Use DebugMode**: `DebugMode = true` logs retry details.
+- **Health checks**: `EnableHealthCheck = true` verifies server after startup.
+- **Log errors**: In production, record errors after retries for analysis.
 
-#### デバッグモードでのリトライ確認
+#### Verify retries with DebugMode
 
-リトライロジックの動作を確認する場合は、デバッグモードを有効にしてください：
+Enable debug logs to inspect retry behavior:
 
 ```csharp
 var config = new OllamaConfig
@@ -1517,12 +1512,12 @@ var config = new OllamaConfig
     DefaultModelName = "mistral",
     MaxRetries = 3,
     RetryDelaySeconds = 1.0f,
-    DebugMode = true  // リトライの詳細がログに出力される
+    DebugMode = true  // Logs retry details
 };
 
 var client = LLMClientFactory.CreateOllamaClient(config);
 
-// ログ出力例：
+// Example logs:
 // [Ollama] Sending request (attempt 1/3)
 // [Ollama] Request failed (attempt 1/3): Connection reset (HTTP 0)
 // [Ollama] Retrying in 1 seconds...
@@ -1533,11 +1528,11 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 // [Ollama] Response received: {...}
 ```
 
-### 4.10 メッセージ永続化
+### 4.10 Message Persistence
 
-セッション履歴をファイルに保存・復元できます。暗号化オプションで保存ファイルを暗号化することも可能です。
+Session history can be saved to and restored from files. You can also encrypt saved files.
 
-#### 単一セッションの保存と復元
+#### Save and restore a single session
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -1547,14 +1542,14 @@ void SaveAndLoadSession()
 {
     var client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
     
-    // セッションで会話
+    // Chat in a session
     StartCoroutine(client.SendMessageAsync(
-        "こんにちは",
+        "Hello",
         (response, error) => { },
         new ChatRequestOptions { SessionId = "my-session" }
     ));
     
-    // 後で会話を保存
+    // Save the session later
     string savePath = Application.persistentDataPath + "/my_session.json";
     client.SaveSession(savePath, "my-session");
     Debug.Log($"Session saved to: {savePath}");
@@ -1568,9 +1563,9 @@ void RestoreSession()
     client.LoadSession(savePath, "my-session");
     Debug.Log("Session restored from file");
     
-    // 復元されたセッションで新しい会話を続行
+    // Continue the restored session
     StartCoroutine(client.SendMessageAsync(
-        "前の会話を覚えていますか？",
+        "Do you remember the previous conversation?",
         (response, error) => {
             Debug.Log($"Assistant: {response.Content}");
         },
@@ -1579,14 +1574,14 @@ void RestoreSession()
 }
 ```
 
-#### 暗号化オプション付き保存
+#### Save with encryption
 
 ```csharp
 void SaveWithEncryption()
 {
     var client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
     
-    // 暗号化キーを指定してセッションを保存
+    // Save a session with an encryption key
     string savePath = Application.persistentDataPath + "/my_session_encrypted.json";
     string encryptionKey = "my-secret-password-1234";
     
@@ -1613,16 +1608,16 @@ void RestoreEncryptedSession()
 }
 ```
 
-#### すべてのセッションをまとめて保存・復元
+#### Save and restore all sessions
 
 ```csharp
 void SaveAllSessions()
 {
     var client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
     
-    // 複数セッションで会話...
+    // Conversations across multiple sessions...
     
-    // すべてのセッションをディレクトリに保存
+    // Save all sessions to a directory
     string saveDir = Application.persistentDataPath + "/chat_sessions";
     client.SaveAllSessions(saveDir);
     Debug.Log($"All sessions saved to: {saveDir}");
@@ -1638,7 +1633,7 @@ void RestoreAllSessions()
 }
 ```
 
-#### 暗号化付きで複数セッションを保存
+#### Save multiple sessions with encryption
 
 ```csharp
 void SaveAllSessionsWithEncryption()
@@ -1648,7 +1643,7 @@ void SaveAllSessionsWithEncryption()
     string saveDir = Application.persistentDataPath + "/encrypted_sessions";
     string encryptionKey = "shared-encryption-key";
     
-    // すべてのセッションを暗号化して保存
+    // Save all sessions with encryption
     client.SaveAllSessions(saveDir, encryptionKey);
     Debug.Log("All sessions encrypted and saved");
 }
@@ -1672,15 +1667,15 @@ void RestoreAllEncryptedSessions()
 }
 ```
 
-#### 永続化の仕様
+#### Persistence specs
 
-- **ファイル形式**：JSON（平文）または JSON+暗号化
-- **暗号化アルゴリズム**：AES-256-CBC（PBKDF2でキー導出）
-- **保存内容**：セッションID、システムプロンプト、メッセージ履歴、日時情報
-- **ファイル名**：セッションID をサニタイズして自動生成（`session-id.json` など）
-- **エラーハンドリング**：暗号化キーが不正な場合は `InvalidOperationException` をスロー
+- **File format**: JSON (plaintext) or JSON+encryption
+- **Encryption algorithm**: AES-256-CBC (PBKDF2 key derivation)
+- **Stored data**: Session ID, system prompt, message history, timestamps
+- **File names**: Automatically derived from sanitized session IDs (`session-id.json`, etc.)
+- **Error handling**: Invalid keys throw `InvalidOperationException`
 
-#### ベストプラクティス
+#### Best practices
 
 ```csharp
 public class ChatSessionManager : MonoBehaviour
@@ -1698,11 +1693,11 @@ public class ChatSessionManager : MonoBehaviour
         };
         _client = LLMClientFactory.CreateOllamaClient(config);
         
-        // セッションディレクトリを設定
+        // Set session directory
         _sessionDir = System.IO.Path.Combine(Application.persistentDataPath, "chat_history");
     }
 
-    // アプリ起動時：前回のセッションを復元
+    // On app start: restore previous sessions
     void RestorePreviousSessions()
     {
         if (System.IO.Directory.Exists(_sessionDir))
@@ -1715,12 +1710,12 @@ public class ChatSessionManager : MonoBehaviour
             catch (System.Exception ex)
             {
                 Debug.LogWarning($"Failed to restore sessions: {ex.Message}");
-                // エラーハンドリング：新規開始
+                // Error handling: start fresh
             }
         }
     }
 
-    // 新しいメッセージを送信
+    // Send a new message
     void SendMessage(string sessionId, string message)
     {
         StartCoroutine(_client.SendMessageAsync(
@@ -1729,7 +1724,7 @@ public class ChatSessionManager : MonoBehaviour
             {
                 if (error == null)
                 {
-                    // メッセージ送信成功時にセッションを自動保存
+                    // Auto-save on success
                     SaveSession(sessionId);
                 }
             },
@@ -1737,7 +1732,7 @@ public class ChatSessionManager : MonoBehaviour
         ));
     }
 
-    // セッションを保存（自動バックアップ）
+    // Save a session (auto backup)
     void SaveSession(string sessionId)
     {
         try
@@ -1751,7 +1746,7 @@ public class ChatSessionManager : MonoBehaviour
         }
     }
 
-    // アプリ終了時：すべてのセッションを保存
+    // On app quit: save all sessions
     void OnApplicationQuit()
     {
         try
@@ -1767,50 +1762,50 @@ public class ChatSessionManager : MonoBehaviour
 }
 ```
 
-### 4.11 ツール（Function Calling）
+### 4.11 Tools (Function Calling)
 
-LLM が外部ツールを呼び出すことができる Function Calling 機能に対応しています。
-ユーザーはコールバック関数を登録するだけで、LLM が自動的にツールを使用して回答を生成します。
+Supports Function Calling so the LLM can invoke external tools.
+You only register callback functions and the LLM uses them automatically.
 
-**📚 詳細ドキュメント：**
-- **[Tools/Design.md](Tools/Design.md)** - 設計ドキュメント（アーキテクチャ、処理フロー、実装詳細）
-- **[Tools/InputSchema_Examples.md](Tools/InputSchema_Examples.md)** - inputSchema の具体例とベストプラクティス
+**Docs:**
+- **[Tools/Design.md](Tools/Design.md)** - Architecture, flow, and implementation details
+- **[Tools/InputSchema_Examples.md](Tools/InputSchema_Examples.md)** - inputSchema examples and best practices
 
-**主な特徴：**
-- ✅ **スキーマ自動生成**：リフレクションでコールバックのシグネチャから JSON Schema を自動生成
-- ✅ **型安全**：JSON パラメータを C# の型に自動変換してコールバックを呼び出し
-- ✅ **戻り値の自動変換**：任意の戻り値型を自動的に文字列化（プリミティブ型、カスタムオブジェクト、配列対応）
-- ✅ **無限ループ防止**：最大反復回数の設定で無限ツール呼び出しを防止
-- ✅ **ストリーミング対応**：ストリーミングモードでもツールが使用可能
+**Key features:**
+- ✅ **Auto schema generation**: Reflection builds JSON Schema from callback signatures
+- ✅ **Type-safe**: JSON parameters are converted into C# types before invocation
+- ✅ **Automatic return conversion**: Primitive, object, and array return values are stringified automatically
+- ✅ **Infinite-loop guard**: Max iteration count prevents tool call loops
+- ✅ **Streaming support**: Tools work in streaming mode too
 
-#### スキーマ自動生成の制限と回避策
+#### Auto schema limitations and workarounds
 
-現状の自動スキーマ推定は **シンプルな型のみ** に対応します。`SimpleChat.cs` の Shop ツールのように、
-`string` / `int` / `bool` / `float` / `double` / `List<T>` / 配列 などの **プリミティブ中心のシグネチャ** なら問題ありません。
+Current auto schema inference supports **simple types only**. For Shop tools like in `SimpleChat.cs`,
+signatures using `string` / `int` / `bool` / `float` / `double` / `List<T>` / arrays are fine.
 
-一方、**複雑な入力（オブジェクト型、ネスト構造、独自クラス）** は自動推定で `string` 扱いになります。
-その場合、LLM は期待する JSON 構造を正しく生成しにくくなるため、**手動スキーマ指定を推奨**します。
+For **complex inputs (object types, nested structures, custom classes)**, auto inference treats input as `string`.
+In that case, the LLM is less likely to produce valid JSON, so **manual schema is recommended**.
 
-**自動生成で対応できる型（入力）**
+**Supported input types (auto)**
 - `string`
 - `int`, `long`, `short`, `byte`
 - `float`, `double`, `decimal`
 - `bool`
-- `T[]`, `List<T>`, `IList<T>`, `IEnumerable<T>`（T が上記の型）
+- `T[]`, `List<T>`, `IList<T>`, `IEnumerable<T>` (T is one of the above)
 
-**手動スキーマ推奨のケース**
-- 複数階層のオブジェクト入力
-- 独自クラスや構造体を入力で受けたい
-- `enum` や `min/max` などの制約を細かく指定したい
+**Use manual schema when**
+- Inputs are nested objects
+- You need custom classes/structs as inputs
+- You want constraints like `enum` or `min/max`
 
-**SimpleChat.cs での実例（自動スキーマ）**
+**Example from SimpleChat.cs (auto schema)**
 ```csharp
 client.RegisterTool("BuyItem", "Buy an item from your shop", (Func<string, string>)BuyItem);
 client.RegisterTool("SellItem", "Sell an item to your shop", (Func<string, int, string>)SellItem);
 ```
-このように **パラメータがプリミティブ型のみ** の場合、スキーマ自動生成で問題ありません。
+When parameters are **primitive only**, auto schema generation works well.
 
-**複雑入力は手動スキーマ指定（推奨）**
+**Manual schema for complex input (recommended)**
 ```csharp
 client.RegisterTool(
     name: "create_order",
@@ -1851,14 +1846,14 @@ client.RegisterTool(
 );
 ```
 
-**補足**: DebugMode を有効にすると、登録時に自動生成されたスキーマがログ出力されます。
+**Note**: Enable DebugMode to log auto-generated schemas at registration time.
 
-#### 基本的なツール登録
+#### Basic tool registration
 
-最もシンプルな例：
+The simplest example:
 
-**重要**: この例は `int` などのプリミティブ型のみを使うため、スキーマ自動生成が期待通りに動作します。
-複雑な入力（オブジェクト、独自クラス、ネスト構造）が必要な場合は、上の「手動スキーマ指定」を参照してください。
+**Important**: This example uses only primitive types, so auto schema generation works as expected.
+If you need complex input (objects, custom classes, nested structures), use the manual schema above.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -1872,26 +1867,26 @@ public class ToolExample : MonoBehaviour
     {
         _client = LLMClientFactory.CreateOllamaClient(new OllamaConfig
         {
-            DefaultModelName = "llama3.2",  // Tools対応モデルを使用
+            DefaultModelName = "llama3.2",  // Use a tools-capable model
             DebugMode = true
         });
 
-        // ツール登録：足し算（プリミティブ型のみ）
-        // スキーマは自動生成され、戻り値も自動的に文字列化
+        // Tool registration: addition (primitive types only)
+        // Schema is auto-generated and return values are stringified
         _client.RegisterTool(
             name: "add_numbers",
             description: "Add two numbers together",
             callback: (Func<int, int, int>)((a, b) => a + b)
         );
 
-        // ツール登録：現在時刻取得
+        // Tool registration: current time
         _client.RegisterTool(
             name: "get_current_time",
             description: "Get the current time",
             callback: (Func<DateTime>)(() => System.DateTime.Now)
         );
 
-        // LLM にメッセージ送信
+        // Send a message to the LLM
         StartCoroutine(_client.SendMessageAsync(
             "What is 125 + 378? And what time is it now?",
             (response, error) =>
@@ -1902,59 +1897,59 @@ public class ToolExample : MonoBehaviour
                     return;
                 }
 
-                // LLM がツールを自動的に呼び出して回答
+                // LLM calls tools automatically
                 Debug.Log($"Assistant: {response.Content}");
-                // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
+                // Example: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
             }
         ));
     }
 }
 ```
 
-#### デフォルト値とパラメータ説明
+#### Default values and parameter descriptions
 
 ```csharp
 using EasyLocalLLM.LLM.Core;
 
 void RegisterAdvancedTools()
 {
-    // デフォルト値付きパラメータ（省略可能）
+    // Optional parameters with default values
     _client.RegisterTool(
         name: "search_web",
         description: "Search the web for information",
         callback: (Func<string, int, string>)((string query, int maxResults = 5) =>
         {
-            // maxResults は省略可能（LLM 側もそのように認識）
+            // maxResults is optional (LLM recognizes it as such)
             return $"Found {maxResults} results for '{query}'";
         })
     );
 
-    // ToolParameter Attribute でパラメータに説明を追加
+    // Use ToolParameter for detailed parameter descriptions
     _client.RegisterTool(
         name: "calculate_distance",
         description: "Calculate distance between two points",
-        callback: (Func<double, double, double, double, double>)((
-            [ToolParameter("Latitude of starting point")] double lat1,
+        callback: (Func<double, double, double, double, double>)(
+            ([ToolParameter("Latitude of starting point")] double lat1,
             [ToolParameter("Longitude of starting point")] double lon1,
             [ToolParameter("Latitude of destination")] double lat2,
             [ToolParameter("Longitude of destination")] double lon2
         ) =>
         {
-            // Haversine 公式で距離計算
+            // Calculate distance via Haversine formula
             double distance = CalculateHaversine(lat1, lon1, lat2, lon2);
-            return distance;  // double も自動的に文字列化
+            return distance;  // double is also stringified
         })
     );
 }
 ```
 
-#### カスタムオブジェクトの戻り値
+#### Custom object return values
 
 ```csharp
 void RegisterDataTools()
 {
-    // カスタムオブジェクトを返すツール
-    // → 自動的に JSON にシリアライズされる
+    // Tool returning a custom object
+    // -> Automatically serialized to JSON
     _client.RegisterTool(
         name: "get_user_info",
         description: "Get user information by ID",
@@ -1965,10 +1960,10 @@ void RegisterDataTools()
             age = 30,
             email = "john@example.com",
             isActive = true
-        })  // JSON: {"id":"123","name":"John Doe",...} として LLM に渡される
+        })  // JSON: {"id":"123","name":"John Doe",...}
     );
 
-    // 配列を返すツール
+    // Tool returning an array
     _client.RegisterTool(
         name: "list_recent_messages",
         description: "Get recent chat messages",
@@ -1976,14 +1971,14 @@ void RegisterDataTools()
         {
             new { sender = "Alice", message = "Hello!" },
             new { sender = "Bob", message = "Hi there!" }
-        })  // JSON 配列として LLM に渡される
+        })  // Passed to LLM as a JSON array
     );
 }
 ```
 
-#### エラーハンドリング
+#### Error handling
 
-ツール実行中のエラーは自動的にキャッチされ、LLM にエラーメッセージとして返されます：
+Errors during tool execution are caught and returned to the LLM as error messages:
 
 ```csharp
 void RegisterToolWithErrorHandling()
@@ -1993,7 +1988,7 @@ void RegisterToolWithErrorHandling()
         description: "Divide two numbers",
         callback: (Func<double, double, object>)((double numerator, double denominator) =>
         {
-            // エラーケースをハンドリング
+            // Handle error cases
             if (denominator == 0)
             {
                 return "Error: Division by zero is not allowed";
@@ -2003,7 +1998,7 @@ void RegisterToolWithErrorHandling()
         })
     );
 
-    // または、例外をスロー（自動的にキャッチされてエラーメッセージに変換）
+    // Or throw exceptions (caught and converted to error messages)
     _client.RegisterTool(
         name: "get_player_health",
         description: "Get player health points",
@@ -2020,9 +2015,9 @@ void RegisterToolWithErrorHandling()
 }
 ```
 
-#### 最大反復回数の設定
+#### Set max tool iterations
 
-ツールが繰り返し呼ばれる無限ループを防ぐため、最大反復回数を設定できます：
+Prevent infinite loops by limiting tool call iterations:
 
 ```csharp
 void SendWithToolOptions()
@@ -2030,14 +2025,14 @@ void SendWithToolOptions()
     var options = new ChatRequestOptions
     {
         SessionId = "my-session",
-        MaxToolIterations = 10  // デフォルトは 5
+        MaxToolIterations = 10  // Default is 5
     };
 
     StartCoroutine(_client.SendMessageAsync(
         "Calculate 5 + 3, then multiply by 2, then subtract 4",
         (response, error) =>
         {
-            // LLM が複数回ツールを呼び出して計算
+            // LLM may call tools multiple times
             Debug.Log(response.Content);
         },
         options
@@ -2045,30 +2040,30 @@ void SendWithToolOptions()
 }
 ```
 
-#### ツールの管理
+#### Manage tools
 
 ```csharp
 void ManageTools()
 {
-    // 登録済みツール一覧を取得
+    // List registered tools
     var tools = _client.GetRegisteredTools();
     foreach (var tool in tools)
     {
         Debug.Log($"Tool: {tool.Name} - {tool.Description}");
     }
 
-    // ツールが登録されているか確認
+    // Check if a tool is registered
     bool hasAddTool = _client.HasTool("add_numbers");
 
-    // ツールを削除
+    // Unregister a tool
     _client.UnregisterTool("add_numbers");
 
-    // すべてのツールを削除
+    // Remove all tools
     _client.RemoveAllTools();
 }
 ```
 
-#### ストリーミングとツールの組み合わせ
+#### Streaming + tools
 
 ```csharp
 void StreamingWithTools()
@@ -2083,12 +2078,12 @@ void StreamingWithTools()
 
             if (!response.IsFinal)
             {
-                // ストリーミング中の部分応答
+                // Partial streaming response
                 Debug.Log($"Partial: {response.Content}");
             }
             else
             {
-                // 最終応答（ツール実行後）
+                // Final response (after tool execution)
                 Debug.Log($"Final: {response.Content}");
             }
         },
@@ -2097,9 +2092,9 @@ void StreamingWithTools()
 }
 ```
 
-#### 手動スキーマ指定（高度な使い方）
+#### Manual schema (advanced)
 
-リフレクションによる自動生成ではなく、手動で JSON Schema を指定することもできます：
+You can specify JSON Schema manually instead of relying on reflection:
 
 ```csharp
 void RegisterToolWithManualSchema()
@@ -2119,7 +2114,7 @@ void RegisterToolWithManualSchema()
         },
         callback: (string json) =>
         {
-            // JSON 文字列を手動でパース
+            // Parse JSON manually
             var obj = Newtonsoft.Json.Linq.JObject.Parse(json);
             string name = obj["name"].ToString();
             int age = obj["age"]?.Value<int>() ?? 0;
@@ -2130,20 +2125,20 @@ void RegisterToolWithManualSchema()
 }
 ```
 
-#### 注意事項
+#### Notes
 
-- **対応モデル**：Tools 機能は一部のモデルのみ対応（例: `llama3.2`, `mistral` など）
-- **デバッグモード**：`DebugMode = true` でツール実行のログを確認可能
-- **戻り値の型**：プリミティブ型、カスタムオブジェクト、配列はすべて自動変換されます
-- **パフォーマンス**：ツール呼び出しは追加の LLM リクエストを伴うため、複数回の往復が発生します
+- **Supported models**: Tools are supported only by some models (e.g., `llama3.2`, `mistral`).
+- **Debug mode**: `DebugMode = true` logs tool execution.
+- **Return types**: Primitive types, custom objects, and arrays are all auto-converted.
+- **Performance**: Tool calls require additional LLM requests, so multiple round-trips occur.
 
-### 4.12 JSON形式のレスポンス指定
+### 4.12 JSON Response Format
 
-LLM からのレスポンスを JSON 形式で取得できます。構造化されたデータが必要な場合や、特定のスキーマに従ったレスポンスを得たい場合に便利です。
+You can request responses in JSON format. This is useful for structured data or schema-constrained output.
 
-#### 基本的な JSON 形式の指定
+#### Basic JSON response
 
-`Format` プロパティに `ChatRequestOptions.FormatConstants.Json` を指定することで、レスポンスを JSON 形式で受け取れます。
+Set `Format` to `ChatRequestOptions.FormatConstants.Json` to request JSON output.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -2162,7 +2157,7 @@ public class JsonFormatExample : MonoBehaviour
             DebugMode = true
         });
 
-        // JSON 形式でレスポンスを取得
+        // Request JSON response
         var options = new ChatRequestOptions
         {
             Format = ChatRequestOptions.FormatConstants.Json
@@ -2178,11 +2173,11 @@ public class JsonFormatExample : MonoBehaviour
                     return;
                 }
 
-                // レスポンスは JSON 文字列
+                // Response is JSON string
                 Debug.Log($"JSON Response: {response.Content}");
-                // 例: {"name": "John Doe", "age": 30, "email": "john@example.com"}
+                // Example: {"name": "John Doe", "age": 30, "email": "john@example.com"}
 
-                // パースして使用
+                // Parse and use
                 var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
                 string name = json["name"]?.ToString();
                 int age = json["age"]?.Value<int>() ?? 0;
@@ -2194,9 +2189,9 @@ public class JsonFormatExample : MonoBehaviour
 }
 ```
 
-#### JSON スキーマを使った詳細な指定
+#### JSON Schema for stricter structure
 
-`FormatSchema` プロパティで JSON Schema を指定することで、より厳密な構造を持つレスポンスを得られます。
+Use `FormatSchema` to specify JSON Schema and enforce output structure.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -2211,7 +2206,7 @@ public class JsonSchemaExample : MonoBehaviour
     {
         _client = LLMClientFactory.CreateOllamaClient(new OllamaConfig());
 
-        // JSON Schema を指定
+        // Specify JSON Schema
         var options = new ChatRequestOptions
         {
             FormatSchema = new
@@ -2235,7 +2230,7 @@ public class JsonSchemaExample : MonoBehaviour
                 if (error == null)
                 {
                     Debug.Log($"Structured JSON: {response.Content}");
-                    // レスポンスは指定したスキーマに従った JSON
+                    // Response matches the schema
                 }
             },
             options
@@ -2244,7 +2239,7 @@ public class JsonSchemaExample : MonoBehaviour
 }
 ```
 
-#### 配列を含むスキーマ
+#### Schema with arrays
 
 ```csharp
 void RequestArrayData()
@@ -2301,7 +2296,7 @@ void RequestArrayData()
 }
 ```
 
-#### ゲームデータ生成の実用例
+#### Practical game data generation
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -2363,7 +2358,7 @@ public class GameDataGenerator : MonoBehaviour
 
                 try
                 {
-                    // JSON をデシリアライズ
+                    // Deserialize JSON
                     var enemyData = Newtonsoft.Json.JsonConvert.DeserializeObject<EnemyData>(response.Content);
                     Debug.Log($"Generated: {enemyData.name} (HP: {enemyData.health}, ATK: {enemyData.attack})");
                     onComplete?.Invoke(enemyData);
@@ -2379,7 +2374,7 @@ public class GameDataGenerator : MonoBehaviour
 }
 ```
 
-#### Task 版での使用
+#### Task-based usage
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -2418,7 +2413,7 @@ public class AsyncJsonExample : MonoBehaviour
 }
 ```
 
-#### ストリーミングでの使用
+#### Streaming usage
 
 ```csharp
 void StreamingJsonExample()
@@ -2436,14 +2431,14 @@ void StreamingJsonExample()
 
             if (response.IsFinal)
             {
-                // 最終的な完全な JSON
+                // Complete JSON
                 Debug.Log($"Complete JSON: {response.Content}");
                 var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
-                // 処理...
+                // Process...
             }
             else
             {
-                // ストリーミング中の部分的な JSON（表示用）
+                // Partial JSON chunks (for display)
                 Debug.Log($"Partial: {response.Content}");
             }
         },
@@ -2452,21 +2447,21 @@ void StreamingJsonExample()
 }
 ```
 
-#### 注意事項
+#### Notes
 
-- **FormatSchema と Format の優先順位**：`FormatSchema` が指定されている場合、`Format` は無視されます
-- **対応モデル**：JSON 形式の指定は、対応するモデルでのみ正しく動作します（例: `llama3.2`, `mistral` など）
-- **パース処理**：JSON レスポンスは文字列として返されるため、`Newtonsoft.Json` などでパースが必要です
-- **エラーハンドリング**：スキーマが複雑すぎる場合や、モデルが対応していない場合、エラーが発生する可能性があります
-- **ストリーミング時の注意**：ストリーミングモードでは、`IsFinal = true` の時のみ完全な JSON が保証されます
+- **FormatSchema vs Format**: If `FormatSchema` is set, `Format` is ignored.
+- **Supported models**: JSON format works correctly only on compatible models (e.g., `llama3.2`, `mistral`).
+- **Parsing**: JSON responses are strings; parse with `Newtonsoft.Json` or similar.
+- **Error handling**: Complex schemas or unsupported models can cause errors.
+- **Streaming**: Full JSON is guaranteed only when `IsFinal = true`.
 
-## 5. 実践例
+## 5. Practical Examples
 
-これまでに学んだ機能を組み合わせた、実際のゲーム開発での応用例を紹介します。
+Here are practical examples that combine the features covered so far.
 
-### ゲーム内 NPC 会話システム
+### In-game NPC conversation system
 
-実際のゲーム開発でよくあるパターンの実装例です。UI統合、キャンセル処理、エラーハンドリングを含みます。
+A common game development pattern including UI integration, cancellation, and error handling.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -2490,7 +2485,7 @@ public class NPCChatSystem : MonoBehaviour
 
     void Start()
     {
-        // 設定
+        // Configuration
         var config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -2501,7 +2496,7 @@ public class NPCChatSystem : MonoBehaviour
         
         _client = LLMClientFactory.CreateOllamaClient(config);
         
-        // セッション保存ディレクトリを設定
+        // Configure session save directory
         _sessionDirectory = System.IO.Path.Combine(
             Application.persistentDataPath,
             "NPCChatSessions"
@@ -2511,12 +2506,12 @@ public class NPCChatSystem : MonoBehaviour
             System.IO.Directory.CreateDirectory(_sessionDirectory);
         }
         
-        // UI イベント設定
+        // UI event setup
         sendButton.onClick.AddListener(OnSendClicked);
         cancelButton.onClick.AddListener(OnCancelClicked);
         cancelButton.gameObject.SetActive(false);
         
-        // 前回のセッションを復元
+        // Restore previous session
         LoadPreviousSession();
     }
 
@@ -2525,25 +2520,25 @@ public class NPCChatSystem : MonoBehaviour
         string userMessage = playerInputField.text.Trim();
         if (string.IsNullOrEmpty(userMessage)) return;
         
-        // UI を更新
+        // Update UI
         playerInputField.text = "";
         playerInputField.interactable = false;
         sendButton.interactable = false;
         cancelButton.gameObject.SetActive(true);
-        npcDialogueText.text = "(考え中...)";
+        npcDialogueText.text = "(Thinking...)";
         
-        // キャンセルトークンを作成
+        // Create cancellation token
         _cancellationTokenSource = new CancellationTokenSource();
         
-        // NPC の応答を取得（ストリーミング）
+        // Get NPC response (streaming)
         var options = new ChatRequestOptions
         {
             SessionId = _currentNPCId,
             Temperature = 0.8f,
-            Priority = 50,  // 通常優先度
+            Priority = 50,  // Normal priority
             WaitIfBusy = true,
             CancellationToken = _cancellationTokenSource.Token,
-            SystemPrompt = "あなたは親切な雑貨屋の店主です。冒険者に親しみやすく話しかけてください。"
+            SystemPrompt = "You are a friendly general store owner. Speak warmly to adventurers."
         };
         
         StartCoroutine(_client.SendMessageStreamingAsync(
@@ -2568,12 +2563,12 @@ public class NPCChatSystem : MonoBehaviour
             if (System.IO.File.Exists(sessionPath))
             {
                 _client.LoadSession(sessionPath, _currentNPCId, encryptionKey: null);
-                Debug.Log($"前回のセッションを復元しました: {_currentNPCId}");
+                Debug.Log($"Restored previous session: {_currentNPCId}");
             }
         }
         catch (Exception ex)
         {
-            Debug.LogWarning($"セッション復元エラー: {ex.Message}");
+            Debug.LogWarning($"Session restore error: {ex.Message}");
         }
     }
 
@@ -2586,12 +2581,12 @@ public class NPCChatSystem : MonoBehaviour
             return;
         }
         
-        // ストリーミングで段階的に表示
+        // Streamed incremental display
         npcDialogueText.text = response.Content;
         
         if (response.IsFinal)
         {
-            // 応答完了時にセッションを保存
+            // Save session on completion
             SaveCurrentSession();
             ResetUI();
         }
@@ -2607,18 +2602,18 @@ public class NPCChatSystem : MonoBehaviour
             );
 
             _client.SaveSession(sessionPath, _currentNPCId, encryptionKey: null);
-            Debug.Log($"セッションを保存しました: {sessionPath}");
+            Debug.Log($"Session saved: {sessionPath}");
         }
         catch (Exception ex)
         {
-            Debug.LogError($"セッション保存エラー: {ex.Message}");
+            Debug.LogError($"Session save error: {ex.Message}");
         }
     }
 
     void OnCancelClicked()
     {
         _cancellationTokenSource?.Cancel();
-        npcDialogueText.text = "(会話をキャンセルしました)";
+        npcDialogueText.text = "(Conversation canceled)";
     }
 
     void HandleError(ChatError error)
@@ -2626,17 +2621,17 @@ public class NPCChatSystem : MonoBehaviour
         switch (error.ErrorType)
         {
             case LLMErrorType.ConnectionFailed:
-                npcDialogueText.text = "(店主は今席を外しているようだ...)";
-                Debug.LogWarning("NPC システムエラー: サーバ接続失敗");
+                npcDialogueText.text = "(The shopkeeper seems to be away...)";
+                Debug.LogWarning("NPC system error: connection failed");
                 break;
                 
             case LLMErrorType.Cancelled:
-                npcDialogueText.text = "(会話を中断した)";
+                npcDialogueText.text = "(Conversation interrupted)";
                 break;
                 
             default:
-                npcDialogueText.text = "(店主は言葉に詰まっている...)";
-                Debug.LogError($"NPC システムエラー: {error.Message}");
+                npcDialogueText.text = "(The shopkeeper is at a loss for words...)";
+                Debug.LogError($"NPC system error: {error.Message}");
                 break;
         }
     }
@@ -2651,16 +2646,16 @@ public class NPCChatSystem : MonoBehaviour
     void OnDestroy()
     {
         _cancellationTokenSource?.Dispose();
-        // 終了時にセッションを保存
+        // Save session on exit
         SaveCurrentSession();
         _client?.ClearAllMessages();
     }
 }
 ```
 
-### 複数 NPC の並列会話管理
+    ### Parallel conversation management for multiple NPCs
 
-複数の NPC と同時に会話する場合の実装例です。優先度設定とセッション管理の実用例を示しています。
+    Example for concurrent NPC conversations, including priority and session management.
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -2678,31 +2673,31 @@ public class MultiNPCManager : MonoBehaviour
         {
             ServerUrl = "http://localhost:11434",
             DefaultModelName = "mistral",
-            MaxConcurrentSessions = 2  // 2人まで同時会話可能
+            MaxConcurrentSessions = 2  // Up to 2 concurrent conversations
         };
         
         _client = LLMClientFactory.CreateOllamaClient(config);
         
-        // NPC プロファイルを定義
+        // Define NPC profiles
         _npcProfiles = new Dictionary<string, NPCProfile>
         {
             ["shopkeeper"] = new NPCProfile
             {
                 SessionId = "npc-shopkeeper",
-                Priority = 50,  // 通常優先度
-                SystemPrompt = "あなたは親切な雑貨屋の店主です。"
+                Priority = 50,  // Normal priority
+                SystemPrompt = "You are a friendly general store owner."
             },
             ["quest-giver"] = new NPCProfile
             {
                 SessionId = "npc-quest-giver",
-                Priority = 100,  // 高優先度（クエスト進行に重要）
-                SystemPrompt = "あなたは重要なクエストを与える賢者です。"
+                Priority = 100,  // High priority (important for quest progress)
+                SystemPrompt = "You are a wise sage who gives important quests."
             },
             ["random-villager"] = new NPCProfile
             {
                 SessionId = "npc-villager",
-                Priority = -50,  // 低優先度（フレーバー）
-                SystemPrompt = "あなたは村の住人です。世間話をします。"
+                Priority = -50,  // Low priority (flavor)
+                SystemPrompt = "You are a villager who makes small talk."
             }
         };
     }
@@ -2759,201 +2754,201 @@ public class MultiNPCManager : MonoBehaviour
 }
 ```
 
-## 6. クラス構成
+## 6. Class Structure
 
 ```
 Runtime/LLM/
 ├── Core Data Models
-│   ├── ChatMessage.cs           # チャットメッセージ
-│   ├── ChatResponse.cs          # LLM からの応答
-│   ├── ChatError.cs             # エラー情報
-│   ├── ChatLLMException.cs      # Task 例外ラッパー
-│   └── ChatRequestOptions.cs    # リクエストオプション
+│   ├── ChatMessage.cs           # Chat message
+│   ├── ChatResponse.cs          # LLM response
+│   ├── ChatError.cs             # Error info
+│   ├── ChatLLMException.cs      # Task exception wrapper
+│   └── ChatRequestOptions.cs    # Request options
 │
 ├── Manager & Client
-│   ├── ChatHistoryManager.cs    # メッセージ履歴管理（セッション対応）
-│   ├── ChatSessionPersistence.cs# セッション永続化（Save/Load）
-│   ├── ChatEncryption.cs        # 暗号化・復号化（AES-256）
-│   ├── CoroutineRunner.cs       # Task ブリッジ用ランナー
-│   ├── OllamaConfig.cs          # 設定
-│   ├── OllamaServerManager.cs   # サーバライフサイクル管理
-│   ├── OllamaClient.cs          # Ollama クライアント実装
-│   ├── HttpRequestHelper.cs     # HTTP リトライロジック（内部用）
+│   ├── ChatHistoryManager.cs    # Message history (session-aware)
+│   ├── ChatSessionPersistence.cs# Session persistence (Save/Load)
+│   ├── ChatEncryption.cs        # Encryption/decryption (AES-256)
+│   ├── CoroutineRunner.cs       # Task bridge runner
+│   ├── OllamaConfig.cs          # Configuration
+│   ├── OllamaServerManager.cs   # Server lifecycle management
+│   ├── OllamaClient.cs          # Ollama client implementation
+│   ├── HttpRequestHelper.cs     # HTTP retry logic (internal)
 │
 └── Factory & Interface
-    ├── IChatLLMClient.cs        # クライアントインターフェース
-    └── LLMClientFactory.cs      # クライアント生成ファクトリ
+    ├── IChatLLMClient.cs        # Client interface
+    └── LLMClientFactory.cs      # Client factory
 ```
 
-## 7. 設定オプション
+## 7. Configuration Options
 
-`OllamaConfig` の主要なプロパティ：
+Key properties in `OllamaConfig`:
 
-| プロパティ | 型 | デフォルト | 説明 |
+| Property | Type | Default | Description |
 |-----------|-----|----------|------|
-| ServerUrl | string | http://localhost:11434 | Ollama サーバの URL。リモートサーバも指定可能 |
-| DefaultModelName | string | mistral | デフォルトのモデル名。`ollama list` で確認可能 |
-| MaxRetries | int | 3 | リトライの最大回数。ネットワークエラー時の自動再試行回数 |
-| RetryDelaySeconds | float | 1.0f | リトライの初期遅延時間。指数バックオフで増加 |
-| DefaultSeed | int | -1 | デフォルトシード値。-1 でランダム、固定値で再現性確保 |
-| HttpTimeoutSeconds | float | 60.0f | HTTP リクエストのタイムアウト時間（秒） |
-| DebugMode | bool | false | デバッグログの出力。true で詳細なログを表示 |
-| AutoStartServer | bool | true | Ollama サーバを自動起動。false で手動管理 |
-| EnableHealthCheck | bool | true | サーバ起動後にヘルスチェックを実行。接続確認用 |
-| ExecutablePath | string | - | Ollama 実行ファイルのパス。AutoStartServer=true の場合に必要 |
-| ModelsDirectory | string | ./Models | Ollama モデルディレクトリ。環境変数 OLLAMA_MODELS に相当 |
-| MaxConcurrentSessions | int | 1 | 同時実行可能なセッション数。GPU メモリ容量に応じて調整 |
+| ServerUrl | string | http://localhost:11434 | Ollama server URL (can be remote) |
+| DefaultModelName | string | mistral | Default model name; see `ollama list` |
+| MaxRetries | int | 3 | Max retry attempts for network failures |
+| RetryDelaySeconds | float | 1.0f | Initial retry delay (exponential backoff) |
+| DefaultSeed | int | -1 | Default seed; -1 = random, fixed for reproducibility |
+| HttpTimeoutSeconds | float | 60.0f | HTTP request timeout (seconds) |
+| DebugMode | bool | false | Debug logs; true for detailed logs |
+| AutoStartServer | bool | true | Auto-start Ollama server; false for manual control |
+| EnableHealthCheck | bool | true | Run health check after server start |
+| ExecutablePath | string | - | Ollama executable path (required if AutoStartServer=true) |
+| ModelsDirectory | string | ./Models | Ollama models directory; maps to OLLAMA_MODELS |
+| MaxConcurrentSessions | int | 1 | Maximum concurrent sessions; tune to GPU memory |
 
-## 8. デフォルト設定について
+## 8. Default Settings
 
-### デフォルト値の設計方針
+### Design intent for defaults
 
-このライブラリのデフォルト値は、**開発環境での快速な反復開発**を優先して設計されています。
+Defaults are tuned for **fast iteration in development environments**.
 
-| 設定項目 | デフォルト値 | 設計理由 | 本番環境での推奨値 |
+| Setting | Default | Rationale | Production recommendation |
 |--------|---------|--------|-----------------|
-| `AutoStartServer` | `true` | 開発時、サーバの手動起動をスキップできる | `false` |
-| `MaxRetries` | `3` | ネットワーク不安定時に3回のリトライで大半の問題をカバー | `2`～`5`（環境に応じて） |
-| `RetryDelaySeconds` | `1.0f` | 指数バックオフで最大4秒の待機に。開発効率優先 | `1.0f`～`2.0f` |
-| `HttpTimeoutSeconds` | `60.0f` | ローカル環境での大型モデル推論を想定 | `30.0f`～`90.0f` |
-| `DebugMode` | `false` | ログ量を抑制 | `true`（トラブルシューティング時） |
-| `EnableHealthCheck` | `true` | サーバ起動の確実性を重視 | `true` |
-| `MaxConcurrentSessions` | `1` | メモリ制約やGPUリソース制限を想定 | `1`～`4`（GPU容量に応じて） |
+| `AutoStartServer` | `true` | Skip manual startup in development | `false` |
+| `MaxRetries` | `3` | Covers most transient network issues | `2` to `5` (environment-dependent) |
+| `RetryDelaySeconds` | `1.0f` | Exponential backoff with short delays for dev | `1.0f` to `2.0f` |
+| `HttpTimeoutSeconds` | `60.0f` | Local LLMs may need longer inference | `30.0f` to `90.0f` |
+| `DebugMode` | `false` | Reduce log volume | `true` (during troubleshooting) |
+| `EnableHealthCheck` | `true` | Favor startup reliability | `true` |
+| `MaxConcurrentSessions` | `1` | Conservative for memory/GPU constraints | `1` to `4` (by GPU capacity) |
 
-#### AutoStartServer について
+#### About AutoStartServer
 
-**`AutoStartServer = true` が推奨される場合：**
-- ✅ 開発環境（Unity エディタでのテスト）
-- ✅ スタンドアロンビルド（ユーザーがOllamaをインストールしていない場合）
-- ✅ 完全に独立したアプリケーション
+**Recommended when `AutoStartServer = true`:**
+- ✅ Development (Unity editor tests)
+- ✅ Standalone builds where users do not have Ollama installed
+- ✅ Fully self-contained applications
 
-**`AutoStartServer = false` に変更すべき場合：**
-- ❌ Ollama がシステムサービスとして別途起動している
-- ❌ 複数のアプリケーションが同一の Ollama インスタンスを共有
-- ❌ サーバのライフサイクルを明示的に制御したい
-- ❌ リモートサーバに接続する場合
+**Set `AutoStartServer = false` when:**
+- ❌ Ollama is already running as a system service
+- ❌ Multiple apps share a single Ollama instance
+- ❌ You need explicit server lifecycle control
+- ❌ Connecting to a remote server
 
-**推奨設定例：**
+**Recommended configurations:**
 
 ```csharp
-// 開発環境
+// Development
 var devConfig = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
-    AutoStartServer = true,      // サーバを自動起動
-    DebugMode = true,            // 詳細ログ出力
-    MaxRetries = 3,              // 開発中はリトライ多めに
+    AutoStartServer = true,      // Auto-start server
+    DebugMode = true,            // Detailed logs
+    MaxRetries = 3,              // More retries in development
     EnableHealthCheck = true
 };
 
-// 本番環境（Windowsスタンドアロン）
+// Production (Windows standalone)
 var prodConfig = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
-    AutoStartServer = true,      // ユーザー環境で自動起動
+    AutoStartServer = true,      // Auto-start for users
     ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
     ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-    DebugMode = false,           // ログ出力は最小限に
-    MaxRetries = 2,              // 安定環境なので少なめ
-    HttpTimeoutSeconds = 90.0f,  // 大型モデル対応
+    DebugMode = false,           // Minimal logs
+    MaxRetries = 2,              // Stable environment
+    HttpTimeoutSeconds = 90.0f,  // Large models
     EnableHealthCheck = true
 };
 
-// 本番環境（システムサービス）
+// Production (system service)
 var serviceConfig = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
-    AutoStartServer = false,     // 別途起動されているため不要
+    AutoStartServer = false,     // Already running
     DebugMode = false,
     MaxRetries = 2,
     HttpTimeoutSeconds = 60.0f,
-    EnableHealthCheck = false    // 既に起動済みのため不要
+    EnableHealthCheck = false    // Already running
 };
 
-// 本番環境（リモートサーバ）
+// Production (remote server)
 var remoteConfig = new OllamaConfig
 {
     ServerUrl = "http://llm-server.example.com:11434",
     DefaultModelName = "mistral",
-    AutoStartServer = false,     // リモートのため起動できない
+    AutoStartServer = false,     // Remote cannot be started locally
     DebugMode = false,
-    MaxRetries = 5,              // ネットワーク不安定を想定
-    RetryDelaySeconds = 2.0f,    // より長い待機
-    HttpTimeoutSeconds = 120.0f, // ネットワーク遅延を考慮
-    EnableHealthCheck = false    // リモートなため任意
+    MaxRetries = 5,              // Unstable network
+    RetryDelaySeconds = 2.0f,    // Longer waits
+    HttpTimeoutSeconds = 120.0f, // Network latency
+    EnableHealthCheck = false    // Optional for remote
 };
 ```
 
-#### MaxRetries について
+#### About MaxRetries
 
-**なぜデフォルトが 3 なのか：**
+**Why the default is 3:**
 
 ```
-試行回数ごとの成功率（ネットワークエラーの場合）
+Success rate by attempt (network errors)
 
-         成功率  累積成功率
-1回目   ~70%   70%
-2回目   ~80%   94%        
-3回目   ~85%   99%        ← ほとんどの一時的エラーをカバー
-4回目   ~90%   99.9%
-5回目   ~92%   99.99%
+         Success  Cumulative
+Attempt 1 ~70%    70%
+Attempt 2 ~80%    94%
+Attempt 3 ~85%    99%        <- Covers most transient errors
+Attempt 4 ~90%    99.9%
+Attempt 5 ~92%    99.99%
 ```
 
-3回のリトライでネットワークの一時的な問題の **99%** をカバーできることから、デフォルトとして設定されています。
+Three retries cover about **99%** of transient network issues, so this is the default.
 
-**ユースケース別推奨値：**
+**Recommended values by use case:**
 
 ```csharp
-// 開発環境：試行回数を多めに
+// Development: more retries
 if (isDevelopment)
 {
-    config.MaxRetries = 5;  // デバッグ時の失敗をなるべく避ける
+    config.MaxRetries = 5;  // Reduce failures during debugging
 }
 
-// 本番環境・LAN：少なめで十分
+// Production LAN: fewer retries
 if (isProduction && isLocalNetwork)
 {
-    config.MaxRetries = 2;  // ネットワークは安定している
+    config.MaxRetries = 2;  // Stable network
 }
 
-// 本番環境・不安定なネットワーク：多めに
+// Production with unstable network: more retries
 if (isProduction && isUnstableNetwork)
 {
-    config.MaxRetries = 5;  // より強力な再試行
-    config.RetryDelaySeconds = 2.0f;  // 待機時間も長めに
+    config.MaxRetries = 5;  // Stronger retry
+    config.RetryDelaySeconds = 2.0f;  // Longer wait
 }
 
-// モバイルネットワーク環境
+// Mobile networks
 if (isMobileNetwork)
 {
     config.MaxRetries = 4;
     config.RetryDelaySeconds = 1.5f;
-    config.HttpTimeoutSeconds = 90.0f;  // より長いタイムアウト
+    config.HttpTimeoutSeconds = 90.0f;  // Longer timeout
 }
 ```
 
-#### その他のデフォルト値について
+#### Other default values
 
 **`HttpTimeoutSeconds = 60.0f`**
-- ローカル LLM の場合、通常は 1～30 秒で応答
-- 大型モデル（llama2-70b など）の推論時間を考慮して 60 秒
+- Local LLMs typically respond within 1 to 30 seconds
+- 60 seconds accounts for large model inference (e.g., llama2-70b)
 
 **`RetryDelaySeconds = 1.0f`**
-- 指数バックオフ：1秒 → 2秒 → 4秒 → 8秒…
-- 最大 MaxRetries=3 で約 7 秒の待機
-- サーバ一時的な問題からの復帰を想定
+- Exponential backoff: 1s -> 2s -> 4s -> 8s...
+- With MaxRetries=3, total wait is about 7s
+- Assumes recovery from temporary server issues
 
 **`MaxConcurrentSessions = 1`**
-- GPU メモリが限定的な環境を想定
-- 複数セッションの並列実行には大きなリソースが必要
-- 必要に応じて増やす（デフォルトは保守的に設定）
+- Assumes limited GPU memory
+- Parallel sessions require significant resources
+- Increase only as needed (conservative default)
 
-### 推奨される環境別設定パターン
+### Recommended environment-specific patterns
 
-#### Pattern 1: Unity エディタでの開発
+#### Pattern 1: Development in Unity Editor
 
 ```csharp
 void SetupDevelopmentEnvironment()
@@ -2965,7 +2960,7 @@ void SetupDevelopmentEnvironment()
         AutoStartServer = true,
         DebugMode = true,
         MaxRetries = 5,
-        HttpTimeoutSeconds = 120.0f,  // 長めに設定
+        HttpTimeoutSeconds = 120.0f,  // Longer timeout
         EnableHealthCheck = true,
         MaxConcurrentSessions = 1
     };
@@ -2974,7 +2969,7 @@ void SetupDevelopmentEnvironment()
 }
 ```
 
-#### Pattern 2: Windows スタンドアロンビルド
+#### Pattern 2: Windows standalone build
 
 ```csharp
 void SetupWindowsStandaloneEnvironment()
@@ -2990,7 +2985,7 @@ void SetupWindowsStandaloneEnvironment()
         MaxRetries = 3,
         HttpTimeoutSeconds = 90.0f,
         EnableHealthCheck = true,
-        MaxConcurrentSessions = 2  // スペックに応じて調整
+        MaxConcurrentSessions = 2  // Tune to hardware
     };
     
     OllamaServerManager.Initialize(config);
@@ -2998,7 +2993,7 @@ void SetupWindowsStandaloneEnvironment()
 }
 ```
 
-#### Pattern 3: システムサービス環境
+#### Pattern 3: System service environment
 
 ```csharp
 void SetupSystemServiceEnvironment()
@@ -3007,19 +3002,19 @@ void SetupSystemServiceEnvironment()
     {
         ServerUrl = "http://localhost:11434",
         DefaultModelName = "mistral",
-        AutoStartServer = false,  // サービスが別途起動
+        AutoStartServer = false,  // Service already running
         DebugMode = false,
-        MaxRetries = 2,  // 安定環境
+        MaxRetries = 2,  // Stable environment
         HttpTimeoutSeconds = 60.0f,
         EnableHealthCheck = false,
-        MaxConcurrentSessions = 4  // リソースに余裕があれば
+        MaxConcurrentSessions = 4  // If resources allow
     };
     
     var client = LLMClientFactory.CreateOllamaClient(config);
 }
 ```
 
-#### Pattern 4: ネットワーク越しのリモート接続
+#### Pattern 4: Remote connection over network
 
 ```csharp
 void SetupRemoteServerEnvironment()
@@ -3028,11 +3023,11 @@ void SetupRemoteServerEnvironment()
     {
         ServerUrl = "http://llm-server.company.com:11434",
         DefaultModelName = "mistral",
-        AutoStartServer = false,  // リモートのため起動不可
+        AutoStartServer = false,  // Remote cannot be started locally
         DebugMode = false,
-        MaxRetries = 5,  // ネットワーク不安定を想定
-        RetryDelaySeconds = 2.0f,  // 長めの待機
-        HttpTimeoutSeconds = 120.0f,  // ネットワーク遅延対応
+        MaxRetries = 5,  // Unstable network
+        RetryDelaySeconds = 2.0f,  // Longer waits
+        HttpTimeoutSeconds = 120.0f,  // Network latency
         EnableHealthCheck = false,
         MaxConcurrentSessions = 2
     };
@@ -3041,270 +3036,270 @@ void SetupRemoteServerEnvironment()
 }
 ```
 
-### トラブルシューティングのためのチェックリスト
+### Troubleshooting checklist
 
-| 問題 | 原因 | 推奨される設定変更 |
+| Issue | Cause | Suggested change |
 |-----|-----|------------------|
-| 頻繁に失敗する | ネットワーク不安定 | `MaxRetries` を増やす、`RetryDelaySeconds` を増やす |
-| タイムアウトが頻発 | サーバ処理が遅い | `HttpTimeoutSeconds` を増やす |
-| メモリ不足 | 複数セッション実行 | `MaxConcurrentSessions` を減らす |
-| サーバが起動しない | 自動起動失敗 | `AutoStartServer=false` にして手動起動 |
-| デバッグが困難 | ログが不足 | `DebugMode=true` に変更 |
+| Frequent failures | Unstable network | Increase `MaxRetries` and `RetryDelaySeconds` |
+| Frequent timeouts | Slow server processing | Increase `HttpTimeoutSeconds` |
+| Out of memory | Too many concurrent sessions | Reduce `MaxConcurrentSessions` |
+| Server won't start | Auto-start failed | Set `AutoStartServer=false` and start manually |
+| Debugging is hard | Insufficient logs | Set `DebugMode=true` |
 
-## 9. エラータイプと対処方法
+## 9. Error Types and Handling
 
-このセクションでは、各エラータイプの詳細と実際の対処方法を説明します。
-自動リトライの仕組みについては、[4.8 リトライとエラーハンドリング](#48-リトライとエラーハンドリング)を参照してください。
+This section describes each error type and how to handle it.
+For retry behavior, see [4.9 Retry and Error Handling](#49-retry-and-error-handling).
 
-### エラータイプと実際のメッセージ例
+### Error types and sample messages
 
-`ChatError` には以下のプロパティが含まれます：
+`ChatError` includes the following properties:
 
 ```csharp
 public class ChatError
 {
-    public LLMErrorType ErrorType { get; set; }  // エラーの種類
-    public string Message { get; set; }           // エラーメッセージ
-    public Exception Exception { get; set; }      // 例外情報（あれば）
-    public int? HttpStatus { get; set; }          // HTTP ステータスコード（あれば）
+    public LLMErrorType ErrorType { get; set; }  // Error type
+    public string Message { get; set; }           // Error message
+    public Exception Exception { get; set; }      // Exception details (if any)
+    public int? HttpStatus { get; set; }          // HTTP status code (if any)
 }
 ```
 
-### エラータイプ別の詳細
+### Error types in detail
 
-#### 1. ConnectionFailed（サーバ接続失敗）
+#### 1. ConnectionFailed (server connection failure)
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Cannot connect to Ollama server at 'http://localhost:11434'. 
 Please check: (1) Server is running, (2) URL is correct, (3) Firewall settings. 
 Original error: Connection refused
 ```
 
-**原因：**
-- Ollama サーバが起動していない
-- ポート番号が間違っている
-- ファイアウォールがブロックしている
+**Causes:**
+- Ollama server is not running
+- Port is incorrect
+- Firewall is blocking
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.ConnectionFailed)
 {
-    Debug.LogError($"接続エラー: {error.Message}");
+    Debug.LogError($"Connection error: {error.Message}");
     
-    // ユーザーガイダンス
+    // User guidance
     ShowUserMessage(
-        "サーバに接続できません",
-        "Ollama サーバが起動していることを確認してください。\n" +
-        $"接続先: {config.ServerUrl}"
+        "Unable to connect",
+        "Please check that the Ollama server is running.\n" +
+        $"Server URL: {config.ServerUrl}"
     );
 }
 ```
 
-#### 2. ServerError（サーバ側エラー）
+#### 2. ServerError (server-side error)
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Ollama server error (HTTP 503). 
 Please check: (1) Server logs, (2) Model is loaded correctly, (3) Server resources (memory/GPU). 
 Original error: Service temporarily unavailable
 ```
 
-**原因：**
-- サーバ内部でクラッシュした
-- サーバが過負荷状態
-- モデルロード失敗
-- GPU/CPUメモリ不足
+**Causes:**
+- Server crash
+- Server overload
+- Model load failure
+- GPU/CPU memory shortage
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.ServerError)
 {
-    Debug.LogError($"サーバエラー: {error.Message}");
+    Debug.LogError($"Server error: {error.Message}");
     
     if (error.HttpStatus == 503)
     {
         ShowUserMessage(
-            "サーバが過負荷です",
-            "サーバが一時的に利用できません。しばらく待ってから再試行してください。"
+            "Server is overloaded",
+            "The server is temporarily unavailable. Please wait and retry."
         );
     }
     else
     {
         ShowUserMessage(
-            "サーバエラー",
-            $"サーバでエラーが発生しました (HTTP {error.HttpStatus})。\n" +
-            "サーバを再起動してみてください。"
+            "Server error",
+            $"Server error occurred (HTTP {error.HttpStatus}).\n" +
+            "Try restarting the server."
         );
     }
 }
 ```
 
-#### 3. ModelNotFound（モデルが見つからない）
+#### 3. ModelNotFound (model not found)
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Model 'mistral' not found (HTTP 404). 
 Please run: 'ollama pull mistral' or check the model name is correct. 
 Use 'ollama list' to see installed models.
 ```
 
-**原因：**
-- 指定したモデル名が間違っている
-- モデルがインストールされていない
-- モデル名のタイポ
+**Causes:**
+- Incorrect model name
+- Model not installed
+- Typo in model name
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.ModelNotFound)
 {
-    Debug.LogError($"モデルエラー: {error.Message}");
+    Debug.LogError($"Model error: {error.Message}");
     
     string modelName = config.DefaultModelName;
     ShowUserMessage(
-        "モデルが見つかりません",
-        $"モデル '{modelName}' がインストールされていません。\n\n" +
-        $"PowerShell で以下を実行してください：\n" +
+        "Model not found",
+        $"Model '{modelName}' is not installed.\n\n" +
+        $"Run the following in PowerShell:\n" +
         $"ollama pull {modelName}\n\n" +
-        "または設定から別のモデルを選択してください。"
+        "Or select a different model in settings."
     );
     
-    // モデル選択UIを表示
+    // Show model selection UI
     ShowModelSelectionUI();
 }
 ```
 
-#### 4. Timeout（タイムアウト）
+#### 4. Timeout
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Request timed out after 60 seconds. 
 Please consider: (1) Increase HttpTimeoutSeconds, (2) Use a smaller model, (3) Check server performance. 
 Original error: The operation has timed out
 ```
 
-**原因：**
-- モデルの推論時間が長すぎる
-- サーバ性能不足
-- ネットワーク遅延
-- 大型モデル使用時
+**Causes:**
+- Model inference is too slow
+- Insufficient server performance
+- Network latency
+- Large model usage
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.Timeout)
 {
-    Debug.LogError($"タイムアウトエラー: {error.Message}");
+    Debug.LogError($"Timeout error: {error.Message}");
     
     ShowUserMessage(
-        "処理がタイムアウトしました",
-        $"処理に {config.HttpTimeoutSeconds}秒 以上かかりました。\n\n" +
-        "対策：\n" +
-        "1. より小さなモデルを使用する\n" +
-        "2. タイムアウト時間を延長する\n" +
-        "3. サーバのGPU/CPU性能を確認する"
+        "Request timed out",
+        $"Processing exceeded {config.HttpTimeoutSeconds} seconds.\n\n" +
+        "Suggestions:\n" +
+        "1. Use a smaller model\n" +
+        "2. Increase timeout\n" +
+        "3. Check server GPU/CPU performance"
     );
     
-    // タイムアウト時間を自動延長（オプション）
+    // Auto-extend timeout (optional)
     if (config.HttpTimeoutSeconds < 180.0f)
     {
         config.HttpTimeoutSeconds *= 1.5f;
-        Debug.Log($"タイムアウトを {config.HttpTimeoutSeconds}秒 に延長しました");
+        Debug.Log($"Extended timeout to {config.HttpTimeoutSeconds} seconds");
     }
 }
 ```
 
-#### 5. InvalidResponse（レスポンスパース失敗）
+#### 5. InvalidResponse (response parse failure)
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Failed to parse response from model 'mistral': Unexpected character. 
 Check Ollama version compatibility.
 ```
 
-**原因：**
-- サーバのバージョンが古い
-- API 仕様の変更
-- レスポンスの破損
-- ライブラリとサーバの互換性問題
+**Causes:**
+- Server version is outdated
+- API spec changes
+- Corrupted response
+- Library/server compatibility issue
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.InvalidResponse)
 {
-    Debug.LogError($"レスポンスパースエラー: {error.Message}");
+    Debug.LogError($"Response parse error: {error.Message}");
     
     ShowUserMessage(
-        "サーバレスポンスの解析に失敗しました",
-        "Ollama サーバのバージョンを確認してください。\n" +
-        "推奨バージョン: v0.1.0 以降\n\n" +
-        "サーバを再起動しても解決しない場合は、\n" +
-        "デバッグモードを有効にして詳細を確認してください。"
+        "Failed to parse server response",
+        "Check the Ollama server version.\n" +
+        "Recommended version: v0.1.0 or later\n\n" +
+        "If restarting doesn't help,\n" +
+        "enable debug mode to inspect details."
     );
     
-    // デバッグモードを有効化
+    // Enable debug mode
     if (!config.DebugMode)
     {
         config.DebugMode = true;
-        Debug.Log("デバッグモードを有効にしました");
+        Debug.Log("Debug mode enabled");
     }
 }
 ```
 
-#### 6. Cancelled（ユーザーによるキャンセル）
+#### 6. Cancelled (user cancellation)
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Request cancelled for session 'chat-session-1' by user
 ```
 
-**原因：**
-- ユーザーが `CancellationToken.Cancel()` を呼び出した
-- タイムアウト付きキャンセルトークンで時間切れ
+**Causes:**
+- User called `CancellationToken.Cancel()`
+- Timeout-based cancellation elapsed
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.Cancelled)
 {
-    Debug.Log($"キャンセル: {error.Message}");
+    Debug.Log($"Cancelled: {error.Message}");
     
-    // UI を元の状態に戻す
+    // Restore UI state
     HideProgressBar();
     EnableInputField();
 }
 ```
 
-#### 7. Unknown（その他のエラー）
+#### 7. Unknown (other errors)
 
-**典型的なメッセージ例：**
+**Typical message:**
 ```
 Client is busy. Running sessions: 1/1, Pending requests: 2. 
 Set WaitIfBusy=true to queue the request.
 ```
 
-**原因：**
-- リクエストが多すぎる（`WaitIfBusy=false` の場合）
-- 予期しない例外
+**Causes:**
+- Too many requests (when `WaitIfBusy=false`)
+- Unexpected exception
 
-**対応方法：**
+**Handling:**
 ```csharp
 if (error.ErrorType == LLMErrorType.Unknown)
 {
-    Debug.LogError($"エラー: {error.Message}");
+    Debug.LogError($"Error: {error.Message}");
     
     if (error.Message.Contains("busy"))
     {
         ShowUserMessage(
-            "クライアントが使用中です",
-            "前のリクエストが完了するまで待機してください。\n" +
-            "または WaitIfBusy=true に設定して自動的にキューに入れることができます。"
+            "Client is busy",
+            "Please wait for the previous request to finish.\n" +
+            "Or set WaitIfBusy=true to queue automatically."
         );
     }
     else
     {
         ShowUserMessage(
-            "予期しないエラー",
-            $"エラーが発生しました: {error.Message}\n\n" +
-            "デバッグモードを有効にして詳細を確認してください。"
+            "Unexpected error",
+            $"An error occurred: {error.Message}\n\n" +
+            "Enable debug mode to inspect details."
         );
         
         if (error.Exception != null)
@@ -3315,7 +3310,7 @@ if (error.ErrorType == LLMErrorType.Unknown)
 }
 ```
 
-### 包括的なエラーハンドリング例
+### Comprehensive error handling example
 
 ```csharp
 public class RobustChatManager : MonoBehaviour
@@ -3360,57 +3355,57 @@ public class RobustChatManager : MonoBehaviour
 
     void HandleError(ChatError error)
     {
-        // エラーログを記録（本番環境用）
+        // Record error logs (production)
         LogErrorToFile(error);
 
         switch (error.ErrorType)
         {
             case LLMErrorType.ConnectionFailed:
                 ShowUserMessage(
-                    "サーバに接続できません",
-                    "Ollama サーバが起動していることを確認してください。"
+                    "Unable to connect",
+                    "Please check that the Ollama server is running."
                 );
                 break;
 
             case LLMErrorType.ServerError:
                 ShowUserMessage(
-                    "サーバエラーが発生しました",
-                    $"サーバを再起動してください。(エラーコード: {error.HttpStatus})"
+                    "Server error occurred",
+                    $"Please restart the server. (Error code: {error.HttpStatus})"
                 );
                 break;
 
             case LLMErrorType.ModelNotFound:
                 string modelName = _config.DefaultModelName;
                 ShowUserMessage(
-                    "モデルが見つかりません",
-                    $"モデル '{modelName}' がインストールされていません。\n" +
-                    "設定からモデルをインストールしてください。"
+                    "Model not found",
+                    $"Model '{modelName}' is not installed.\n" +
+                    "Please install it from settings."
                 );
                 ShowModelSelectionUI();
                 break;
 
             case LLMErrorType.Timeout:
                 ShowUserMessage(
-                    "処理がタイムアウトしました",
-                    "サーバの処理に時間がかかっています。もう一度試すか、より小さなモデルを使用してください。"
+                    "Request timed out",
+                    "The server is taking too long. Try again or use a smaller model."
                 );
                 break;
 
             case LLMErrorType.InvalidResponse:
                 ShowUserMessage(
-                    "予期しないエラー",
-                    "サーバとの通信に問題が発生しました。アプリを再起動してください。"
+                    "Unexpected error",
+                    "There was a problem communicating with the server. Restart the app."
                 );
                 break;
 
             case LLMErrorType.Cancelled:
-                Debug.Log("リクエストがキャンセルされました");
+                Debug.Log("Request was cancelled");
                 break;
 
             default:
                 ShowUserMessage(
-                    "エラーが発生しました",
-                    $"詳細: {error.Message}"
+                    "An error occurred",
+                    $"Details: {error.Message}"
                 );
                 break;
         }
@@ -3425,49 +3420,48 @@ public class RobustChatManager : MonoBehaviour
         }
         
         Debug.Log(logMessage);
-        // 本番環境ではファイルに記録
+        // Record to a file in production
         // File.AppendAllText("error_log.txt", logMessage + "\n");
     }
 
     void ShowUserMessage(string title, string message)
     {
         Debug.LogWarning($"{title}: {message}");
-        // UI でダイアログ表示など
+        // Show a dialog in UI, etc.
     }
 
     void ShowModelSelectionUI()
     {
-        Debug.Log("モデル選択画面を表示");
+        Debug.Log("Show model selection UI");
     }
 }
 ```
+### Error checklist
 
-### エラー発生時のチェックリスト
-
-| エラータイプ | 確認項目 | 解決方法 |
+| Error type | Check | Resolution |
 |-----------|---------|---------|
-| `ConnectionFailed` | サーバ起動、URL、ポート | `ollama serve` でサーバ起動、URLを確認 |
-| `ServerError` | サーバログ、モデル状態、リソース | サーバ再起動、`ollama list` で確認 |
-| `ModelNotFound` | モデル名、インストール状況 | `ollama pull <model-name>` 実行 |
-| `Timeout` | タイムアウト設定、モデルサイズ | `HttpTimeoutSeconds` を増やす、小型モデル使用 |
-| `InvalidResponse` | Ollama バージョン | 最新版にアップデート、互換性確認 |
-| `Cancelled` | キャンセル処理 | UI を適切に更新 |
-| `Unknown` | DebugMode、ログ | `DebugMode=true` で詳細確認 |
+| `ConnectionFailed` | Server running, URL, port | Start with `ollama serve`, verify URL |
+| `ServerError` | Server logs, model status, resources | Restart server, check `ollama list` |
+| `ModelNotFound` | Model name, installed models | Run `ollama pull <model-name>` |
+| `Timeout` | Timeout setting, model size | Increase `HttpTimeoutSeconds`, use smaller model |
+| `InvalidResponse` | Ollama version | Update to latest, check compatibility |
+| `Cancelled` | Cancellation handling | Update UI appropriately |
+| `Unknown` | DebugMode, logs | Inspect details with `DebugMode=true` |
 
-### デバッグのヒント
+### Debugging tips
 
-**詳細ログを有効化：**
+**Enable detailed logs:**
 ```csharp
-config.DebugMode = true;  // 詳細なログが出力される
+config.DebugMode = true;  // Detailed logs
 ```
 
-**エラー内容の確認：**
+**Inspect error details:**
 ```csharp
 if (error != null)
 {
-    Debug.Log($"エラータイプ: {error.ErrorType}");
-    Debug.Log($"メッセージ: {error.Message}");
-    Debug.Log($"HTTPステータス: {error.HttpStatus}");
+    Debug.Log($"Error type: {error.ErrorType}");
+    Debug.Log($"Message: {error.Message}");
+    Debug.Log($"HTTP status: {error.HttpStatus}");
     
     if (error.Exception != null)
     {
@@ -3476,14 +3470,18 @@ if (error != null)
 }
 ```
 
-**サーバ状態の確認コマンド：**
+**Server status commands:**
 ```powershell
-# サーバが起動しているか確認
+# Check if the server is running
 netstat -an | findstr :11434
 
-# インストール済みモデルを確認
+# List installed models
 ollama list
 
-# サーバログを確認（サーバ起動時のウィンドウ）
+# View server logs (server window)
 ```
+
+## 10. Planned Extensions
+
+TBD.
 
