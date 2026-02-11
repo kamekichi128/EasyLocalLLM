@@ -52,21 +52,21 @@ public class SimpleChat : MonoBehaviour
     private void InitializeAITypes()
     {
         aiTypes.Add(
-             "AIアシスタント", new AIType(
+             "AI Assistant", new AIType(
                 "AIアシスタント",
                 "あなたは有能でフレンドリーなAIアシスタントです。応答は必ず日本語でしてください。",
                 "一般的なAIアシスタント。",
                 null,
                 RemoveAllTools));
         aiTypes.Add(
-             "店員", new AIType(
+             "Shopper", new AIType(
                 "店員",
                 "あなたはRPGの気さくなおじさん店員です。応答は必ず日本語で、おじさんらしく返答してください。あなたは自分の店の商品を売ることができます。また、プレイヤーから商品を買い取ることもできます。",
                 "RPGの気さくなおじさん店員。店の在庫を管理し、販売、購入することができる。",
                 null,
                 OnShopperSelectedJapanese));
         aiTypes.Add(
-            "キャラクターシート生成器", new AIType(
+            "Character Generator", new AIType(
                 "キャラクターシート生成器",
                 "入力されたキャラクターの個性に合わせて、キャラクターシートを生成してください。\n"
                 + "力の強さ（STR）、俊敏さ（AGL）、魔法力（MGK）を1～10で設定してください。\n"

@@ -69,7 +69,10 @@ public class SimpleChat : MonoBehaviour
             "Character Generator", new AIType(
                 "Character Generator",
                 "Generate character sheet from input lines. Return only JSON.",
-                "Generate character sheet from your character story telling.",
+                "Generate character sheet from your character story telling.\n"
+                + "Strength (STR), Agility (AGL), and Magic (MGK) should be set from 1 to 10.\n"
+                + "STR and AGL: 5 is average adult male, 8 is Olympic athlete, 2 is child. Magic is usually 1, 5 is average mage, 9 is legendary mage.\n"
+                + "Return only JSON.",
                 new
                 {
                     type = "object",
