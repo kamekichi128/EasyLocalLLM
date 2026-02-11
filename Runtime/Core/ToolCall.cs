@@ -3,17 +3,17 @@ using Newtonsoft.Json.Linq;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// LLM がツール呼び出しを要求した際の情報を表すクラス
+    /// Class representing tool call information when LLM requests tool execution
     /// </summary>
     public class ToolCall
     {
         /// <summary>
-        /// ツール名
+        /// Tool name
         /// </summary>
         public string ToolName { get; set; }
 
         /// <summary>
-        /// JSON 形式のツール入力パラメータ
+        /// Tool input parameters in JSON format
         /// </summary>
         public JToken Arguments { get; set; }
 

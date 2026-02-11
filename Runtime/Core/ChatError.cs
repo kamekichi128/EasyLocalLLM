@@ -3,54 +3,54 @@ using System;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// LLM エラーの種類
+    /// LLM error types
     /// </summary>
     public enum LLMErrorType
     {
-        /// <summary>サーバへの接続に失敗</summary>
+        /// <summary>Failed to connect to server</summary>
         ConnectionFailed,
 
-        /// <summary>サーバがエラーを返した（500, 503など）</summary>
+        /// <summary>Server returned an error (500, 503, etc.)</summary>
         ServerError,
 
-        /// <summary>レスポンスのパースに失敗</summary>
+        /// <summary>Failed to parse response</summary>
         InvalidResponse,
 
-        /// <summary>リクエストがタイムアウト</summary>
+        /// <summary>Request timed out</summary>
         Timeout,
 
-        /// <summary>指定されたモデルが見つからない</summary>
+        /// <summary>Specified model not found</summary>
         ModelNotFound,
 
-        /// <summary>ユーザーによるキャンセル</summary>
+        /// <summary>Cancelled by user</summary>
         Cancelled,
 
-        /// <summary>その他のエラー</summary>
+        /// <summary>Other error</summary>
         Unknown
     }
 
     /// <summary>
-    /// LLM との通信中に発生したエラー情報
+    /// Error information that occurred during communication with LLM
     /// </summary>
     public class ChatError
     {
         /// <summary>
-        /// エラーの種類
+        /// Error type
         /// </summary>
         public LLMErrorType ErrorType { get; set; }
 
         /// <summary>
-        /// エラーメッセージ
+        /// Error message
         /// </summary>
         public string Message { get; set; }
 
         /// <summary>
-        /// 例外情報（あれば）
+        /// Exception information (if any)
         /// </summary>
         public Exception Exception { get; set; }
 
         /// <summary>
-        /// HTTP ステータスコード（あれば）
+        /// HTTP status code (if any)
         /// </summary>
         public int? HttpStatus { get; set; }
 

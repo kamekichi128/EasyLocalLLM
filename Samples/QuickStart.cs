@@ -8,8 +8,8 @@ using UnityEditor.PackageManager;
 using UnityEngine;
 
 /// <summary>
-/// クイックスタート用テストスクリプト
-/// 最小限の設定で新ライブラリを試せます
+/// Quick start test script
+/// Allows trying the new library with minimal configuration
 /// </summary>
 public class QuickStartTest : MonoBehaviour
 {
@@ -21,7 +21,7 @@ public class QuickStartTest : MonoBehaviour
 
     private IEnumerator RunQuickTest()
     {
-        // ステップ 1: クライアント初期化
+        // Step 1: Client initialization
         Debug.Log("[Step 1] Initializing OllamaClient...");
 
         var config = new OllamaConfig
@@ -34,7 +34,7 @@ public class QuickStartTest : MonoBehaviour
         var client = LLMClientFactory.CreateOllamaClient(config);
         Debug.Log("✓ Client initialized");
 
-        // ステップ 2: シンプルなメッセージを送信
+        // Step 2: Send simple message
         Debug.Log("[Step 2] Sending simple message...");
 
         bool completed = false;
@@ -64,7 +64,7 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // ステップ 3: セッション履歴で再度メッセージを送信
+        // Step 3: Send follow-up message with session history
         Debug.Log("[Step 3] Sending follow-up message (with history)...");
 
         completed = false;
@@ -92,7 +92,7 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // ステップ 4: ストリーミングテスト
+        // Step 4: Streaming test
         Debug.Log("[Step 4] Testing streaming...");
 
         completed = false;
@@ -126,27 +126,27 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // ステップ 5: ツール使用テスト 
+        // Step 5: Tool usage test 
         Debug.Log("[Step 5] Testing tool...");
 
         completed = false;
 
-        // ツール登録：足し算
-        // スキーマは自動生成され、戻り値も自動的に文字列化
+        // Tool registration: addition
+        // Schema is auto-generated and return value is automatically converted to string
         client.RegisterTool(
             name: "add_numbers",
             description: "Add two numbers together",
             callback: (Func<int, int, int>)((a, b) => a + b)
         );
 
-        // ツール登録：現在時刻取得
+        // Tool registration: get current time
         client.RegisterTool(
             name: "get_current_time",
             description: "Get the current time",
-            callback: (Func<DateTime>)(() => System.DateTime.Now)  // DateTime も自動変換
+            callback: (Func<DateTime>)(() => System.DateTime.Now)  // DateTime is automatically converted
         );
 
-        // LLM にメッセージ送信
+        // Send LLM message
         StartCoroutine(client.SendMessageAsync(
             "What is 125 + 378? And what time is it now?",
             (response, error) =>
@@ -158,7 +158,7 @@ public class QuickStartTest : MonoBehaviour
                     return;
                 }
 
-                // LLM がツールを自動的に呼び出して回答
+                // call tools automatically handled
                 Debug.Log($"✓ Tool call passed!");
                 Debug.Log($"Assistant: {response.Content}");
                 // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
@@ -172,7 +172,7 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // 完了
+        // All tests done
         Debug.Log("=== All Quick Tests Passed ===");
         Debug.Log("The new EasyLocalLLM library is working correctly!");
     }

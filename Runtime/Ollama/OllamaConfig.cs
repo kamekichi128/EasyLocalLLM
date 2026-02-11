@@ -3,67 +3,67 @@ using UnityEngine;
 namespace EasyLocalLLM.LLM.Ollama
 {
     /// <summary>
-    /// Ollama サーバの設定を管理するクラス
+    /// Class for managing Ollama server configuration
     /// </summary>
     public class OllamaConfig
     {
         /// <summary>
-        /// Ollama サーバの URL（デフォルト: http://localhost:11434）
+        /// Ollama server URL (default: http://localhost:11434)
         /// </summary>
         public string ServerUrl { get; set; } = "http://localhost:11434";
 
         /// <summary>
-        /// デフォルトで使用するモデル名（例: "mistral"、"neural-chat"）
+        /// Default model name to use (e.g. "mistral", "neural-chat")
         /// </summary>
         public string DefaultModelName { get; set; } = "mistral";
 
         /// <summary>
-        /// HTTP リクエストの最大リトライ回数
+        /// Maximum number of HTTP request retries
         /// </summary>
         public int MaxRetries { get; set; } = 3;
 
         /// <summary>
-        /// リトライ時の初期遅延秒数（指数バックオフで増加）
+        /// Initial delay in seconds for retries (increases with exponential backoff)
         /// </summary>
         public float RetryDelaySeconds { get; set; } = 1.0f;
 
         /// <summary>
-        /// デフォルトシード値（-1 で毎回ランダム）
+        /// Default seed value (-1 for random each time)
         /// </summary>
         public int DefaultSeed { get; set; } = -1;
 
         /// <summary>
-        /// Ollama 実行ファイルのパス（サーバ自動起動時に使用）
+        /// Path to Ollama executable (used for auto-starting server)
         /// </summary>
         public string ExecutablePath { get; set; }
 
         /// <summary>
-        /// Ollama モデルディレクトリ（環境変数 OLLAMA_MODELS）
+        /// Ollama models directory (environment variable OLLAMA_MODELS)
         /// </summary>
         public string ModelsDirectory { get; set; } = "./Models";
 
         /// <summary>
-        /// HTTP タイムアウト秒数
+        /// HTTP timeout in seconds
         /// </summary>
         public float HttpTimeoutSeconds { get; set; } = 60.0f;
 
         /// <summary>
-        /// デバッグモード（詳細なログ出力）
+        /// Debug mode (detailed logging)
         /// </summary>
         public bool DebugMode { get; set; } = false;
 
         /// <summary>
-        /// Ollama サーバを自動起動するか
+        /// Auto-start Ollama server
         /// </summary>
         public bool AutoStartServer { get; set; } = true;
 
         /// <summary>
-        /// サーバ起動後にヘルスチェックを実行するか
+        /// Perform health check after server startup
         /// </summary>
         public bool EnableHealthCheck { get; set; } = true;
 
         /// <summary>
-        /// 同時実行可能なセッション数（1 以上）
+        /// Maximum number of concurrent sessions (1 or more)
         /// </summary>
         public int MaxConcurrentSessions { get; set; } = 1;
     }

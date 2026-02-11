@@ -4,12 +4,15 @@ using UnityEngine;
 namespace EasyLocalLLM.LLM.Manager
 {
     /// <summary>
-    /// Task ブリッジ用のコルーチンランナー
+    /// Coroutine runner for Task bridge
     /// </summary>
     internal sealed class CoroutineRunner : MonoBehaviour
     {
         private static CoroutineRunner _instance;
 
+        /// <summary>
+        /// Ensure CoroutineRunner instance exists
+        /// </summary>
         private static CoroutineRunner EnsureInstance()
         {
             if (_instance != null)
@@ -23,6 +26,9 @@ namespace EasyLocalLLM.LLM.Manager
             return _instance;
         }
 
+        /// <summary>
+        /// Run a coroutine
+        /// </summary>
         public static Coroutine Run(IEnumerator routine)
         {
             return EnsureInstance().StartCoroutine(routine);

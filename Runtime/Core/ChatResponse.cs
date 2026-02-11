@@ -3,42 +3,42 @@ using System.Collections.Generic;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// LLM からの応答
+    /// Response from LLM
     /// </summary>
     public class ChatResponse
     {
         /// <summary>
-        /// セッションのID
+        /// Session ID
         /// </summary>
         public string SessionId { get; set; }
 
         /// <summary>
-        /// 応答内容（ストリーミング時は部分応答、IsFinal=true で完全応答）
+        /// Response content (partial response when streaming, complete response when IsFinal=true)
         /// </summary>
         public string Content { get; set; }
 
         /// <summary>
-        /// メッセージのロール（通常は "assistant"）
+        /// Message role (usually "assistant")
         /// </summary>
         public string Role { get; set; }
 
         /// <summary>
-        /// 最終的な応答か（ストリーミング完了時に true）
+        /// Whether this is the final response (true when streaming completes)
         /// </summary>
         public bool IsFinal { get; set; }
 
         /// <summary>
-        /// トークン使用数（あれば）
+        /// Token count (if available)
         /// </summary>
         public int? TokenCount { get; set; }
 
         /// <summary>
-        /// 生のレスポンス JSON（デバッグ用）
+        /// Raw response JSON (for debugging)
         /// </summary>
         public object RawResponse { get; set; }
 
         /// <summary>
-        /// LLM がリクエストしたツール呼び出しのリスト
+        /// List of tool calls requested by LLM
         /// </summary>
         public List<ToolCall> ToolCalls { get; set; }
 

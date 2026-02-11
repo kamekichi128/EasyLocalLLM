@@ -8,8 +8,8 @@ using UnityEngine.Networking;
 namespace EasyLocalLLM.LLM.Ollama
 {
     /// <summary>
-    /// Ollama サーバのライフサイクルを管理するクラス
-    /// ChatBotRunner の機能をライブラリに統合
+    /// Class for managing Ollama server lifecycle
+    /// Integrates ChatBotRunner functionality into the library
     /// </summary>
     public class OllamaServerManager : MonoBehaviour
     {
@@ -22,15 +22,15 @@ namespace EasyLocalLLM.LLM.Ollama
         private Action<bool> _initializationCallback;
 
         /// <summary>
-        /// サーバの起動状態を取得
+        /// Get server running status
         /// </summary>
         public bool IsRunning => _isRunning;
 
         /// <summary>
-        /// OllamaServerManager を初期化（設定指定 + コールバック）
+        /// Initialize OllamaServerManager (with config + callback)
         /// </summary>
-        /// <param name="config">Ollama の設定</param>
-        /// <param name="initializationCallback">初期化完了時のコールバック（成功時 true）</param>
+        /// <param name="config">Ollama configuration</param>
+        /// <param name="initializationCallback">Callback on initialization complete (true on success)</param>
         public static void Initialize(OllamaConfig config, Action<bool> initializationCallback = null)
         {
             if (_instance != null)
@@ -57,7 +57,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// デフォルト設定で初期化
+        /// Initialize with default configuration
         /// </summary>
         public static void Initialize()
         {
@@ -65,7 +65,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// サーバを起動
+        /// Start server
         /// </summary>
         public void StartServer()
         {
@@ -112,7 +112,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     WorkingDirectory = System.Environment.CurrentDirectory
                 };
 
-                // 環境変数を設定
+                // Set environment variables
                 if (Uri.TryCreate(_config.ServerUrl, UriKind.Absolute, out var serverUri))
                 {
                     string hostPort = serverUri.IsDefaultPort
@@ -154,7 +154,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// サーバを停止
+        /// Stop server
         /// </summary>
         public void StopServer()
         {
@@ -188,7 +188,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// プロセスツリーを強制終了
+        /// Force terminate process tree
         /// </summary>
         private void KillProcessTree(Process process)
         {
@@ -203,7 +203,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     if (!File.Exists(taskkill))
                     {
-                        // taskkill が見つからない場合、直接プロセスを終了
+                        // taskkill not found, fallback to simple kill
                         process.Kill();
                         return;
                     }
@@ -230,7 +230,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// サーバのヘルスチェック（簡単なリクエストで動作確認）
+        /// Server health check (simple request to confirm operation)
         /// </summary>
         private IEnumerator HealthCheckCoroutine()
         {
@@ -243,7 +243,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 attempt++;
                 yield return new WaitForSeconds(delaySeconds);
 
-                // /api/show で現在のデフォルトモデル情報を取得
+                // Get current default model information from /api/show
                 using (UnityWebRequest request = new UnityWebRequest(_config.ServerUrl + "/api/show", "POST"))
                 {
                     request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes("{\"model\":\"" + _config.DefaultModelName + "\"}"));

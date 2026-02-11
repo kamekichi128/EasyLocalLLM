@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System;
 
 /// <summary>
-/// Simple chat screen sample
-/// Sends prompts to the loaded LLM model and receives responses
-/// Provides multiple AI types that can be switched to change system prompts and tools
+/// シンプルなチャット画面のサンプル
+/// ロードしたLLMモデルに対して、プロンプトを送り応答を受け取ります
+/// 何種類かのAIタイプを用意し、選択したAIタイプに応じてシステムプロンプトやツールを切り替えます
 /// </summary>
 public class SimpleChat : MonoBehaviour
 {
@@ -52,32 +52,35 @@ public class SimpleChat : MonoBehaviour
     private void InitializeAITypes()
     {
         aiTypes.Add(
-             "AI Assistant", new AIType(
-                "AI Assistant",
-                "You are a friendly and helpful assistant.",
-                "General AI Assitant.",
+             "AIアシスタント", new AIType(
+                "AIアシスタント",
+                "あなたは有能でフレンドリーなAIアシスタントです。応答は必ず日本語でしてください。",
+                "一般的なAIアシスタント。",
                 null,
                 RemoveAllTools));
         aiTypes.Add(
-             "Shopper", new AIType(
-                "Shopper",
-                "You are shopper AI in game. You recieve request from customer. You sell your items from your stock. And you also can buy items from your customer.",
-                "Shopper AI in game. Controll money and store.",
+             "店員", new AIType(
+                "店員",
+                "あなたはRPGの気さくなおじさん店員です。応答は必ず日本語で、おじさんらしく返答してください。あなたは自分の店の商品を売ることができます。また、プレイヤーから商品を買い取ることもできます。",
+                "RPGの気さくなおじさん店員。店の在庫を管理し、販売、購入することができる。",
                 null,
-                OnShopperSelected));
+                OnShopperSelectedJapanese));
         aiTypes.Add(
-            "Character Generator", new AIType(
-                "Character Generator",
-                "Generate character sheet from input lines. Return only JSON.",
-                "Generate character sheet from your character story telling.",
+            "キャラクターシート生成器", new AIType(
+                "キャラクターシート生成器",
+                "入力されたキャラクターの個性に合わせて、キャラクターシートを生成してください。\n"
+                + "力の強さ（STR）、俊敏さ（AGL）、魔法力（MGK）を1～10で設定してください。\n"
+                + "なお、STR、AGLは5が一般的な成人男性で、オリンピック選手が8、子供が2です。魔法力は普通は1で、平均的な魔法使いだと5、伝説の魔法使いが9です。\n"
+                + "JSONだけを返却してください。",
+                "あなたの作りたいキャラクターを紹介してください。",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        STR = new { type = "integer", minimum = 1, maximum = 10, description = "Strength parameter" },
-                        AGL = new { type = "integer", minimum = 1, maximum = 10, description = "Agility parameter" },
-                        MGK = new { type = "integer", minimum = 1, maximum = 10, description = "Magic parameter" },
+                        STR = new { type = "integer", minimum = 1, maximum = 10, description = "力の強さのパラメータ。1～10で、5が成人男性の平均。" },
+                        AGL = new { type = "integer", minimum = 1, maximum = 10, description = "俊敏さのパラメータ。1～10で、5が成人男性の平均。" },
+                        MGK = new { type = "integer", minimum = 1, maximum = 10, description = "魔力のパラメータ。1～10で、5が魔法使いの平均。一般的には1。" },
                     },
                     required = new[] { "STR", "AGL", "MGK" }
                 },
@@ -87,8 +90,9 @@ public class SimpleChat : MonoBehaviour
 
     private void InitializeEasyLocalLLMClient()
     {
-        // Initialize client
-        // If you have ollama.exe running to automatically start the server, please stop it or specify a port that is not in use.
+        // ステップ 1: クライアントの初期化
+        // サーバーを自動起動するため、ollama.exeを立ち上げている場合は終了するか、
+        // 立ち上げていないポートを指定してください。
         var config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
@@ -246,62 +250,64 @@ public class SimpleChat : MonoBehaviour
         }
     }
 
-    private readonly List<ShopItem> shopItems = new()
+
+    private readonly List<ShopItem> shopItemsJapanese = new()
     {
-        new ShopItem("Health Potion", 50),
-        new ShopItem("Health Potion", 50),
-        new ShopItem("Mana Potion", 30),
-        new ShopItem("Mana Potion", 30),
-        new ShopItem("Sword", 200),
-        new ShopItem("Shield", 150),
+        new ShopItem("回復ポーション", 50),
+        new ShopItem("回復ポーション", 50),
+        new ShopItem("魔法ポーション", 30),
+        new ShopItem("魔法ポーション", 30),
+        new ShopItem("はがねの剣", 200),
+        new ShopItem("はがねの盾", 150),
     };
 
-    private readonly List<ShopItem> enableToSellItems = new()
+    private readonly List<ShopItem> enableToSellItemsJapanese = new()
     {
-        new ShopItem("Health Potion", 25),
-        new ShopItem("Mana Potion", 15),
-        new ShopItem("Sword", 100),
-        new ShopItem("Shield", 75),
-        new ShopItem("Bow", 90),
-        new ShopItem("Arrow Bundle", 10),
-        new ShopItem("Helmet", 60),
-        new ShopItem("Armor", 150),
+        new ShopItem("回復ポーション", 25),
+        new ShopItem("魔法ポーション", 15),
+        new ShopItem("はがねの剣", 100),
+        new ShopItem("はがねの盾", 75),
+        new ShopItem("木の弓", 90),
+        new ShopItem("木の矢束", 10),
+        new ShopItem("はがねの兜", 60),
+        new ShopItem("はがねの鎧", 150),
     };
 
-    private List<ShopItem> GetEnableToSellItems()
+
+    private List<ShopItem> GetEnableToSellItemsJapanese()
     {
-        return enableToSellItems;
+        return enableToSellItemsJapanese;
     }
 
-    private List<ShopItem> GetShopItems()
+    private List<ShopItem> GetShopItemsJapanese()
     {
-        return shopItems;
+        return shopItemsJapanese;
     }
 
-    private string BuyItem(string itemName)
+    private string BuyItemJapanese(string itemName)
     {
-        var item = shopItems.Find(i => i.Name == itemName);
+        var item = shopItemsJapanese.Find(i => i.Name == itemName);
         if (item != null)
         {
             if (money >= item.Price)
             {
                 money -= item.Price;
-                shopItems.Remove(item);
-                return "Sold " + itemName + " for " + item.Price;
+                shopItemsJapanese.Remove(item);
+                return itemName + "を" + item.Price + "で売った";
             }
             else
             {
-                return "Not enough money to buy " + itemName;
+                return itemName + "を買う十分なお金がない";
             }
         }
-        return "Item " + itemName + " not found";
+        return itemName + "は見つからない";
     }
 
-    private string SellItem(string itemName, int price)
+    private string SellItemJapanese(string itemName, int price)
     {
         money += price;
-        shopItems.Add(new ShopItem(itemName, price * 2));
-        return "Bought " + itemName + " for " + price;
+        shopItemsJapanese.Add(new ShopItem(itemName, price * 2));
+        return itemName + "を" + price + "で買い取った";
     }
 
     private void RemoveAllTools()
@@ -309,13 +315,13 @@ public class SimpleChat : MonoBehaviour
         client.RemoveAllTools();
     }
 
-    private void OnShopperSelected()
+    private void OnShopperSelectedJapanese()
     {
         client.RemoveAllTools();
-        client.RegisterTool("GetShopItems", "Get list of items in your shop", (Func<List<ShopItem>>)GetShopItems);
-        client.RegisterTool("GetEnableToSellItems", "Get list of items that can be sold to your shop", (Func<List<ShopItem>>)GetEnableToSellItems);
-        client.RegisterTool("BuyItem", "Buy an item from your shop", (Func<string, string>)BuyItem);
-        client.RegisterTool("SellItem", "Sell an item to your shop", (Func<string, int, string>)SellItem);
+        client.RegisterTool("GetShopItems", "店の在庫のリストを取得する", (Func<List<ShopItem>>)GetShopItemsJapanese);
+        client.RegisterTool("GetEnableToSellItems", "店で買い取り可能な商品のリストを取得する", (Func<List<ShopItem>>)GetEnableToSellItemsJapanese);
+        client.RegisterTool("BuyItem", "商品を購入する（店が販売する）", (Func<string, string>)BuyItemJapanese);
+        client.RegisterTool("SellItem", "商品を売る（店が買い取る）", (Func<string, int, string>)SellItemJapanese);
     }
 
     private void LoadHistory()

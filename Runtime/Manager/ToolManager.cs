@@ -8,7 +8,7 @@ using UnityEngine;
 namespace EasyLocalLLM.LLM.Manager
 {
     /// <summary>
-    /// ツールの登録・管理・実行を行うマネージャー
+    /// Manager for tool registration, management, and execution
     /// </summary>
     public class ToolManager
     {
@@ -21,7 +21,10 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ツールを登録（スキーマ自動生成）
+        /// Register tool (automatic schema generation)
+        /// <param name="name">Tool name</param>
+        /// <param name="description">Tool description</param>
+        /// <param name="callback">User-defined callback function</param>
         /// </summary>
         public void RegisterTool(string name, string description, Delegate callback)
         {
@@ -35,7 +38,7 @@ namespace EasyLocalLLM.LLM.Manager
                 throw new ArgumentNullException(nameof(callback));
             }
 
-            // JSON Schema を自動生成
+            // Automatically generate JSON Schema
             var schema = Core.ToolSchemaGenerator.GenerateSchema(callback);
             var paramInfos = Core.ToolSchemaGenerator.GetParameterInfos(callback);
             var returnType = Core.ToolSchemaGenerator.GetReturnType(callback);
@@ -60,7 +63,11 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ツールを登録（手動スキーマ指定）
+        /// Register tool (manual schema specification)
+        /// <param name="name">Tool name</param>
+        /// <param name="description">Tool description</param>
+        /// <param name="inputSchema">JSON Schema (JObject, string, or anonymous type)</param>
+        /// <param name="callback">User-defined callback function</param>
         /// </summary>
         public void RegisterTool(string name, string description, object inputSchema, Delegate callback)
         {
@@ -85,7 +92,7 @@ namespace EasyLocalLLM.LLM.Manager
             }
             else
             {
-                // 匿名型を JSON に変換
+                // Anonymous type or other object
                 var json = JsonConvert.SerializeObject(inputSchema);
                 schema = JObject.Parse(json);
             }
@@ -112,7 +119,8 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ツールを削除
+        /// Unregister tool
+        /// <param name="name">Tool name</param>
         /// </summary>
         public bool UnregisterTool(string name)
         {
@@ -127,7 +135,7 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// すべてのツールを削除
+        /// Unregister all tools
         /// </summary>
         public void RemoveAllTools()
         {
@@ -141,7 +149,7 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// 登録済みツール一覧を取得
+        /// Get all registered tools
         /// </summary>
         public List<Core.ToolDefinition> GetAllTools()
         {
@@ -149,7 +157,8 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ツールが存在するか確認
+        /// Check if tool is registered
+        /// <param name="name">Tool name</param>
         /// </summary>
         public bool HasTool(string name)
         {
@@ -157,7 +166,9 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ツールを実行（型変換自動対応）
+        /// Execute tool (with automatic type conversion)
+        /// <param name="toolName">Tool name</param>
+        /// <param name="argumentsJson">JSON string of arguments</param>
         /// </summary>
         public string ExecuteTool(string toolName, string argumentsJson)
         {
@@ -174,16 +185,16 @@ namespace EasyLocalLLM.LLM.Manager
                     Debug.Log($"[ToolManager] Arguments: {argumentsJson}");
                 }
 
-                // JSON Arguments をパース
+                // Parse JSON Arguments
                 var argsJson = JObject.Parse(argumentsJson);
 
-                // パラメータを型変換
+                // Convert parameters to target types
                 var parameters = ConvertParameters(argsJson, toolDef.ParameterInfos);
 
-                // コールバックを実行
+                // Invoke the callback
                 var result = toolDef.Callback.DynamicInvoke(parameters);
 
-                // 戻り値を文字列に変換
+                // Convert result to string
                 var resultString = ConvertResultToString(result, toolDef.ReturnType);
 
                 if (_debugMode)
@@ -208,7 +219,9 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// JSON パラメータを C# オブジェクトに変換
+        /// Convert JSON parameters to C# objects
+        /// <param name="argsJson">Arguments in JObject format</param>
+        /// <param name="paramInfos">Parameter information list</param>
         /// </summary>
         private object[] ConvertParameters(JObject argsJson, List<System.Reflection.ParameterInfo> paramInfos)
         {
@@ -220,14 +233,14 @@ namespace EasyLocalLLM.LLM.Manager
                 var paramName = paramInfo.Name;
                 var paramType = paramInfo.ParameterType;
 
-                // JSON から値を取得
+                // Get value from JSON and convert to target type
                 if (argsJson.TryGetValue(paramName, out var token))
                 {
                     parameters[i] = ConvertJsonToType(token, paramType);
                 }
                 else if (paramInfo.HasDefaultValue)
                 {
-                    // デフォルト値を使用
+                    // Use default value if not provided
                     parameters[i] = paramInfo.DefaultValue;
                 }
                 else
@@ -240,11 +253,13 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// JSON トークンを指定の型に変換
+        /// Convert JSON token to specified C# type (handles nullable types, primitives, arrays, lists, etc.)
+        /// <param name="token">JSON token to convert</param>
+        /// <param name="targetType">Target C# type</param>
         /// </summary>
         private object ConvertJsonToType(JToken token, Type targetType)
         {
-            // Nullable 型の処理
+            // Handle Nullable types
             var underlyingType = Nullable.GetUnderlyingType(targetType);
             if (underlyingType != null)
             {
@@ -255,7 +270,7 @@ namespace EasyLocalLLM.LLM.Manager
                 targetType = underlyingType;
             }
 
-            // 型に応じた変換
+            // Convert with specific handling for common types
             if (targetType == typeof(string))
             {
                 return token.ToString();
@@ -299,12 +314,14 @@ namespace EasyLocalLLM.LLM.Manager
                 }
             }
 
-            // その他の型は ToObject で変換
+            // Convert other types using ToObject
             return token.ToObject(targetType);
         }
 
         /// <summary>
-        /// 戻り値を文字列に変換
+        /// Convert result to string
+        /// <param name="result">Result object</param>
+        /// <param name="returnType">Return type of the tool</param>
         /// </summary>
         private string ConvertResultToString(object result, Type returnType)
         {
@@ -313,27 +330,27 @@ namespace EasyLocalLLM.LLM.Manager
                 return "null";
             }
 
-            // string はそのまま
+            // string is returned as is
             if (result is string str)
             {
                 return str;
             }
 
-            // プリミティブ型は ToString()
+            // Primitive types use ToString()
             if (returnType.IsPrimitive || returnType == typeof(decimal) ||
                 returnType == typeof(DateTime) || returnType == typeof(Guid))
             {
                 return result.ToString();
             }
 
-            // 配列、List、匿名型などは JSON にシリアライズ
+            // Arrays, Lists, anonymous types, etc. are serialized to JSON
             try
             {
                 return JsonConvert.SerializeObject(result);
             }
             catch
             {
-                // シリアライズ失敗時は ToString()
+                // If serialization fails, use ToString()
                 return result.ToString();
             }
         }

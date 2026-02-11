@@ -8,19 +8,22 @@ using EasyLocalLLM.LLM.Core;
 namespace EasyLocalLLM.LLM.Ollama
 {
     /// <summary>
-    /// HTTP リクエストのリトライロジックを一元管理するヘルパークラス
+    /// Helper class to centrally manage HTTP request retry logic
     /// </summary>
     internal class HttpRequestHelper
     {
-        private readonly OllamaConfig _config;
-
         public HttpRequestHelper(OllamaConfig config)
         {
             _config = config;
         }
 
         /// <summary>
-        /// リトライ機能付きで HTTP リクエストを実行
+        /// Execute HTTP request with retry functionality
+        /// <param name="url">Request URL</param>
+        /// <param name="jsonBody">JSON body</param>
+        /// <param name="onSuccess">Success callback</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// </summary>
         public IEnumerator ExecuteWithRetry(
             string url,
@@ -100,7 +103,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             yield break;
                         }
 
-                        // 指数バックオフでリトライ
+                        // Exponential backoff before retrying
                         float waitTime = _config.RetryDelaySeconds * Mathf.Pow(2, attempt - 1);
                         UnityEngine.Debug.LogWarning($"[Ollama] Retrying in {waitTime} seconds...");
                         yield return new WaitForSeconds(waitTime);
@@ -110,7 +113,13 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// ストリーミング対応の HTTP リクエストを実行
+        /// Execute streaming HTTP request with retry functionality
+        /// <param name="url">Request URL</param>
+        /// <param name="jsonBody">JSON body</param>
+        /// <param name="onChunk">Chunk received callback</param>
+        /// <param name="onComplete">Completion callback (success flag)</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// </summary>
         public IEnumerator ExecuteStreamingWithRetry(
             string url,
@@ -190,7 +199,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     if (request.result == UnityWebRequest.Result.Success)
                     {
-                        // 最後のチャンクも処理
+                        // Process any remaining data after streaming completes
                         var finalData = request.downloadHandler.data;
                         if (finalData != null && finalData.Length > lastProcessedByteCount)
                         {
@@ -256,7 +265,9 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// エラーメッセージから エラータイプを判定
+        /// Determine error type from error message
+        /// <param name="httpStatus">HTTP status code</param>
+        /// <param name="errorMessage">Error message</param>
         /// </summary>
         private LLMErrorType DetermineErrorType(int httpStatus, string errorMessage)
         {
@@ -276,7 +287,12 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// エラータイプに応じた詳細なエラーメッセージを構築
+        /// Build detailed error message based on error type
+        /// <param name="errorType">Error type</param>
+        /// <param name="httpStatus">HTTP status code</param>
+        /// <param name="originalError">Original error message</param>
+        /// <param name="url">Request URL</param>
+        /// <param name="config">Ollama configuration</param>
         /// </summary>
         private string BuildDetailedErrorMessage(LLMErrorType errorType, int httpStatus, string originalError, string url, OllamaConfig config)
         {

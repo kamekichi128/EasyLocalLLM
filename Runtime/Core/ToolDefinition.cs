@@ -6,42 +6,42 @@ using Newtonsoft.Json.Linq;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// ツールの定義を表すクラス
+    /// Class representing tool definition
     /// </summary>
     public class ToolDefinition
     {
         /// <summary>
-        /// ツール名（一意）
+        /// Tool name (unique)
         /// </summary>
         public string Name { get; set; }
 
         /// <summary>
-        /// ツール説明
+        /// Tool description
         /// </summary>
         public string Description { get; set; }
 
         /// <summary>
-        /// JSON Schema 形式のパラメータ定義
+        /// Parameter definition in JSON Schema format
         /// </summary>
         public JObject InputSchema { get; set; }
 
         /// <summary>
-        /// ユーザー定義のコールバック関数
+        /// User-defined callback function
         /// </summary>
         public Delegate Callback { get; set; }
 
         /// <summary>
-        /// パラメータの型情報（型変換用）
+        /// Parameter type information (for type conversion)
         /// </summary>
         public List<ParameterInfo> ParameterInfos { get; set; }
 
         /// <summary>
-        /// 戻り値の型情報（文字列変換用）
+        /// Return type information (for string conversion)
         /// </summary>
         public Type ReturnType { get; set; }
 
         /// <summary>
-        /// Ollama API 形式に変換
+        /// Convert to Ollama API format
         /// </summary>
         public JObject ToOllamaFormat()
         {

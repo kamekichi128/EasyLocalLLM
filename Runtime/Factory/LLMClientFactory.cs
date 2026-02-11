@@ -3,21 +3,21 @@ using EasyLocalLLM.LLM.Ollama;
 namespace EasyLocalLLM.LLM.Factory
 {
     /// <summary>
-    /// LLM クライアントを生成するファクトリクラス
+    /// Factory class for creating LLM clients
     /// </summary>
     public static class LLMClientFactory
     {
         /// <summary>
-        /// Ollama クライアントを生成
+        /// Create Ollama client
         /// </summary>
-        /// <param name="config">Ollama の設定（null の場合はデフォルト設定を使用）</param>
-        /// <returns>OllamaClient インスタンス</returns>
+        /// <param name="config">Ollama configuration (null for default settings)</param>
+        /// <returns>OllamaClient instance</returns>
         public static OllamaClient CreateOllamaClient(OllamaConfig config = null)
         {
             return new OllamaClient(config);
         }
 
-        // 将来の拡張のための他のクライアント
+        // Future extension for other clients
         // public static ILlamaCppClient CreateLlamaCppClient(LlamaCppConfig config) { ... }
         // public static IGptClient CreateGptClient(GptConfig config) { ... }
     }

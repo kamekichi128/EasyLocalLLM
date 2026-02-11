@@ -12,7 +12,7 @@ using EasyLocalLLM.LLM.Manager;
 namespace EasyLocalLLM.LLM.Ollama
 {
     /// <summary>
-    /// Ollama LLM クライアントの実装
+    /// Implementation of Ollama LLM client
     /// </summary>
     public class OllamaClient : IChatLLMClient
     {
@@ -24,19 +24,20 @@ namespace EasyLocalLLM.LLM.Ollama
         private readonly List<PendingRequest> _pendingRequests = new();
         private long _pendingSequence = 0;
 
-        private class PendingRequest
+        /// <summary>
+        /// Pending request information
+        /// </summary>
+        private class PendingRequest(string sessionId, int priority, long order)
         {
-            public string SessionId { get; }
-            public int Priority { get; }
-            public long Order { get; }
-
-            public PendingRequest(string sessionId, int priority, long order)
-            {
-                SessionId = sessionId;
-                Priority = priority;
-                Order = order;
-            }
+            public string SessionId { get; } = sessionId;
+            public int Priority { get; } = priority;
+            public long Order { get; } = order;
         }
+
+        /// <summary>
+        /// Insert pending request in sorted order
+        /// the list is sorted by priority (desc) and order (asc)
+        /// </summary>
 
         private void InsertPendingSorted(PendingRequest request)
         {
@@ -54,6 +55,10 @@ namespace EasyLocalLLM.LLM.Ollama
             }
         }
 
+        /// <summary>
+        /// Get the index of the next runnable request
+        /// <param name="maxConcurrent">Maximum concurrent sessions</param>
+        /// </summary>
         private int GetNextRunnableIndex(int maxConcurrent)
         {
             if (_runningSessions.Count >= maxConcurrent)
@@ -87,6 +92,15 @@ namespace EasyLocalLLM.LLM.Ollama
             return bestIndex;
         }
 
+        /// <summary>
+        /// Wait for turn to send request
+        /// If the request is not allowed to wait and the client is busy, invoke onError and exit
+        /// Otherwise wait until it's this request's turn or cancelled
+        /// </summary>
+        /// <param name="sessionId">Session ID of the request</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onError">Error callback</param>
+        /// <returns></returns>
         private IEnumerator WaitForTurn(string sessionId, ChatRequestOptions options, Action<ChatError> onError)
         {
             int maxConcurrent = Mathf.Max(1, _config.MaxConcurrentSessions);
@@ -134,10 +148,15 @@ namespace EasyLocalLLM.LLM.Ollama
             }
         }
 
+        /// <summary>
+        /// Global system prompt
+        /// </summary>
         public string GlobalSystemPrompt { get; set; } = "You are a helpful AI assistant.";
 
         /// <summary>
-        /// OllamaClient を初期化
+        /// Initialize OllamaClient
+        /// If config is null, default settings will be used
+        /// <param name="config">Ollama configuration</param>
         /// </summary>
         public OllamaClient(OllamaConfig config = null)
         {
@@ -147,11 +166,20 @@ namespace EasyLocalLLM.LLM.Ollama
             _toolManager = new ToolManager(_config.DebugMode);
         }
 
+        /// <summary>
+        /// Clear all message history
+        /// </summary>
         public void ClearAllMessages() => _historyManager.ClearAll();
+
+        /// <summary>
+        /// Clear message history for the specified sessionId
+        /// <param name="sessionId">Session ID</param>
+        /// </summary>
         public void ClearMessages(string sessionId) => _historyManager.Clear(sessionId);
 
         /// <summary>
-        /// セッション情報を取得
+        /// Get session information
+        /// <param name="sessionId">Session ID</param>
         /// </summary>
         public ChatSession GetSession(string sessionId)
         {
@@ -159,7 +187,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// すべてのセッションIDを取得
+        /// Get all session IDs
         /// </summary>
         public IEnumerable<string> GetAllSessionIds()
         {
@@ -167,7 +195,8 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッションが存在するか確認
+        /// Check if a session exists
+        /// <param name="sessionId">Session ID</param>
         /// </summary>
         public bool HasSession(string sessionId)
         {
@@ -175,7 +204,8 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッションのメッセージ数を取得
+        /// Get number of messages in the session
+        /// <param name="sessionId">Session ID</param>
         /// </summary>
         public int GetSessionMessageCount(string sessionId)
         {
@@ -187,10 +217,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッションのシステムプロンプトを設定
+        /// Set session's system prompt
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
-        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="systemPrompt">System prompt to set</param>
         public void SetSessionSystemPrompt(string sessionId, string systemPrompt)
         {
             if (string.IsNullOrEmpty(sessionId))
@@ -208,10 +238,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッションのシステムプロンプトを取得
+        /// Get session's system prompt
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
-        /// <returns>システムプロンプト、セッションが存在しない場合はnull</returns>
+        /// <param name="sessionId">Session ID</param>
+        /// <returns>System prompt, or null if the session does not exist</returns>
         public string GetSessionSystemPrompt(string sessionId)
         {
             if (!_historyManager.HasSession(sessionId))
@@ -224,9 +254,9 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッションのシステムプロンプトをリセット（グローバルプロンプトを使用するように）
+        /// Reset session's system prompt (to use the global prompt)
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
+        /// <param name="sessionId">Session ID</param>
         public void ResetSessionSystemPrompt(string sessionId)
         {
             if (!_historyManager.HasSession(sessionId))
@@ -248,10 +278,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// 複数のセッションに対してシステムプロンプトをバッチ設定
+        /// Batch set system prompt for multiple sessions
         /// </summary>
-        /// <param name="sessionIds">セッションIDのリスト</param>
-        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        /// <param name="sessionIds">List of session IDs</param>
+        /// <param name="systemPrompt">System prompt to set</param>
         public void SetSystemPromptForMultipleSessions(IEnumerable<string> sessionIds, string systemPrompt)
         {
             if (sessionIds == null)
@@ -273,7 +303,7 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// すべてのセッションのシステムプロンプトをリセット
+        /// Reset system prompt for all sessions
         /// </summary>
         public void ResetAllSessionSystemPrompts()
         {
@@ -293,9 +323,9 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッションのシステムプロンプトと履歴をリセット
+        /// Clear session messages and reset system prompt
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
+        /// <param name="sessionId">Session ID</param>
         public void ClearSessionWithPrompt(string sessionId)
         {
             _historyManager.Clear(sessionId);
@@ -307,6 +337,12 @@ namespace EasyLocalLLM.LLM.Ollama
             }
         }
 
+        /// <summary>
+        /// Prepare cancellation token by linking option and external tokens
+        /// <param name="options">Chat request options</param>
+        /// <param name="externalToken">External cancellation token</param>
+        /// <param name="linkedSource">Output linked CancellationTokenSource (null if not linked)</param>
+        /// </summary>
         private static CancellationToken PrepareCancellationToken(
             ChatRequestOptions options,
             CancellationToken externalToken,
@@ -332,7 +368,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// メッセージを Task で送信（完全回答を取得）
+        /// Send message asynchronously with Task (get complete response at once)
+        /// <param name="message">Message to send</param>
+        /// <param name="options">Request options</param>
+        /// <param name="cancellationToken">External cancellation token</param>
         /// </summary>
         public Task<ChatResponse> SendMessageTaskAsync(
             string message,
@@ -371,7 +410,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// 非同期でメッセージを送信（一度に完全な回答を取得）
+        /// Send message asynchronously with IEnumerator (get complete response at once)
+        /// <param name="message">Message to send</param>
+        /// <param name="callback">Response: (response, error)</param>
+        /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageAsync(
             string message,
@@ -399,7 +441,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
                 var history = session.History;
 
-                // システムプロンプトがなければ追加
+                // Add system prompt if history is empty (first message)
                 if (history.Count == 0)
                 {
                     string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
@@ -413,10 +455,10 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                 }
 
-                // ユーザーメッセージを追加
+                // Add user message
                 history.Add(new ChatMessage { Role = "user", Content = message });
 
-                // Tool対応: ツールループ処理
+                // Tool call handling loop
                 int toolIterations = 0;
                 int maxIterations = options.MaxToolIterations;
                 bool hasToolCalls = true;
@@ -433,21 +475,21 @@ namespace EasyLocalLLM.LLM.Ollama
                         yield break;
                     }
 
-                    // 使用するツール一覧を取得
+                    // Get tools to include
                     var tools = _toolManager.GetAllTools();
                     if (options.Tools != null && options.Tools.Count > 0)
                     {
                         tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
                     }
 
-                    // formatフィールドの決定
+                    // Decide format value based on options
                     object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
 
-                    // リクエスト作成
+                    // Make request content
                     object requestContent;
                     if (tools != null && tools.Count > 0)
                     {
-                        // ツールを含むリクエスト
+                        // Request with registered tools
                         if (formatValue != null)
                         {
                             requestContent = new
@@ -482,7 +524,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                     else
                     {
-                        // ツールなしのリクエスト
+                        // Request without tools
                         if (formatValue != null)
                         {
                             requestContent = new
@@ -540,7 +582,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                     RawResponse = responseBody
                                 };
 
-                                // Tool calls を抽出
+                                // Extract tool calls
                                 var toolCallsArray = chatMessage?["tool_calls"] as JArray;
                                 if (toolCallsArray != null && toolCallsArray.Count > 0)
                                 {
@@ -593,7 +635,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         yield break;
                     }
 
-                    // Tool calls の処理
+                    // Tool calls handling
                     if (finalResponse.ToolCalls != null && finalResponse.ToolCalls.Count > 0)
                     {
                         toolIterations++;
@@ -603,7 +645,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             UnityEngine.Debug.Log($"[Ollama] Detected {finalResponse.ToolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
                         }
 
-                        // Assistant メッセージを履歴に追加（tool_calls 付き）
+                        // Add assistant message with tool calls to history
                         history.Add(new ChatMessage
                         {
                             Role = "assistant",
@@ -611,7 +653,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             ToolCalls = finalResponse.ToolCalls
                         });
 
-                        // 各ツールを実行
+                        // Execute each tool call
                         foreach (var toolCall in finalResponse.ToolCalls)
                         {
                             string toolResult;
@@ -628,7 +670,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 }
                             }
 
-                            // ツール実行結果を履歴に追加
+                            // Add tool result message to history
                             history.Add(new ChatMessage
                             {
                                 Role = "tool",
@@ -636,15 +678,15 @@ namespace EasyLocalLLM.LLM.Ollama
                             });
                         }
 
-                        // 次のループでツール結果を含めて再送
+                        // Resend including tool results in the next loop
                         hasToolCalls = true;
                     }
                     else
                     {
-                        // Tool calls がない場合は終了
+                        // No tool calls, end loop
                         hasToolCalls = false;
 
-                        // 履歴に追加
+                        // Add to history
                         _historyManager.AddMessage(sessionId, new ChatMessage
                         {
                             Role = finalResponse.Role,
@@ -655,7 +697,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                 }
 
-                // 最大反復回数に達した場合
+                // Max iterations reached
                 if (toolIterations >= maxIterations && hasToolCalls)
                 {
                     if (_config.DebugMode)
@@ -677,7 +719,8 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// メッセージをシリアライズ（Ollama API 形式）
+        /// Serialize messages (Ollama API format)
+        /// <param name="messages">List of chat messages</param>
         /// </summary>
         private object[] SerializeMessages(List<ChatMessage> messages)
         {
@@ -687,7 +730,7 @@ namespace EasyLocalLLM.LLM.Ollama
             {
                 if (msg.Role == "tool")
                 {
-                    // Tool 結果メッセージ
+                    // Tool Result
                     result.Add(new
                     {
                         role = "tool",
@@ -696,7 +739,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 }
                 else if (msg.ToolCalls != null && msg.ToolCalls.Count > 0)
                 {
-                    // Tool calls を含む Assistant メッセージ
+                    // Assistant message with tool calls
                     result.Add(new
                     {
                         role = msg.Role,
@@ -713,7 +756,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 }
                 else
                 {
-                    // 通常のメッセージ
+                    // Regular message
                     result.Add(new
                     {
                         role = msg.Role,
@@ -726,7 +769,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// ストリーミングでメッセージを送信（段階的に回答を受け取る）
+        /// Send message asynchronously with IEnumerator (get response in streaming)
+        /// <param name="message">The message to send</param>
+        /// <param name="callback">Response callback: (response, error)</param>
+        /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageStreamingAsync(
             string message,
@@ -754,7 +800,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
                 var history = session.History;
 
-                // システムプロンプトがなければ追加
+                // Add system prompt if not present
                 if (history.Count == 0)
                 {
                     string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
@@ -768,10 +814,10 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                 }
 
-                // ユーザーメッセージを追加
+                // Add user message
                 history.Add(new ChatMessage { Role = "user", Content = message });
 
-                // Tool対応: ツールループ処理
+                // Tool call handling loop
                 int toolIterations = 0;
                 int maxIterations = options.MaxToolIterations;
                 bool hasToolCalls = true;
@@ -788,17 +834,17 @@ namespace EasyLocalLLM.LLM.Ollama
                         yield break;
                     }
 
-                    // 使用するツール一覧を取得
+                    // Get tools to include
                     var tools = _toolManager.GetAllTools();
                     if (options.Tools != null && options.Tools.Count > 0)
                     {
                         tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
                     }
 
-                    // formatフィールドの決定
+                    // Determine format field
                     object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
 
-                    // リクエスト作成
+                    // Create request
                     object requestContent;
                     if (tools != null && tools.Count > 0)
                     {
@@ -895,7 +941,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                     fullResponse += content;
                                     fullRole = role;
 
-                                    // Tool calls の検出（最終チャンク）
+                                    // Detect tool calls (final chunk)
                                     var toolCallsArray = chunkMessage["tool_calls"] as JArray;
                                     if (toolCallsArray != null && toolCallsArray.Count > 0)
                                     {
@@ -911,7 +957,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                         }
                                     }
 
-                                    // 進捗コールバック（IsFinal = false）
+                                    // Progress callback (IsFinal = false)
                                     var response = new ChatResponse
                                     {
                                         SessionId = sessionId,
@@ -948,7 +994,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         yield break;
                     }
 
-                    // Tool calls の処理
+                    // Tool call handling
                     if (detectedToolCalls != null && detectedToolCalls.Count > 0)
                     {
                         toolIterations++;
@@ -958,7 +1004,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             UnityEngine.Debug.Log($"[Ollama] Detected {detectedToolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
                         }
 
-                        // Assistant メッセージを履歴に追加（tool_calls 付き）
+                        // Assistant message with tool calls
                         history.Add(new ChatMessage
                         {
                             Role = "assistant",
@@ -966,7 +1012,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             ToolCalls = detectedToolCalls
                         });
 
-                        // 各ツールを実行
+                        // Execute tool calls
                         foreach (var toolCall in detectedToolCalls)
                         {
                             string toolResult;
@@ -983,7 +1029,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 }
                             }
 
-                            // ツール実行結果を履歴に追加
+                            // Add tool result message to history
                             history.Add(new ChatMessage
                             {
                                 Role = "tool",
@@ -991,24 +1037,24 @@ namespace EasyLocalLLM.LLM.Ollama
                             });
                         }
 
-                        // 次のループでツール結果を含めて再送
+                        // Resend including tool results in the next loop
                         hasToolCalls = true;
                     }
                     else
                     {
-                        // Tool calls がない場合は終了
+                        // No tool calls, end processing
                         hasToolCalls = false;
 
                         if (!string.IsNullOrEmpty(fullResponse))
                         {
-                            // 履歴に追加
+                            // Add to history
                             _historyManager.AddMessage(sessionId, new ChatMessage
                             {
                                 Role = fullRole,
                                 Content = fullResponse
                             }, options.MaxHistory);
 
-                            // 最終チャンク
+                            // Final chunk
                             var finalResponse = new ChatResponse
                             {
                                 SessionId = sessionId,
@@ -1023,7 +1069,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                 }
 
-                // 最大反復回数に達した場合
+                // Max iterations reached
                 if (toolIterations >= maxIterations && hasToolCalls)
                 {
                     if (_config.DebugMode)
@@ -1045,7 +1091,11 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// メッセージをストリーミングで送信（Task 版）
+        /// Send message with streaming (Task version)
+        /// <param name="message">Message to send</param>
+        /// <param name="onProgress">Progress during streaming reception</param>
+        /// <param name="options">Request options</param>
+        /// <param name="cancellationToken">External cancellation token</param>
         /// </summary>
         public Task<ChatResponse> SendMessageStreamingTaskAsync(
             string message,
@@ -1093,13 +1143,13 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// 設定を更新
+        /// Update configuration
+        /// <param name="newConfig">New configuration</param>
         /// </summary>
         public void UpdateConfig(OllamaConfig newConfig)
         {
             if (newConfig != null)
             {
-                // 既存の設定を更新
                 _config.ServerUrl = newConfig.ServerUrl;
                 _config.DefaultModelName = newConfig.DefaultModelName;
                 _config.MaxRetries = newConfig.MaxRetries;
@@ -1111,7 +1161,10 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// セッション履歴をファイルに保存
+        /// Save session to file
+        /// <param name="filePath">File path to save</param>
+        /// <param name="sessionId">Session ID to save</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         /// </summary>
         public void SaveSession(string filePath, string sessionId, string encryptionKey = null)
         {
@@ -1125,28 +1178,31 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// ファイルからセッション履歴を復元
+        /// Load session history from file
+        /// <param name="filePath">File path to load</param>
+        /// <param name="sessionId">Session ID to load</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         /// </summary>
         public void LoadSession(string filePath, string sessionId, string encryptionKey = null)
         {
             var loadedSession = ChatSessionPersistence.LoadSession(filePath, encryptionKey);
 
-            // セッションIDが異なる場合は指定されたIDで上書き
+            // If the session ID is different, overwrite it with the specified ID
             if (loadedSession.Id != sessionId)
             {
                 loadedSession.Id = sessionId;
             }
 
-            // 既存のセッション履歴をクリア
+            // Clear existing session history
             _historyManager.Clear(sessionId);
 
-            // 読み込んだメッセージを復元
+            // Restore loaded messages
             foreach (var message in loadedSession.History)
             {
                 _historyManager.AddMessage(sessionId, message, null);
             }
 
-            // システムプロンプトを復元
+            // Restore system prompt
             var session = _historyManager.GetOrCreateSession(sessionId);
             if (!string.IsNullOrEmpty(loadedSession.SystemPrompt))
             {
@@ -1155,7 +1211,9 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// すべてのセッション履歴をディレクトリに保存
+        /// Save all sessions to directory
+        /// <param name="dirPath">Directory path to save sessions</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         /// </summary>
         public void SaveAllSessions(string dirPath, string encryptionKey = null)
         {
@@ -1163,7 +1221,9 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// ディレクトリからすべてのセッション履歴を復元
+        /// Load all sessions from directory
+        /// <param name="dirPath">Directory path to load sessions</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         /// </summary>
         public void LoadAllSessions(string dirPath, string encryptionKey = null)
         {
@@ -1173,40 +1233,40 @@ namespace EasyLocalLLM.LLM.Ollama
         #region Tool Management
 
         /// <summary>
-        /// ツールを登録（スキーマ自動生成）
+        /// Register tool (with automatic schema inference)
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <param name="description">ツール説明</param>
-        /// <param name="callback">コールバック関数（任意のシグネチャ）</param>
+        /// <param name="name">Tool name</param>
+        /// <param name="description">Tool description</param>
+        /// <param name="callback">Callback function (any signature)</param>
         public void RegisterTool(string name, string description, Delegate callback)
         {
             _toolManager.RegisterTool(name, description, callback);
         }
 
         /// <summary>
-        /// ツールを登録（手動スキーマ指定）
+        /// Register tool (with manual schema specification)
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <param name="description">ツール説明</param>
+        /// <param name="name">Tool name</param>
+        /// <param name="description">Tool description</param>
         /// <param name="inputSchema">JSON Schema</param>
-        /// <param name="callback">コールバック関数</param>
+        /// <param name="callback">Callback function</param>
         public void RegisterTool(string name, string description, object inputSchema, Delegate callback)
         {
             _toolManager.RegisterTool(name, description, inputSchema, callback);
         }
 
         /// <summary>
-        /// ツールを削除
+        /// Unregister tool
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <returns>削除に成功した場合 true</returns>
+        /// <param name="name">Tool name</param>
+        /// <returns>True if successfully unregistered</returns>
         public bool UnregisterTool(string name)
         {
             return _toolManager.UnregisterTool(name);
         }
 
         /// <summary>
-        /// すべてのツールを削除
+        /// Unregister all tools
         /// </summary>
         public void RemoveAllTools()
         {
@@ -1214,19 +1274,19 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
-        /// 登録済みツール一覧を取得
+        /// Get all registered tools
         /// </summary>
-        /// <returns>ツール定義のリスト</returns>
+        /// <returns>List of tool definitions</returns>
         public List<Core.ToolDefinition> GetRegisteredTools()
         {
             return _toolManager.GetAllTools();
         }
 
         /// <summary>
-        /// ツールが登録されているか確認
+        /// Check if a tool is registered
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <returns>登録されている場合 true</returns>
+        /// <param name="name">Tool name</param>
+        /// <returns>True if registered</returns>
         public bool HasTool(string name)
         {
             return _toolManager.HasTool(name);

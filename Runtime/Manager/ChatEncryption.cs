@@ -5,7 +5,7 @@ using System.Text;
 namespace EasyLocalLLM.LLM.Manager
 {
     /// <summary>
-    /// 暗号化・復号化ユーティリティ（AES-256）
+    /// Encrypt / Decrypt Utility (AES-256)
     /// </summary>
     internal static class ChatEncryption
     {
@@ -14,7 +14,7 @@ namespace EasyLocalLLM.LLM.Manager
         private const int IterationCount = 10000;
 
         /// <summary>
-        /// 文字列を暗号化
+        /// Encrypt string
         /// </summary>
         public static string Encrypt(string plainText, string password)
         {
@@ -45,7 +45,7 @@ namespace EasyLocalLLM.LLM.Manager
                             byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
                             byte[] cipherBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
 
-                            // IV + Salt + Ciphertext を連結
+                            // Concatenate IV + Salt + Ciphertext
                             byte[] result = new byte[aes.IV.Length + saltBuffer.Length + cipherBytes.Length];
                             Buffer.BlockCopy(aes.IV, 0, result, 0, aes.IV.Length);
                             Buffer.BlockCopy(saltBuffer, 0, result, aes.IV.Length, saltBuffer.Length);
@@ -59,7 +59,7 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// 文字列を復号化
+        /// Decrypt string
         /// </summary>
         public static string Decrypt(string cipherText, string password)
         {

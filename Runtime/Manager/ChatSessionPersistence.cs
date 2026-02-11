@@ -7,12 +7,15 @@ using UnityEngine;
 namespace EasyLocalLLM.LLM.Manager
 {
     /// <summary>
-    /// セッション履歴の永続化ユーティリティ
+    /// Chat session persistence utility
     /// </summary>
     internal static class ChatSessionPersistence
     {
         /// <summary>
-        /// セッションをファイルに保存
+        /// Save session to file
+        /// <param name="filePath">File path to save the session</param>
+        /// <param name="session">Chat session to save</param>
+        /// <param name="encryptionKey">Optional encryption key. If provided, the session will be encrypted before saving.</param>
         /// </summary>
         public static void SaveSession(string filePath, ChatSession session, string encryptionKey = null)
         {
@@ -24,7 +27,7 @@ namespace EasyLocalLLM.LLM.Manager
 
             try
             {
-                // セッションをJSON化
+                // Convert session to JSON
                 var sessionData = new
                 {
                     session.Id,
@@ -67,7 +70,9 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ファイルからセッションを復元
+        /// Load session from file
+        /// <param name="filePath">File path to load the session from</param>
+        /// <param name="encryptionKey">Optional encryption key. If the session is encrypted, this key will be used to decrypt it.</param>
         /// </summary>
         public static ChatSession LoadSession(string filePath, string encryptionKey = null)
         {
@@ -81,7 +86,7 @@ namespace EasyLocalLLM.LLM.Manager
             {
                 string json = File.ReadAllText(filePath);
 
-                // 暗号化されていれば復号化
+                // Decrypt if encrypted
                 if (!string.IsNullOrEmpty(encryptionKey))
                 {
                     json = ChatEncryption.Decrypt(json, encryptionKey);
@@ -93,7 +98,7 @@ namespace EasyLocalLLM.LLM.Manager
                 session.Id = sessionData["Id"]?.ToString() ?? "";
                 session.SystemPrompt = sessionData["SystemPrompt"]?.ToString();
 
-                // 日時情報を復元
+                // Restore date information
                 if (DateTime.TryParse(sessionData["CreatedAt"]?.ToString(), out var createdAt))
                 {
                     session.CreatedAt = createdAt;
@@ -104,7 +109,7 @@ namespace EasyLocalLLM.LLM.Manager
                     session.LastUpdatedAt = lastUpdatedAt;
                 }
 
-                // メッセージ履歴を復元
+                // Restore message history
                 var historyArray = sessionData["History"] as JArray;
                 if (historyArray != null)
                 {
@@ -133,7 +138,10 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// すべてのセッションをファイルに保存
+        /// Save all sessions to directory
+        /// <param name="dirPath">Directory path to save sessions</param>
+        /// <param name="historyManager">ChatHistoryManager instance containing sessions to save</param
+        /// <param name="encryptionKey">Optional encryption key. If provided, sessions will be encrypted before saving.</param>
         /// </summary>
         public static void SaveAllSessions(string dirPath, ChatHistoryManager historyManager, string encryptionKey = null)
         {
@@ -171,7 +179,10 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// ディレクトリからすべてのセッションを復元
+        /// Load all sessions from Directory
+        /// <param name="dirPath">Directory path to load sessions from</param>
+        /// <param name="historyManager">ChatHistoryManager instance to load sessions into</param>
+        /// <param name="encryptionKey">Optional encryption key. If the sessions are encrypted, this key will be used to decrypt them.</param>
         /// </summary>
         public static void LoadAllSessions(string dirPath, ChatHistoryManager historyManager, string encryptionKey = null)
         {
@@ -217,7 +228,7 @@ namespace EasyLocalLLM.LLM.Manager
         }
 
         /// <summary>
-        /// セッションIDをファイル名として安全な形式に変換
+        /// Sanitize file name by removing invalid characters
         /// </summary>
         private static string SanitizeFileName(string sessionId)
         {

@@ -3,26 +3,26 @@ using System.Collections.Generic;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// チャットメッセージ（ユーザー、アシスタント、システム）
+    /// Chat message (user, assistant, system)
     /// </summary>
     public class ChatMessage
     {
         /// <summary>
-        /// メッセージのロール
-        /// "user" = ユーザーメッセージ
-        /// "assistant" = LLM の応答
-        /// "system" = システムプロンプト
-        /// "tool" = ツール実行結果
+        /// Message role
+        /// "user" = User message
+        /// "assistant" = LLM response
+        /// "system" = System prompt
+        /// "tool" = Tool execution result
         /// </summary>
         public string Role { get; set; }
 
         /// <summary>
-        /// メッセージの内容
+        /// Message content
         /// </summary>
         public string Content { get; set; }
 
         /// <summary>
-        /// ツール呼び出し情報のリスト（assistant がツールを呼び出す場合）
+        /// List of tool call information (when assistant calls tools)
         /// </summary>
         public List<ToolCall> ToolCalls { get; set; }
     }

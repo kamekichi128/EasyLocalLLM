@@ -3,20 +3,20 @@ using System;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// ツールのパラメータに説明を付与するための Attribute
+    /// Attribute for adding description to tool parameters
     /// </summary>
     [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false)]
     public class ToolParameterAttribute : Attribute
     {
         /// <summary>
-        /// パラメータの説明
+        /// Parameter description
         /// </summary>
         public string Description { get; }
 
         /// <summary>
-        /// ToolParameterAttribute を初期化
+        /// Initialize ToolParameterAttribute
         /// </summary>
-        /// <param name="description">パラメータの説明</param>
+        /// <param name="description">Parameter description</param>
         public ToolParameterAttribute(string description)
         {
             Description = description;

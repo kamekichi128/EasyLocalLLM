@@ -7,15 +7,15 @@ using Newtonsoft.Json.Linq;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// Delegate のシグネチャから JSON Schema を自動生成するユーティリティ
+    /// Utility for auto-generating JSON Schema from Delegate signatures
     /// </summary>
     public static class ToolSchemaGenerator
     {
         /// <summary>
-        /// Delegate のシグネチャから JSON Schema を自動生成
+        /// Auto-generate JSON Schema from Delegate signature
         /// </summary>
-        /// <param name="callback">コールバック関数</param>
-        /// <returns>JSON Schema（JObject）</returns>
+        /// <param name="callback">Callback function</param>
+        /// <returns>JSON Schema (JObject)</returns>
         public static JObject GenerateSchema(Delegate callback)
         {
             if (callback == null)
@@ -40,7 +40,7 @@ namespace EasyLocalLLM.LLM.Core
                 var paramType = param.ParameterType;
                 var hasDefault = param.HasDefaultValue;
 
-                // パラメータの説明を取得（ToolParameterAttribute から）
+                // Get parameter description (from ToolParameterAttribute)
                 string description = paramName;
                 var attr = param.GetCustomAttribute<ToolParameterAttribute>();
                 if (attr != null)
@@ -48,11 +48,11 @@ namespace EasyLocalLLM.LLM.Core
                     description = attr.Description;
                 }
 
-                // JSON Schema のプロパティを生成
+                // Generate JSON Schema property
                 var propertySchema = CreatePropertySchema(paramType, description);
                 schema["properties"][paramName] = propertySchema;
 
-                // デフォルト値がない場合は required に追加
+                // Add to required if no default value
                 if (!hasDefault)
                 {
                     requiredList.Add(paramName);
@@ -68,20 +68,20 @@ namespace EasyLocalLLM.LLM.Core
         }
 
         /// <summary>
-        /// パラメータの型から JSON Schema のプロパティを生成
+        /// Generate JSON Schema property from parameter type
         /// </summary>
         private static JObject CreatePropertySchema(Type type, string description)
         {
             var schema = new JObject();
 
-            // Nullable 型の処理
+            // Handle Nullable types
             var underlyingType = Nullable.GetUnderlyingType(type);
             if (underlyingType != null)
             {
                 type = underlyingType;
             }
 
-            // 型に応じたスキーマ生成
+            // Generate schema based on type
             if (type == typeof(string))
             {
                 schema["type"] = "string";
@@ -115,7 +115,7 @@ namespace EasyLocalLLM.LLM.Core
             }
             else
             {
-                // その他の型は string として扱う
+                // Other types are treated as string
                 schema["type"] = "string";
             }
 
@@ -125,10 +125,10 @@ namespace EasyLocalLLM.LLM.Core
         }
 
         /// <summary>
-        /// パラメータ情報を取得（型変換用）
+        /// Get parameter information (for type conversion)
         /// </summary>
-        /// <param name="callback">コールバック関数</param>
-        /// <returns>パラメータ情報のリスト</returns>
+        /// <param name="callback">Callback function</param>
+        /// <returns>List of parameter information</returns>
         public static List<ParameterInfo> GetParameterInfos(Delegate callback)
         {
             if (callback == null)
@@ -141,10 +141,10 @@ namespace EasyLocalLLM.LLM.Core
         }
 
         /// <summary>
-        /// 戻り値の型を取得
+        /// Get return type
         /// </summary>
-        /// <param name="callback">コールバック関数</param>
-        /// <returns>戻り値の型</returns>
+        /// <param name="callback">Callback function</param>
+        /// <returns>Return type</returns>
         public static Type GetReturnType(Delegate callback)
         {
             if (callback == null)

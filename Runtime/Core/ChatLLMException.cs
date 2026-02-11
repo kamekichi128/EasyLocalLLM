@@ -3,7 +3,7 @@ using System;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// LLM エラー情報を保持する例外
+    /// Exception that holds LLM error information
     /// </summary>
     public class ChatLLMException : Exception
     {

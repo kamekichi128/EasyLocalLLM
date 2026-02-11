@@ -6,65 +6,65 @@ using System.Threading.Tasks;
 namespace EasyLocalLLM.LLM.Core
 {
     /// <summary>
-    /// LLM チャットクライアントのインターフェース
+    /// LLM chat client interface
     /// </summary>
     public interface IChatLLMClient
     {
         /// <summary>
-        /// グローバルなシステムプロンプト
+        /// Global system prompt
         /// </summary>
         string GlobalSystemPrompt { get; set; }
 
         /// <summary>
-        /// すべてのメッセージ履歴をクリア
+        /// Clear all message history
         /// </summary>
         void ClearAllMessages();
 
         /// <summary>
-        /// 指定された sessionId のメッセージ履歴をクリア
+        /// Clear message history for the specified sessionId
         /// </summary>
         void ClearMessages(string sessionId);
 
         /// <summary>
-        /// メッセージを非同期で送信（IEnumerator ベース）
+        /// Send message asynchronously (IEnumerator based)
         /// </summary>
-        /// <param name="message">送信するメッセージ</param>
-        /// <param name="callback">応答: (response, error) - response.IsFinal で完了判定</param>
-        /// <param name="options">リクエストオプション</param>
+        /// <param name="message">Message to send</param>
+        /// <param name="callback">Response: (response, error) - completion determined by response.IsFinal</param>
+        /// <param name="options">Request options</param>
         IEnumerator SendMessageAsync(
             string message,
             Action<ChatResponse, ChatError> callback,
             ChatRequestOptions options = null);
 
         /// <summary>
-        /// メッセージを Task で送信（完全回答を取得）
+        /// Send message with Task (get complete answer)
         /// </summary>
-        /// <param name="message">送信するメッセージ</param>
-        /// <param name="options">リクエストオプション</param>
-        /// <param name="cancellationToken">外部キャンセルトークン</param>
+        /// <param name="message">Message to send</param>
+        /// <param name="options">Request options</param>
+        /// <param name="cancellationToken">External cancellation token</param>
         Task<ChatResponse> SendMessageTaskAsync(
             string message,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// メッセージをストリーミングで送信（IEnumerator ベース）
+        /// Send message with streaming (IEnumerator based)
         /// </summary>
-        /// <param name="message">送信するメッセージ</param>
-        /// <param name="callback">応答: (response, error) - response.IsFinal で完了判定</param>
-        /// <param name="options">リクエストオプション</param>
+        /// <param name="message">Message to send</param>
+        /// <param name="callback">Response: (response, error) - completion determined by response.IsFinal</param>
+        /// <param name="options">Request options</param>
         IEnumerator SendMessageStreamingAsync(
             string message,
             Action<ChatResponse, ChatError> callback,
             ChatRequestOptions options = null);
 
         /// <summary>
-        /// メッセージをストリーミングで送信（Task 版）
+        /// Send message with streaming (Task version)
         /// </summary>
-        /// <param name="message">送信するメッセージ</param>
-        /// <param name="onProgress">ストリーミング受信時の進捗</param>
-        /// <param name="options">リクエストオプション</param>
-        /// <param name="cancellationToken">外部キャンセルトークン</param>
+        /// <param name="message">Message to send</param>
+        /// <param name="onProgress">Progress during streaming reception</param>
+        /// <param name="options">Request options</param>
+        /// <param name="cancellationToken">External cancellation token</param>
         Task<ChatResponse> SendMessageStreamingTaskAsync(
             string message,
             IProgress<ChatResponse> onProgress,
@@ -72,113 +72,113 @@ namespace EasyLocalLLM.LLM.Core
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// セッション履歴をファイルに保存
+        /// Save session history to file
         /// </summary>
-        /// <param name="filePath">保存先ファイルパス</param>
-        /// <param name="sessionId">セッションID</param>
-        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        /// <param name="filePath">Save destination file path</param>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         void SaveSession(string filePath, string sessionId, string encryptionKey = null);
 
         /// <summary>
-        /// ファイルからセッション履歴を復元
+        /// Restore session history from file
         /// </summary>
-        /// <param name="filePath">読み込むファイルパス</param>
-        /// <param name="sessionId">セッションID</param>
-        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        /// <param name="filePath">File path to load</param>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         void LoadSession(string filePath, string sessionId, string encryptionKey = null);
 
         /// <summary>
-        /// すべてのセッション履歴をディレクトリに保存
+        /// Save all session history to directory
         /// </summary>
-        /// <param name="dirPath">保存先ディレクトリパス</param>
-        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        /// <param name="dirPath">Save destination directory path</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         void SaveAllSessions(string dirPath, string encryptionKey = null);
 
         /// <summary>
-        /// ディレクトリからすべてのセッション履歴を復元
+        /// Load all session history from directory
         /// </summary>
-        /// <param name="dirPath">読み込むディレクトリパス</param>
-        /// <param name="encryptionKey">暗号化キー（オプション）</param>
+        /// <param name="dirPath">Directory path to load from</param>
+        /// <param name="encryptionKey">Encryption key (optional)</param>
         void LoadAllSessions(string dirPath, string encryptionKey = null);
 
         /// <summary>
-        /// セッションのシステムプロンプトを設定
+        /// Set system prompt for session
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
-        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="systemPrompt">System prompt to set</param>
         void SetSessionSystemPrompt(string sessionId, string systemPrompt);
 
         /// <summary>
-        /// セッションのシステムプロンプトを取得
+        /// Get system prompt for session
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
-        /// <returns>システムプロンプト、セッションが存在しない場合はnull</returns>
+        /// <param name="sessionId">Session ID</param>
+        /// <returns>System prompt, or null if session does not exist</returns>
         string GetSessionSystemPrompt(string sessionId);
 
         /// <summary>
-        /// セッションのシステムプロンプトをリセット（グローバルプロンプトを使用するように）
+        /// Reset session system prompt (use global prompt)
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
+        /// <param name="sessionId">Session ID</param>
         void ResetSessionSystemPrompt(string sessionId);
 
         /// <summary>
-        /// 複数のセッションに対してシステムプロンプトをバッチ設定
+        /// Batch set system prompt for multiple sessions
         /// </summary>
-        /// <param name="sessionIds">セッションIDのリスト</param>
-        /// <param name="systemPrompt">設定するシステムプロンプト</param>
+        /// <param name="sessionIds">List of session IDs</param>
+        /// <param name="systemPrompt">System prompt to set</param>
         void SetSystemPromptForMultipleSessions(System.Collections.Generic.IEnumerable<string> sessionIds, string systemPrompt);
 
         /// <summary>
-        /// すべてのセッションのシステムプロンプトをリセット
+        /// Reset system prompt for all sessions
         /// </summary>
         void ResetAllSessionSystemPrompts();
 
         /// <summary>
-        /// セッションのシステムプロンプトと履歴をリセット
+        /// Reset session system prompt and history
         /// </summary>
-        /// <param name="sessionId">セッションID</param>
+        /// <param name="sessionId">Session ID</param>
         void ClearSessionWithPrompt(string sessionId);
 
         /// <summary>
-        /// ツールを登録（自動スキーマ生成）
+        /// Register tool (auto schema generation)
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <param name="description">ツール説明</param>
-        /// <param name="callback">コールバック関数（任意のシグネチャ）</param>
+        /// <param name="name">Tool name</param>
+        /// <param name="description">Tool description</param>
+        /// <param name="callback">Callback function (any signature)</param>
         void RegisterTool(string name, string description, System.Delegate callback);
 
         /// <summary>
-        /// ツールを登録（手動スキーマ指定）
+        /// Register tool (manual schema specification)
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <param name="description">ツール説明</param>
+        /// <param name="name">Tool name</param>
+        /// <param name="description">Tool description</param>
         /// <param name="inputSchema">JSON Schema</param>
-        /// <param name="callback">コールバック関数</param>
+        /// <param name="callback">Callback function</param>
         void RegisterTool(string name, string description, object inputSchema, System.Delegate callback);
 
         /// <summary>
-        /// ツールを削除
+        /// Unregister tool
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <returns>削除に成功した場合 true</returns>
+        /// <param name="name">Tool name</param>
+        /// <returns>true if unregistration was successful</returns>
         bool UnregisterTool(string name);
 
         /// <summary>
-        /// すべてのツールを削除
+        /// Remove all tools
         /// </summary>
         void RemoveAllTools();
 
         /// <summary>
-        /// 登録済みツール一覧を取得
+        /// Get registered tools list
         /// </summary>
-        /// <returns>ツール定義のリスト</returns>
+        /// <returns>List of tool definitions</returns>
         System.Collections.Generic.List<ToolDefinition> GetRegisteredTools();
 
         /// <summary>
-        /// ツールが登録されているか確認
+        /// Check if tool is registered
         /// </summary>
-        /// <param name="name">ツール名</param>
-        /// <returns>登録されている場合 true</returns>
+        /// <param name="name">Tool name</param>
+        /// <returns>true if registered</returns>
         bool HasTool(string name);
     }
 }
