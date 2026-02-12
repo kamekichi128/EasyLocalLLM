@@ -1,21 +1,21 @@
 # EasyLocalLLM
 
-Unity でローカル LLM（Ollama）を簡単に使えるようにするライブラリです。わずか数行のコードで、オフラインで動作する AI チャットボットや、ゲーム内 NPC との自然な会話を実装できます。
+EasyLocalLLM is a Unity library that makes it easy to use a local LLM (Ollama). With just a few lines of code, you can build offline AI chatbots and natural in-game NPC conversations.
 
-## ✨ 主な機能
+## ✨ Main Features
 
-- 🚀 **簡単セットアップ**: 最小限のコードで動作（3行で開始可能）
-- 💬 **ストリーミング対応**: リアルタイムで回答を段階的に受け取れる
-- 🔧 **柔軟な設定管理**: `OllamaConfig` で詳細なカスタマイズが可能
-- 🔄 **自動リトライ**: ネットワークエラー時の指数バックオフ対応
-- 📝 **セッション管理**: 複数の会話を同時に管理可能
-- 🎭 **システムプロンプト**: セッションごとに異なる役割やキャラクターを設定
-- 🛠️ **Tools 対応**: Function Calling でゲーム機能を LLM から呼び出せる
-- 🔐 **セキュリティ**: チャット履歴の暗号化と永続化に対応
+- 🚀 **Easy setup**: Start with minimal code (as little as 3 lines)
+- 💬 **Streaming support**: Receive responses incrementally in real time
+- 🔧 **Flexible configuration**: Fine-grained customization via `OllamaConfig`
+- 🔄 **Automatic retry**: Exponential backoff for network errors
+- 📝 **Session management**: Handle multiple conversations simultaneously
+- 🎭 **System prompts**: Set different roles/characters per session
+- 🛠️ **Tools support**: Call game features from the LLM via Function Calling
+- 🔐 **Security**: Encrypted chat history with persistence support
 
-## 🎯 クイックスタート
+## 🎯 Quick Start
 
-わずか数行で動作します：
+Get running in just a few lines:
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -27,58 +27,58 @@ public class QuickStart : MonoBehaviour
     {
         var client = LLMClientFactory.CreateOllamaClient();
         StartCoroutine(client.SendMessageAsync(
-            "こんにちは！",
+            "Hello!",
             response => Debug.Log($"AI: {response.Content}")
         ));
     }
 }
 ```
 
-**前提条件**: Ollama サーバが `localhost:11434` で起動済み、`mistral` モデルがインストール済み
+**Prerequisites**: Ollama server is running at `localhost:11434`, and the `mistral` model is installed.
 
-Ollamaサーバ自体のセットアップ、あるいはOllamaサーバを含めたゲームの構築については [Ollama サーバの自動管理](Documentation/API_Reference.md#44-ollama-サーバの自動管理) を参照してください。
+For setting up Ollama itself, or building a game that includes Ollama server management, see [Ollama Server Auto-Management](Documentation/API_Reference.md#45-ollama-server-auto-management).
 
-## 💻 動作環境
+## 💻 Requirements
 
-- **Unity バージョン**: Unity 2021.3 以上推奨
-- **対応 OS**: Windows 10/11
-- **必要なもの**: Ollama サーバ（セットアップ方法は完全ドキュメント参照）
-- **GPU**: 推奨（CPU でも動作しますが、応答速度が遅くなります）
+- **Unity version**: Unity 2021.3 or later recommended
+- **Supported OS**: Windows 10/11
+- **Dependencies**: Ollama server (see full documentation for setup)
+- **GPU**: Recommended (CPU works, but responses are slower)
 
-## 📖 ドキュメント
+## 📖 Documentation
 
-詳細な使用方法、API リファレンス、サンプルコード、トラブルシューティングは以下をご覧ください：
+For detailed usage, API reference, sample code, and troubleshooting:
 
-- **[Documentation/API_Reference.md](Documentation/API_Reference.md)** - 技術ドキュメント
-- **[Samples/QuickStart.md](Samples/QuickStart.md)** - 初心者向けガイド
+- **[Documentation/API_Reference.md](Documentation/API_Reference.md)** - Technical documentation
+- **[Samples/QuickStart.md](Samples/QuickStart.md)** - Beginner-friendly guide
 
-### 主なトピック
+### Key Topics
 
-- [基本的な初期化](Documentation/API_Reference.md#41-基本的な初期化)
-- [ストリーミング送信](Documentation/API_Reference.md#43-ストリーミング送信段階的に回答を受け取る)
-- [Ollama サーバの自動管理](Documentation/API_Reference.md#44-ollama-サーバの自動管理)
-- [セッション管理](Documentation/API_Reference.md#45-セッション管理)
-- [システムプロンプト](Documentation/API_Reference.md#46-システムプロンプト)
-- [ツール（Function Calling）](Documentation/API_Reference.md#411-ツールfunction-calling)
-- [エラーハンドリング](Documentation/API_Reference.md#410-リトライとエラーハンドリング)
+- [Basic Initialization](Documentation/API_Reference.md#41-basic-initialization)
+- [Streaming Message (Receive Partial Responses)](Documentation/API_Reference.md#44-streaming-message-receive-partial-responses)
+- [Ollama Server Auto-Management](Documentation/API_Reference.md#45-ollama-server-auto-management)
+- [Session Management](Documentation/API_Reference.md#46-session-management)
+- [System Prompts](Documentation/API_Reference.md#47-system-prompts)
+- [Tools (Function Calling)](Documentation/API_Reference.md#412-tools-function-calling)
+- [Retry and Error Handling](Documentation/API_Reference.md#410-retry-and-error-handling)
 
-## 📦 サンプル
+## 📦 Samples
 
-`Samples/` フォルダに以下のサンプルシーンが含まれています：
+The `Samples/` folder includes the following sample scenes:
 
-- **SimpleChat** - 基本的なチャット UI の実装例
-- **LateralThinkingQuiz** - ウミガメのスープ（水平思考クイズゲーム）の実装例
-- **QuickStartTest** - 最小限の動作確認
+- **SimpleChat** - Basic chat UI implementation
+- **LateralThinkingQuiz** - Lateral-thinking quiz game implementation
+- **QuickStartTest** - Minimal functionality check
 
-## 🔧 制限事項
+## 🔧 Limitations
 
-- Unity 専用（UnityWebRequest に依存）
-- Windows のみ対応
-- Task 版 API も内部的にはコルーチンで動作します
+- Unity-only (depends on UnityWebRequest)
+- Windows-only support
+- Task-based APIs are internally coroutine-based
 
-## 📄 ライセンス
+## 📄 License
 
-本ライブラリは MIT ライセンスの下で提供されます。
+This library is provided under the MIT License.
 
 ```
 MIT License
@@ -104,12 +104,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## 🤝 サポート
+## 🤝 Support
 
-- **バグ報告、リクエスト**: バグ報告や機能リクエストは Github Issuesまで。返答・対応を保証するものではありません。ご留意ください。
-- **ドキュメント**: [Documentation/API_Reference.md](Documentation/API_Reference.md) に詳細情報
-- **サンプルコード**: `Samples/` フォルダをご覧ください
+- **Bug reports & requests**: Please use [Github Issues](https://github.com/kamekichi128/kamekichi-games) for bug reports and feature requests. Responses and fixes are not guaranteed.
+- **Documentation**: See [Documentation/API_Reference.md](Documentation/API_Reference.md) for details
+- **Sample code**: See the `Samples/` folder
 
 ---
 
-**EasyLocalLLM で、Unity ゲームに AI の力を！** 🎮✨
+**Bring the power of AI to your Unity games with EasyLocalLLM!** 🎮✨
