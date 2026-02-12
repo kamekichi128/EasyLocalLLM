@@ -260,7 +260,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     {
                         UnityEngine.Debug.Log($"[Ollama] Model {modelName} is available.");
                     }
-                    progressCallback?.Invoke(new (0.5, false, true, $"Model '{modelName}' is available."));
+                    progressCallback?.Invoke(new(0.5, false, true, $"Model '{modelName}' is available."));
                     modelAvailable = true;
                 },
                 error =>
@@ -306,9 +306,6 @@ namespace EasyLocalLLM.LLM.Ollama
             {
                 // Pulling model in progress
                 yield return PullModel(modelName, progressCallback, cancellationToken);
-
-                // Warm up model by sending a short message
-                yield return WarmupModel(modelName, progressCallback);
             }
         }
 
@@ -361,6 +358,7 @@ namespace EasyLocalLLM.LLM.Ollama
             string pullUrl = _config.ServerUrl + "/api/pull";
             string lastRawChunk = "";
             double lastProgress = 0.0;
+            bool pullSucceeded = false;
             yield return _httpHelper.ExecuteStreamingWithRetry(
                 pullUrl,
                 pullJson,
@@ -383,7 +381,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 total = 1;
                             }
                             lastProgress = 0.9 * (double)completed / (double)total; // up to 90%, because of warmup later
-                            progressCallback?.Invoke(new (lastProgress, false, true, $"Pulling model '{modelName}': {chunkStatus.Value<string>()} ({completed}/{total})"));
+                            progressCallback?.Invoke(new(lastProgress, false, true, $"Pulling model '{modelName}': {chunkStatus.Value<string>()} ({completed}/{total})"));
                         }
                     }
                     catch (Exception ex)
@@ -396,14 +394,20 @@ namespace EasyLocalLLM.LLM.Ollama
                 },
                 isSuccess =>
                 {
-                    WarmupModel(modelName, progressCallback);
+                    progressCallback?.Invoke(new(lastProgress, false, true, $"Pulling model '{modelName}': finished."));
+                    pullSucceeded = true;
                 },
                 error =>
                 {
-                    progressCallback(new (lastProgress, false, false, $"Failed to pull model '{modelName}': {error.Message}"));
+                    progressCallback(new(lastProgress, true, false, $"Failed to pull model '{modelName}': {error.Message}"));
                 },
                 cancellationToken
             );
+
+            if (pullSucceeded)
+            {
+                yield return WarmupModel(modelName, progressCallback);
+            }
         }
 
         /// <summary>
@@ -1461,7 +1465,8 @@ namespace EasyLocalLLM.LLM.Ollama
 
         public OllamaConfig GetConfig()
         {
-            return new() { 
+            return new()
+            {
                 ServerUrl = _config.ServerUrl,
                 DefaultModelName = _config.DefaultModelName,
                 MaxRetries = _config.MaxRetries,
