@@ -9,17 +9,18 @@ EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
 - [3. Limitations](#3-limitations)
 - [4. Usage](#4-usage)
   - [4.1 Basic Initialization](#41-basic-initialization)
-  - [4.2 Send Message (Single Complete Response)](#42-send-message-single-complete-response)
-  - [4.3 Streaming Message (Receive Partial Responses)](#43-streaming-message-receive-partial-responses)
-  - [4.4 Ollama Server Auto-Management](#44-ollama-server-auto-management)
-  - [4.5 Session Management](#45-session-management)
-  - [4.6 System Prompts](#46-system-prompts)
-  - [4.7 Priority Scheduling](#47-priority-scheduling)
-  - [4.8 Cancellation](#48-cancellation)
-  - [4.9 Retry and Error Handling](#49-retry-and-error-handling)
-  - [4.10 Message Persistence](#410-message-persistence)
-  - [4.11 Tools (Function Calling)](#411-tools-function-calling)
-  - [4.12 JSON Response Format](#412-json-response-format)
+  - [4.2 Load Model](#42-load-model)
+  - [4.3 Send Message (Single Complete Response)](#43-send-message-single-complete-response)
+  - [4.4 Streaming Message (Receive Partial Responses)](#44-streaming-message-receive-partial-responses)
+  - [4.5 Ollama Server Auto-Management](#45-ollama-server-auto-management)
+  - [4.6 Session Management](#46-session-management)
+  - [4.7 System Prompts](#47-system-prompts)
+  - [4.8 Priority Scheduling](#48-priority-scheduling)
+  - [4.9 Cancellation](#49-cancellation)
+  - [4.10 Retry and Error Handling](#410-retry-and-error-handling)
+  - [4.11 Message Persistence](#411-message-persistence)
+  - [4.12 Tools (Function Calling)](#412-tools-function-calling)
+  - [4.13 JSON Response Format](#413-json-response-format)
 - [5. Practical Examples](#5-practical-examples)
 - [6. Class Structure](#6-class-structure)
 - [7. Configuration Options](#7-configuration-options)
@@ -69,7 +70,7 @@ public class QuickStart : MonoBehaviour
 
 **For detailed setup and usage, see [4.1 Basic Initialization](#41-basic-initialization).**
 
-**If Ollama is not set up yet, see [4.4 Ollama Server Auto-Management](#44-ollama-server-auto-management).**
+**If Ollama is not set up yet, see [4.5 Ollama Server Auto-Management](#45-ollama-server-auto-management).**
 
 ## 3. Limitations
 
@@ -112,7 +113,7 @@ Quick Start uses the default settings; this section explains full configuration.
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the model is installed.
 
-**If Ollama is not set up yet, see [4.4 Ollama Server Auto-Management](#44-ollama-server-auto-management).**
+**If Ollama is not set up yet, see [4.5 Ollama Server Auto-Management](#45-ollama-server-auto-management).**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -138,7 +139,81 @@ public class ChatManager : MonoBehaviour
 }
 ```
 
-### 4.2 Send Message (Single Complete Response)
+### 4.2 Load Model
+
+Optionally pre-load a model with progress tracking. While models are automatically loaded on first message, `LoadModelRunnable()` is useful for:
+
+- **Loading at app startup** to ensure the model is ready
+- **Showing progress** to users during model loading
+- **Handling errors** explicitly during initialization
+
+```csharp
+using EasyLocalLLM.LLM;
+using UnityEngine;
+
+public class ModelPreloader : MonoBehaviour
+{
+    void Start()
+    {
+        var config = new OllamaConfig
+        {
+            ServerUrl = "http://localhost:11434",
+            DefaultModelName = "mistral",
+            DebugMode = true
+        };
+
+        var client = LLMClientFactory.CreateOllamaClient(config);
+        StartCoroutine(PreloadModel(client, config.DefaultModelName));
+    }
+
+    IEnumerator PreloadModel(OllamaClient client, string modelName)
+    {
+        Debug.Log($"[Loading] Model: {modelName}");
+
+        yield return client.LoadModelRunnable(
+            modelName,
+            true,  // pull If Model is not available
+            progress =>
+            {
+                if (progress.IsCompleted)
+                {
+                    if (progress.IsSuccessed)
+                    {
+                        Debug.Log("✓ Model loaded successfully");
+                    }
+                    else
+                    {
+                        Debug.LogError("✗ Model loading failed");
+                    }
+                    return;
+                }
+
+                // Show loading progress
+                float percentage = progress.Progress * 100f;
+                Debug.Log($"Loading: {percentage:0.00}% | {progress.Message}");
+            }
+        );
+    }
+}
+```
+
+**Parameters:**
+- **modelName** (string): Model to load (e.g., "mistral", "llama2")
+- **pullIfModelNotAvailable** (bool): If `true`, try to pull model from ollama cloud, if the model not available
+- **progressCallback**: Called with `LoadProgress` containing:
+  - `IsCompleted` (bool): Whether loading finished
+  - `IsSuccessed` (bool): Whether loading was successful
+  - `Progress` (float): Progress 0.0 to 1.0
+  - `Message` (string): Status message
+
+**Returns:** Coroutine to yield on.
+
+**Notes:**
+- This is optional; models are automatically loaded when first needed
+- Useful for UX to show loading screens or progress bars
+- Pre-loading prevents delays when the first message is sent
+
+### 4.3 Send Message (Single Complete Response)
 
 The callback is called **once**.
 Use this for short responses or when you need the full answer at once.
@@ -194,7 +269,7 @@ async Task SendMessageAsync()
 }
 ```
 
-### 4.3 Streaming Message (Receive Partial Responses)
+### 4.4 Streaming Message (Receive Partial Responses)
 
 The callback is called **multiple times**. Each time a partial response arrives, you get an update; the final callback has `IsFinal=true`.
 This is suitable for long outputs and real-time UI updates.
@@ -285,7 +360,7 @@ async Task SendStreamingMessageAsync()
 }
 ```
 
-### 4.4 Ollama Server Auto-Management
+### 4.5 Ollama Server Auto-Management
 
 #### Choose a Setup Method
 
@@ -523,7 +598,7 @@ public class OllamaSetupManager : MonoBehaviour
 }
 ```
 
-### 4.5 Session Management
+### 4.6 Session Management
 
 #### Session concept
 
@@ -696,7 +771,7 @@ public class MultiSessionChat : MonoBehaviour
 - **Memory**: Keeping many sessions increases memory usage; clear unused sessions with `ClearMessages()`.
 - **Session info**: `GetSession()` returns a `ChatSession` with `CreatedAt`, `LastUpdatedAt`, and `History`.
 
-### 4.6 System Prompts
+### 4.7 System Prompts
 
 #### What is a system prompt?
 
@@ -1016,7 +1091,9 @@ _client.SetSessionSystemPrompt(
 
 See [SessionSystemPrompt.md](SessionSystemPrompt.md) for the detailed API reference.
 
-### 4.7 Priority Scheduling
+### 4.8 Priority Scheduling
+
+
 
 #### Why priority scheduling
 
@@ -1251,7 +1328,7 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 - **MaxConcurrentSessions**: Tune to GPU capacity (1-4 typical). Too high can cause OOM or overload.
 - **Monitor resources**: In production, watch GPU and system memory.
 
-### 4.8 Cancellation
+### 4.9 Cancellation
 
 Supports the standard Unity `CancellationToken` pattern. Use `CancellationTokenSource` when cancellation is needed.
 
@@ -1343,7 +1420,7 @@ void SendWithTimeout()
 }
 ```
 
-### 4.9 Retry and Error Handling
+### 4.10 Retry and Error Handling
 
 #### How automatic retries work
 
@@ -1528,7 +1605,7 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 // [Ollama] Response received: {...}
 ```
 
-### 4.10 Message Persistence
+### 4.11 Message Persistence
 
 Session history can be saved to and restored from files. You can also encrypt saved files.
 
@@ -1762,7 +1839,7 @@ public class ChatSessionManager : MonoBehaviour
 }
 ```
 
-### 4.11 Tools (Function Calling)
+### 4.12 Tools (Function Calling)
 
 Supports Function Calling so the LLM can invoke external tools.
 You only register callback functions and the LLM uses them automatically.
@@ -2132,7 +2209,7 @@ void RegisterToolWithManualSchema()
 - **Return types**: Primitive types, custom objects, and arrays are all auto-converted.
 - **Performance**: Tool calls require additional LLM requests, so multiple round-trips occur.
 
-### 4.12 JSON Response Format
+### 4.13 JSON Response Format
 
 You can request responses in JSON format. This is useful for structured data or schema-constrained output.
 
