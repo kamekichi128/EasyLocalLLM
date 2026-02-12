@@ -34,7 +34,7 @@ public class LateralThinkingQuiz : MonoBehaviour
 {
     public UIDocument UIDocument;
 
-    private IChatLLMClient client;
+    private OllamaClient client;
 
     // Game Status
     private string currentPuzzle = "";
@@ -64,7 +64,7 @@ public class LateralThinkingQuiz : MonoBehaviour
             ServerUrl = "http://localhost:11434",
             ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
             ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-            DefaultModelName = "hoangquan456/qwen3-nothink:8b",
+            DefaultModelName = "kamekichi128/qwen3-4b-instruct-2507",
             AutoStartServer = true,
             DebugMode = true,
         };
@@ -78,12 +78,29 @@ public class LateralThinkingQuiz : MonoBehaviour
         if (successed)
         {
             Debug.Log("✓ Ollama server initialized successfully.");
-            EnableUI();
+            StartCoroutine(client.LoadModelRunnable(client.GetConfig().DefaultModelName, true, OnModelRunnable));
         }
         else
         {
             Debug.LogError("✗ Failed to initialize Ollama server.");
         }
+    }
+
+    private void OnModelRunnable(LoadModelProgress progress)
+    {
+        if (progress.IsCompleted)
+        {
+            if (progress.IsSuccessed)
+            {
+                Debug.Log("✓ Model is runnable.");
+                EnableUI();
+            }
+            else
+            {
+                Debug.LogError($"✗ Model failed to load: {progress.Message}");
+            }
+        }
+        Debug.Log($"Model loading progress: {progress.Progress * 100}% | {progress.Message}");
     }
 
     private void EnableUI()
@@ -286,13 +303,13 @@ public class LateralThinkingQuiz : MonoBehaviour
                     if (opponentResponse.type == "question")
                     {
                         // Send Question to Yes/No Answerer AI
-                        AddChatMessage($"[Opponent]\n質問：{opponentResponse.content}");
+                        AddChatMessage($"[Opponent]\nQuestion：{opponentResponse.content}");
                         OnYesNoAnswerOpponentQuestion(opponentResponse.content);
                     }
                     else if (opponentResponse.type == "answer")
                     {
                         // Send Answer to Judge AI
-                        AddChatMessage($"[Opponent]\n答え：{opponentResponse.content}");
+                        AddChatMessage($"[Opponent]\nAnswer：{opponentResponse.content}");
                         JudgeOpponentAnswer(opponentResponse.content);
                     }
                 }

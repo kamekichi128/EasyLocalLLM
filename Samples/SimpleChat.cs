@@ -68,11 +68,11 @@ public class SimpleChat : MonoBehaviour
         aiTypes.Add(
             "Character Generator", new AIType(
                 "Character Generator",
-                "Generate character sheet from input lines. Return only JSON.",
-                "Generate character sheet from your character story telling.\n"
+                "Generate character sheet from input lines.\n"
                 + "Strength (STR), Agility (AGL), and Magic (MGK) should be set from 1 to 10.\n"
                 + "STR and AGL: 5 is average adult male, 8 is Olympic athlete, 2 is child. Magic is usually 1, 5 is average mage, 9 is legendary mage.\n"
                 + "Return only JSON.",
+                "Generate character sheet from your character story telling.",
                 new
                 {
                     type = "object",
@@ -97,7 +97,7 @@ public class SimpleChat : MonoBehaviour
             ServerUrl = "http://localhost:11434",
             ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
             ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-            DefaultModelName = "hoangquan456/qwen3-nothink:4b",
+            DefaultModelName = "kamekichi128/qwen3-4b-instruct-2507",
             AutoStartServer = true,
             DebugMode = true,
         };
@@ -111,13 +111,30 @@ public class SimpleChat : MonoBehaviour
         if (successed)
         {
             Debug.Log("✓ Ollama server initialized successfully.");
-            LoadHistory();
-            EnableUI();
+            StartCoroutine(client.LoadModelRunnable(client.GetConfig().DefaultModelName, true, OnModelRunnable));
         }
         else
         {
             Debug.LogError("✗ Failed to initialize Ollama server.");
         }
+    }
+
+    private void OnModelRunnable(LoadModelProgress progress)
+    {
+        if (progress.IsCompleted)
+        {
+            if (progress.IsSuccessed)
+            {
+                Debug.Log("✓ Model is runnable.");
+                LoadHistory();
+                EnableUI();
+            }
+            else
+            {
+                Debug.LogError($"✗ Model failed to load: {progress.Message}");
+            }
+        }
+        Debug.Log($"Model loading progress: {progress.Progress * 100}% | {progress.Message}");
     }
 
     private void EnableUI()
@@ -281,7 +298,7 @@ public class SimpleChat : MonoBehaviour
         return shopItems;
     }
 
-    private string BuyItem(string itemName)
+    private string SellItem(string itemName)
     {
         var item = shopItems.Find(i => i.Name == itemName);
         if (item != null)
@@ -300,7 +317,7 @@ public class SimpleChat : MonoBehaviour
         return "Item " + itemName + " not found";
     }
 
-    private string SellItem(string itemName, int price)
+    private string BuyItem(string itemName, int price)
     {
         money += price;
         shopItems.Add(new ShopItem(itemName, price * 2));
@@ -317,8 +334,8 @@ public class SimpleChat : MonoBehaviour
         client.RemoveAllTools();
         client.RegisterTool("GetShopItems", "Get list of items in your shop", (Func<List<ShopItem>>)GetShopItems);
         client.RegisterTool("GetEnableToSellItems", "Get list of items that can be sold to your shop", (Func<List<ShopItem>>)GetEnableToSellItems);
-        client.RegisterTool("BuyItem", "Buy an item from your shop", (Func<string, string>)BuyItem);
-        client.RegisterTool("SellItem", "Sell an item to your shop", (Func<string, int, string>)SellItem);
+        client.RegisterTool("SellItem", "Sell an item from your shop", (Func<string, string>)SellItem);
+        client.RegisterTool("BuyItem", "Buy an item to your shop", (Func<string, int, string>)BuyItem);
     }
 
     private void LoadHistory()

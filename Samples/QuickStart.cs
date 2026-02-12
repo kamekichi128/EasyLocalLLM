@@ -27,15 +27,35 @@ public class QuickStartTest : MonoBehaviour
         var config = new OllamaConfig
         {
             ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
             DebugMode = true
         };
 
         var client = LLMClientFactory.CreateOllamaClient(config);
         Debug.Log("✓ Client initialized");
 
-        // Step 2: Send simple message
-        Debug.Log("[Step 2] Sending simple message...");
+        // Step 2: Load model
+        Debug.Log("[Step 2] Loading model...");
+        yield return client.LoadModelRunnable(config.DefaultModelName, true, 
+            progress => {
+                if (progress.IsCompleted)
+                {
+                    if (progress.IsSuccessed)
+                    {
+                        Debug.Log("✓ Model loaded successfully");
+                        return;
+                    }
+                    else
+                    {
+                        Debug.LogError("✗ Model loading failed");
+                        return;
+                    }
+                }
+                Debug.Log($"  Loading progress: {progress.Progress * 100f:0.00}% | {progress.Message}");
+            }
+        );
+
+        // Step 3: Send simple message
+        Debug.Log("[Step 3] Sending simple message...");
 
         bool completed = false;
         string response = "";
@@ -64,8 +84,8 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // Step 3: Send follow-up message with session history
-        Debug.Log("[Step 3] Sending follow-up message (with history)...");
+        // Step 4: Send follow-up message with session history
+        Debug.Log("[Step 4] Sending follow-up message (with history)...");
 
         completed = false;
 
@@ -92,8 +112,8 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // Step 4: Streaming test
-        Debug.Log("[Step 4] Testing streaming...");
+        // Step 5: Streaming test
+        Debug.Log("[Step 5] Testing streaming...");
 
         completed = false;
         int chunkCount = 0;
@@ -126,8 +146,8 @@ public class QuickStartTest : MonoBehaviour
 
         yield return new WaitUntil(() => completed);
 
-        // Step 5: Tool usage test 
-        Debug.Log("[Step 5] Testing tool...");
+        // Step 6: Tool usage test 
+        Debug.Log("[Step 6] Testing tool...");
 
         completed = false;
 

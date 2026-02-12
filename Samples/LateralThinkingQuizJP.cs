@@ -35,7 +35,7 @@ public class LateralThinkingQuizJP : MonoBehaviour
 {
     public UIDocument UIDocument;
 
-    private IChatLLMClient client;
+    private OllamaClient client;
 
     // ゲーム状態
     private string currentPuzzle = "";
@@ -65,7 +65,7 @@ public class LateralThinkingQuizJP : MonoBehaviour
             ServerUrl = "http://localhost:11434",
             ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
             ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-            DefaultModelName = "hoangquan456/qwen3-nothink:8b",
+            DefaultModelName = "kamekichi128/qwen3-4b-instruct-2507",
             AutoStartServer = true,
             DebugMode = true,
         };
@@ -79,12 +79,29 @@ public class LateralThinkingQuizJP : MonoBehaviour
         if (successed)
         {
             Debug.Log("✓ Ollama server initialized successfully.");
-            EnableUI();
+            StartCoroutine(client.LoadModelRunnable(client.GetConfig().DefaultModelName, true, OnModelRunnable));
         }
         else
         {
             Debug.LogError("✗ Failed to initialize Ollama server.");
         }
+    }
+
+    private void OnModelRunnable(LoadModelProgress progress)
+    {
+        if (progress.IsCompleted)
+        {
+            if (progress.IsSuccessed)
+            {
+                Debug.Log("✓ Model is runnable.");
+                EnableUI();
+            }
+            else
+            {
+                Debug.LogError($"✗ Model failed to load: {progress.Message}");
+            }
+        }
+        Debug.Log($"Model loading progress: {progress.Progress * 100}% | {progress.Message}");
     }
 
     private void EnableUI()
@@ -266,8 +283,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
         string chatContext = string.Join("\n", chatHistory);
 
         StartCoroutine(client.SendMessageAsync(
-            $"これまでのやり取り：\n{chatContext}\n\n" +
-            "あなたは今、あるお題を読んで、そのお題の裏側にある真相を答えるゲームをしています。これまでの質問と回答から、このお題の真相を推測してください。情報が足りないと考えた場合は、真相を突き止めるのに有用なこれまでに出ていない、必ず**Yes/Noで答えられる**質問を投げかけてください。",
+            "あなたは今、あるお題を読んで、そのお題の裏側にある真相を答えるゲームをしています。これまでの質問と回答から、このお題の真相を推測してください。情報が足りないと考えた場合は、真相を突き止めるのに有用な、必ず**Yes/Noで答えられる**、これまでのやり取りに出現していない新しい観点での質問を投げかけてください。\n\n"
+            + $"これまでのやり取り：\n{chatContext}",
             (response, error) =>
             {
                 if (error != null)

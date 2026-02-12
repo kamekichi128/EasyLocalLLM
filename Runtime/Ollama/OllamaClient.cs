@@ -1,16 +1,55 @@
+using EasyLocalLLM.LLM.Core;
+using EasyLocalLLM.LLM.Manager;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
-using EasyLocalLLM.LLM.Core;
-using EasyLocalLLM.LLM.Manager;
+using UnityEngine.UIElements;
 
 namespace EasyLocalLLM.LLM.Ollama
 {
+    /// <summary>
+    /// Load model progress information
+    /// </summary>
+    public class LoadModelProgress
+    {
+        /// <summary>
+        /// Progress value (0.0 to 1.0)
+        /// </summary>
+        public double Progress { get; private set; }
+        /// <summary>
+        /// true if loading is completed (even if failed)
+        /// </summary>
+        public bool IsCompleted { get; private set; }
+        /// <summary>
+        /// true if loading succeeded
+        /// </summary>
+        public bool IsSuccessed { get; private set; }
+        /// <summary>
+        /// Message about the loading status
+        /// </summary>
+        public string Message { get; private set; }
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="progress">Progress value</param>
+        /// <param name="isCompleted">true if loading is completed (even if failed)</param>
+        /// <param name="isSuccessed">true if loading succeeded</param>
+        /// <param name="message">Message about the loading status</param>
+        public LoadModelProgress(double progress, bool isCompleted, bool isSuccessed, string message)
+        {
+            Progress = progress;
+            IsCompleted = isCompleted;
+            IsSuccessed = isSuccessed;
+            Message = message;
+        }
+    }
+
     /// <summary>
     /// Implementation of Ollama LLM client
     /// </summary>
@@ -27,16 +66,24 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <summary>
         /// Pending request information
         /// </summary>
-        private class PendingRequest(string sessionId, int priority, long order)
+        private class PendingRequest
         {
-            public string SessionId { get; } = sessionId;
-            public int Priority { get; } = priority;
-            public long Order { get; } = order;
+            public string SessionId { get; private set; }
+            public int Priority { get; private set; }
+            public long Order { get; private set; }
+
+            public PendingRequest(string sessionId, int priority, long order)
+            {
+                SessionId = sessionId;
+                Priority = priority;
+                Order = order;
+            }
         }
 
         /// <summary>
         /// Insert pending request in sorted order
         /// the list is sorted by priority (desc) and order (asc)
+        /// <param name="request">Pending request to insert</param>"
         /// </summary>
 
         private void InsertPendingSorted(PendingRequest request)
@@ -176,6 +223,188 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <param name="sessionId">Session ID</param>
         /// </summary>
         public void ClearMessages(string sessionId) => _historyManager.Clear(sessionId);
+
+        /// <summary>
+        /// Load model as runnable
+        /// </summary>
+        /// <param name="modelName">Name of model. e.g. mistral or kamekichi128/qwen4-4b-instruct-2507</param>
+        /// <param name="pullIfModelNotAvailable">pull model if not available</param>
+        /// <param name="progressCallback">Load progress callback</param>
+        /// <returns></returns>
+        public IEnumerator LoadModelRunnable(string modelName, bool pullIfModelNotAvailable, Action<LoadModelProgress> progressCallback = null, CancellationToken cancellationToken = default)
+        {
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Load {modelName} started...");
+            }
+
+            // Check model availability via /api/show
+            var showRequestContent = new
+            {
+                model = modelName
+            };
+
+            string showJson = Newtonsoft.Json.JsonConvert.SerializeObject(showRequestContent);
+            string showUrl = _config.ServerUrl + "/api/show";
+
+            bool modelAvailable = false;
+            bool pullModel = false;
+
+            yield return _httpHelper.ExecuteWithRetry(
+                showUrl,
+                showJson,
+                responseBody =>
+                {
+                    // Model is available
+                    if (_config.DebugMode)
+                    {
+                        UnityEngine.Debug.Log($"[Ollama] Model {modelName} is available.");
+                    }
+                    progressCallback?.Invoke(new (0.5, false, true, $"Model '{modelName}' is available."));
+                    modelAvailable = true;
+                },
+                error =>
+                {
+                    // if error is 404, model is not available
+                    // otherwise, some other error occurred
+                    if (error.HttpStatus != 404)
+                    {
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log($"[Ollama] Failed to check model {modelName}: {error.Message}");
+                        }
+                        progressCallback?.Invoke(new(1.0, true, false, $"Failed to check model '{modelName}': {error.Message}"));
+                    }
+                    else if (pullIfModelNotAvailable)
+                    {
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log($"[Ollama] Model {modelName} is not available. Starting to pull...");
+                        }
+                        progressCallback?.Invoke(new(0.0, false, false, $"Model '{modelName}' is not available. Starting to pull..."));
+                        pullModel = true;
+                    }
+                    else
+                    {
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.Log($"[Ollama] Model {modelName} is not available. Failed to load.");
+                        }
+                        // Model not available and not pulling
+                        progressCallback?.Invoke(new(1.0, true, false, $"Model '{modelName}' is not available. Failed to load."));
+                    }
+                },
+                cancellationToken
+            );
+
+            if (modelAvailable)
+            {
+                // Warm up model by sending a short message
+                yield return WarmupModel(modelName, progressCallback);
+            }
+            else if (pullModel)
+            {
+                // Pulling model in progress
+                yield return PullModel(modelName, progressCallback, cancellationToken);
+
+                // Warm up model by sending a short message
+                yield return WarmupModel(modelName, progressCallback);
+            }
+        }
+
+        /// <summary>
+        /// Warm up model by sending a short message
+        /// </summary>
+        /// <param name="modelName">Name of model</param>
+        /// <param name="progressCallback">Progress callback</param>
+        private IEnumerator WarmupModel(string modelName, Action<LoadModelProgress> progressCallback)
+        {
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Model {modelName} warm up start.");
+            }
+            yield return SendMessageAsync(
+                "Please say hello",
+                (response, error) =>
+                {
+                    if (error != null)
+                    {
+                        progressCallback?.Invoke(new(1.0, true, false, $"Failed to run model '{modelName}': {error.Message}"));
+                        return;
+                    }
+                    progressCallback?.Invoke(new(1.0, true, true, $"Model '{modelName}' is loaded and runnable."));
+                },
+                new ChatRequestOptions
+                {
+                    ModelName = modelName,
+                }
+            );
+        }
+
+        /// <summary>
+        /// Pull model via /api/pull
+        /// </summary>
+        /// <param name="modelName">Name of model</param>
+        /// <param name="progressCallback">Progress callback</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        private IEnumerator PullModel(string modelName, Action<LoadModelProgress> progressCallback, CancellationToken cancellationToken = default)
+        {
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Model {modelName} pull start.");
+            }            // Pull model via /api/pull
+            var pullRequestContent = new
+            {
+                model = modelName
+            };
+            string pullJson = Newtonsoft.Json.JsonConvert.SerializeObject(pullRequestContent);
+            string pullUrl = _config.ServerUrl + "/api/pull";
+            string lastRawChunk = "";
+            double lastProgress = 0.0;
+            yield return _httpHelper.ExecuteStreamingWithRetry(
+                pullUrl,
+                pullJson,
+                chunk =>
+                {
+                    try
+                    {
+                        lastRawChunk = chunk;
+                        var chunkJson = JObject.Parse(chunk);
+                        var chunkStatus = chunkJson["status"];
+                        var chunkTotal = chunkJson["total"];
+                        var chunkCompleted = chunkJson["completed"];
+
+                        if (chunkStatus != null && chunkTotal != null && chunkCompleted != null)
+                        {
+                            long total = chunkTotal.Value<long>();
+                            long completed = chunkCompleted.Value<long>();
+                            if (total == 0)
+                            {
+                                total = 1;
+                            }
+                            lastProgress = 0.9 * (double)completed / (double)total; // up to 90%, because of warmup later
+                            progressCallback?.Invoke(new (lastProgress, false, true, $"Pulling model '{modelName}': {chunkStatus.Value<string>()} ({completed}/{total})"));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_config.DebugMode)
+                        {
+                            UnityEngine.Debug.LogWarning($"[Ollama] Failed to parse chunk: {ex.Message}");
+                        }
+                    }
+                },
+                isSuccess =>
+                {
+                    WarmupModel(modelName, progressCallback);
+                },
+                error =>
+                {
+                    progressCallback(new (lastProgress, false, false, $"Failed to pull model '{modelName}': {error.Message}"));
+                },
+                cancellationToken
+            );
+        }
 
         /// <summary>
         /// Get session information
@@ -1228,6 +1457,19 @@ namespace EasyLocalLLM.LLM.Ollama
         public void LoadAllSessions(string dirPath, string encryptionKey = null)
         {
             ChatSessionPersistence.LoadAllSessions(dirPath, _historyManager, encryptionKey);
+        }
+
+        public OllamaConfig GetConfig()
+        {
+            return new() { 
+                ServerUrl = _config.ServerUrl,
+                DefaultModelName = _config.DefaultModelName,
+                MaxRetries = _config.MaxRetries,
+                RetryDelaySeconds = _config.RetryDelaySeconds,
+                DefaultSeed = _config.DefaultSeed,
+                HttpTimeoutSeconds = _config.HttpTimeoutSeconds,
+                DebugMode = _config.DebugMode
+            };
         }
 
         #region Tool Management

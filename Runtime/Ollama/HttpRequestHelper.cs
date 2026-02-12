@@ -12,6 +12,8 @@ namespace EasyLocalLLM.LLM.Ollama
     /// </summary>
     internal class HttpRequestHelper
     {
+        private readonly OllamaConfig _config;
+
         public HttpRequestHelper(OllamaConfig config)
         {
             _config = config;
@@ -139,7 +141,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     request.uploadHandler = new UploadHandlerRaw(bodyRaw);
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
-                    request.timeout = (int)_config.HttpTimeoutSeconds;
+                    request.timeout = 0;
 
                     if (_config.DebugMode)
                     {
@@ -151,6 +153,8 @@ namespace EasyLocalLLM.LLM.Ollama
                     int lastProcessedByteCount = 0;
                     var decoder = Encoding.UTF8.GetDecoder();
                     var buffer = new StringBuilder();
+                    float lastDataReceivedTime = Time.realtimeSinceStartup;
+                    float idleTimeoutSeconds = _config.HttpTimeoutSeconds;
 
                     while (!operation.isDone)
                     {
@@ -165,9 +169,37 @@ namespace EasyLocalLLM.LLM.Ollama
                             onComplete?.Invoke(false);
                             yield break;
                         }
+
+                        // アイドルタイムアウトチェック
+                        if (Time.realtimeSinceStartup - lastDataReceivedTime > idleTimeoutSeconds)
+                        {
+                            request.Abort();
+                            UnityEngine.Debug.LogWarning($"[Ollama] Streaming idle timeout (no data for {idleTimeoutSeconds}s)");
+
+                            attempt++;
+                            if (attempt >= _config.MaxRetries)
+                            {
+                                onError?.Invoke(new ChatError
+                                {
+                                    ErrorType = LLMErrorType.Timeout,
+                                    Message = $"Streaming request timed out: no data received for {idleTimeoutSeconds} seconds",
+                                    HttpStatus = 0
+                                });
+                                onComplete?.Invoke(false);
+                                yield break;
+                            }
+
+                            float waitTime = _config.RetryDelaySeconds * Mathf.Pow(2, attempt - 1);
+                            UnityEngine.Debug.LogWarning($"[Ollama] Retrying in {waitTime} seconds...");
+                            yield return new WaitForSeconds(waitTime);
+                            break; // 外側のwhileループでリトライ
+                        }
+
                         var data = request.downloadHandler.data;
                         if (data != null && data.Length > lastProcessedByteCount)
                         {
+                            lastDataReceivedTime = Time.realtimeSinceStartup;
+
                             int byteCount = data.Length - lastProcessedByteCount;
                             char[] charBuffer = new char[Encoding.UTF8.GetMaxCharCount(byteCount)];
                             int charsDecoded = decoder.GetChars(data, lastProcessedByteCount, byteCount, charBuffer, 0);

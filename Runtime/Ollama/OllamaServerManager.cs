@@ -40,7 +40,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 return;
             }
 
-            GameObject managerGO = new GameObject("OllamaServerManager");
+            GameObject managerGO = new ("OllamaServerManager");
             _instance = managerGO.AddComponent<OllamaServerManager>();
             _instance._config = config;
             _instance._initializationCallback = initializationCallback;
@@ -243,10 +243,9 @@ namespace EasyLocalLLM.LLM.Ollama
                 attempt++;
                 yield return new WaitForSeconds(delaySeconds);
 
-                // Get current default model information from /api/show
-                using (UnityWebRequest request = new UnityWebRequest(_config.ServerUrl + "/api/show", "POST"))
+                // Get /api/tags
+                using (UnityWebRequest request = new UnityWebRequest(_config.ServerUrl + "/api/tags", "GET"))
                 {
-                    request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes("{\"model\":\"" + _config.DefaultModelName + "\"}"));
                     request.downloadHandler = new DownloadHandlerBuffer();
                     request.SetRequestHeader("Content-Type", "application/json");
                     request.timeout = 5;

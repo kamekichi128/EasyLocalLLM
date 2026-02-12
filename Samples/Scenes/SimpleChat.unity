@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 643704230}
   - component: {fileID: 643704231}
   m_Layer: 0
-  m_Name: Simpe Chat Manager
+  m_Name: SimpeChatManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

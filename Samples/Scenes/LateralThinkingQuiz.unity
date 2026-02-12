@@ -162,8 +162,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5cfab98f429d4c74389dc60f486f837e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TurtleSoup
-  UIDocument: {fileID: 0}
+  m_EditorClassIdentifier: Assembly-CSharp::LateralThinkingQuiz
+  UIDocument: {fileID: 1666967245}
 --- !u!1 &1666967244
 GameObject:
   m_ObjectHideFlags: 0
