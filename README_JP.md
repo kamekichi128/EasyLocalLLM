@@ -108,7 +108,7 @@ SOFTWARE.
 
 ## 🤝 サポート
 
-- **バグ報告、リクエスト**: バグ報告や機能リクエストは Github Issuesまで。返答・対応を保証するものではありません。ご留意ください。
+- **バグ報告、リクエスト**: バグ報告や機能リクエストは [Github Issues](https://github.com/kamekichi128/kamekichi-games)まで。返答・対応を保証するものではありません。ご留意ください。
 - **ドキュメント**: [Documentation_JP/API_Reference.md](Documentation_JP/API_Reference.md) に詳細情報
 - **サンプルコード**: `Samples/` フォルダをご覧ください
 
