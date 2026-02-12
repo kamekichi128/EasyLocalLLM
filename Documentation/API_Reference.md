@@ -438,9 +438,10 @@ cd "<ProjectPath>\Assets\StreamingAssets\Ollama"
 
 ```
 Small (lightweight, fast)
-├── mistral (7B)          Recommended balance
-├── neural-chat (7B)      Optimized for chat
-└── phi (2.7B)            Lightest option
+├── qwen3-4b-instruct-2507 (4B) Recommended. Good for Multiluingal, Used in sample（kamekichi128/qwen3-4b-instruct-2507）
+├── mistral (7B)                Recommended balance
+├── neural-chat (7B)            Optimized for chat
+└── phi (2.7B)                  Lightest option
 
 Medium (standard)
 ├── llama2 (13B)          Higher accuracy

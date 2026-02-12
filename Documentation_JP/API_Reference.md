@@ -438,9 +438,10 @@ cd "<プロジェクトパス>\Assets\StreamingAssets\Ollama"
 
 ```
 小型（軽量・高速）
-├── mistral (7B)          推奨。バランスが良い
-├── neural-chat (7B)      会話に最適化
-└── phi (2.7B)            最も軽量
+├── qwen3-4b-instruct-2507 (4B) 推奨。多言語に強い。サンプルで利用。（kamekichi128/qwen3-4b-instruct-2507）
+├── mistral (7B)                推奨。バランスが良い
+├── neural-chat (7B)            会話に最適化
+└── phi (2.7B)                  最も軽量
 
 中型（標準）
 ├── llama2 (13B)          高精度が必要な場合
