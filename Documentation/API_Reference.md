@@ -56,13 +56,8 @@ public class QuickStart : MonoBehaviour
         
         StartCoroutine(client.SendMessageAsync(
             "Hello",
-            (response, error) => {
-                if (error != null) {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-                Debug.Log($"Response: {response.Content}");
-            }
+            response => Debug.Log($"Response: {response.Content}"),
+            error => Debug.LogError($"Error: {error.Message}"),
         ));
     }
 }
@@ -95,9 +90,13 @@ void SendMessage()
 {
     StartCoroutine(client.SendMessageAsync(
         "Hello",
-        (response, error) =>
+        response =>
         {
             // Handle result in callback
+        },
+        error =>
+        {
+            // Handle error in callback
         }
     ));
 }
@@ -233,16 +232,8 @@ void SendMessage()
 
     StartCoroutine(_client.SendMessageAsync(
         "Hello",
-        (response, error) =>
-        {
-            if (error != null)
-            {
-                Debug.LogError($"Error: {error.Message}");
-                return;
-            }
-
-            Debug.Log($"Assistant: {response.Content}");
-        },
+        response => Debug.Log($"Assistant: {response.Content}"),
+        error => Debug.LogError($"Error: {error.Message}"),
         options
     ));
 }
@@ -302,14 +293,8 @@ void SendStreamingMessage()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "Write a poem",
-        (response, error) =>
+        response =>
         {
-            if (error != null)
-            {
-                Debug.LogError($"Error: {error.Message}");
-                return;
-            }
-
             if (!response.IsFinal)
             {
                 // Called multiple times: partial response
@@ -321,6 +306,7 @@ void SendStreamingMessage()
                 Debug.Log($"Complete: {response.Content}");
             }
         },
+        error => Debug.LogError($"Error: {error.Message}"),
         options
     ));
 }
@@ -1190,18 +1176,14 @@ void SendWithoutWaiting()
 
     StartCoroutine(_client.SendMessageAsync(
         "Message",
-        (response, error) =>
-        {
-            if (error != null)
+        response => Debug.Log($"Receiving: {response.Content}"),
+        error => {
+            if (error.ErrorType == LLMErrorType.Unknown &&
+                error.Message.Contains("busy"))
             {
-                if (error.ErrorType == LLMErrorType.Unknown &&
-                    error.Message.Contains("busy"))
-                {
-                    Debug.Log("Client is busy, request was rejected");
-                }
-                return;
+                Debug.Log("Client is busy, request was rejected");
             }
-        },
+        }
         options
     ));
 }
@@ -1284,13 +1266,12 @@ public class PrioritizedChatManager : MonoBehaviour
 
     void OnResponse(ChatResponse response, ChatError error)
     {
-        if (error != null)
-        {
-            Debug.LogError($"Error: {error.Message}");
-            return;
-        }
-
         Debug.Log($"Response: {response.Content}");
+    }
+
+    void OnError(ChatError error)
+    {
+        Debug.LogError($"Error: {error.Message}");
     }
 }
 ```
@@ -1349,23 +1330,18 @@ void SendWithCancel()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "Generate a long response",
-        (response, error) =>
+        response => Debug.Log($"Receiving: {response.Content}"),
+        error =>
         {
-            if (error != null)
+            if (error.ErrorType == LLMErrorType.Cancelled)
             {
-                if (error.ErrorType == LLMErrorType.Cancelled)
-                {
-                    Debug.Log("Request cancelled");
-                }
-                else
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                }
-                return;
+                Debug.Log("Request cancelled");
             }
-            
-            Debug.Log($"Receiving: {response.Content}");
-        },
+            else
+            {
+                Debug.LogError($"Error: {error.Message}");
+            }
+        }
         options
     ));
 }
@@ -1399,23 +1375,17 @@ void SendWithTimeout()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "Generate a response",
-        (response, error) =>
-        {
-            if (error != null)
+        response => Debug.Log($"Receiving: {response.Content}"),
+        error => {
+            if (error.ErrorType == LLMErrorType.Cancelled)
             {
-                if (error.ErrorType == LLMErrorType.Cancelled)
-                {
-                    Debug.Log("Request timeout");
-                }
-                else
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                }
-                return;
+                Debug.Log("Request timeout");
             }
-            
-            Debug.Log($"Receiving: {response.Content}");
-        },
+            else
+            {
+                Debug.LogError($"Error: {error.Message}");
+            }
+        }
         options
     ));
 }
@@ -1487,19 +1457,14 @@ void SendMessageAndHandleError()
 
     StartCoroutine(_client.SendMessageAsync(
         "Message",
-        (response, error) =>
+        response => Debug.Log($"Response: {response.Content}"),
+        error =>
         {
-            if (error != null)
-            {
-                // Errors here have already retried up to MaxRetries
-                Debug.LogError($"Error after retries: {error.Message}");
-                
-                HandleError(error);
-                return;
-            }
-
-            Debug.Log($"Response: {response.Content}");
-        },
+            // Errors here have already retried up to MaxRetries
+            Debug.LogError($"Error after retries: {error.Message}");
+            
+            HandleError(error);
+        }
         options
     ));
 }
@@ -1623,7 +1588,8 @@ void SaveAndLoadSession()
     // Chat in a session
     StartCoroutine(client.SendMessageAsync(
         "Hello",
-        (response, error) => { },
+        response => { },
+        error => { },
         new ChatRequestOptions { SessionId = "my-session" }
     ));
     
@@ -1644,9 +1610,8 @@ void RestoreSession()
     // Continue the restored session
     StartCoroutine(client.SendMessageAsync(
         "Do you remember the previous conversation?",
-        (response, error) => {
-            Debug.Log($"Assistant: {response.Content}");
-        },
+        response => Debug.Log($"Assistant: {response.Content}"),
+        error => { }
         new ChatRequestOptions { SessionId = "my-session" }
     ));
 }
@@ -1798,14 +1763,12 @@ public class ChatSessionManager : MonoBehaviour
     {
         StartCoroutine(_client.SendMessageAsync(
             message,
-            (response, error) =>
+            response =>
             {
-                if (error == null)
-                {
-                    // Auto-save on success
-                    SaveSession(sessionId);
-                }
+                // Auto-save on success
+                SaveSession(sessionId);
             },
+            error => { },
             new ChatRequestOptions { SessionId = sessionId }
         ));
     }
@@ -1967,18 +1930,13 @@ public class ToolExample : MonoBehaviour
         // Send a message to the LLM
         StartCoroutine(_client.SendMessageAsync(
             "What is 125 + 378? And what time is it now?",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-
                 // LLM calls tools automatically
                 Debug.Log($"Assistant: {response.Content}");
                 // Example: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
-            }
+            },
+            error => Debug.LogError($"Error: {error.Message}")
         ));
     }
 }
@@ -2108,11 +2066,11 @@ void SendWithToolOptions()
 
     StartCoroutine(_client.SendMessageAsync(
         "Calculate 5 + 3, then multiply by 2, then subtract 4",
-        (response, error) =>
-        {
+        response => {
             // LLM may call tools multiple times
             Debug.Log(response.Content);
         },
+        error => { },
         options
     ));
 }
@@ -2150,10 +2108,8 @@ void StreamingWithTools()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "What time is it?",
-        (response, error) =>
+        response =>
         {
-            if (error != null) return;
-
             if (!response.IsFinal)
             {
                 // Partial streaming response
@@ -2165,6 +2121,7 @@ void StreamingWithTools()
                 Debug.Log($"Final: {response.Content}");
             }
         },
+        error => { },
         new ChatRequestOptions { SessionId = "streaming-session" }
     ));
 }
@@ -2243,14 +2200,8 @@ public class JsonFormatExample : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             "Generate a user profile with name, age, and email",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-
                 // Response is JSON string
                 Debug.Log($"JSON Response: {response.Content}");
                 // Example: {"name": "John Doe", "age": 30, "email": "john@example.com"}
@@ -2261,6 +2212,7 @@ public class JsonFormatExample : MonoBehaviour
                 int age = json["age"]?.Value<int>() ?? 0;
                 Debug.Log($"User: {name}, Age: {age}");
             },
+            error => Debug.LogError($"Error: {error.Message}"),
             options
         ));
     }
@@ -2303,14 +2255,12 @@ public class JsonSchemaExample : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             "Create a user profile for a 25-year-old software engineer named Alice",
-            (response, error) =>
+            response =>
             {
-                if (error == null)
-                {
-                    Debug.Log($"Structured JSON: {response.Content}");
-                    // Response matches the schema
-                }
+                Debug.Log($"Structured JSON: {response.Content}");
+                // Response matches the schema
             },
+            error => { },
             options
         ));
     }
@@ -2352,23 +2302,21 @@ void RequestArrayData()
 
     StartCoroutine(_client.SendMessageAsync(
         "Generate a fantasy RPG party with 4 members",
-        (response, error) =>
+        response =>
         {
-            if (error == null)
+            var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
+            string teamName = json["teamName"]?.ToString();
+            var members = json["members"] as Newtonsoft.Json.Linq.JArray;
+            
+            Debug.Log($"Team: {teamName}");
+            foreach (var member in members)
             {
-                var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
-                string teamName = json["teamName"]?.ToString();
-                var members = json["members"] as Newtonsoft.Json.Linq.JArray;
-                
-                Debug.Log($"Team: {teamName}");
-                foreach (var member in members)
-                {
-                    string name = member["name"]?.ToString();
-                    string role = member["role"]?.ToString();
-                    Debug.Log($"- {name} ({role})");
-                }
+                string name = member["name"]?.ToString();
+                string role = member["role"]?.ToString();
+                Debug.Log($"- {name} ({role})");
             }
         },
+        error => { },
         options
     ));
 }
@@ -2426,14 +2374,8 @@ public class GameDataGenerator : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             $"Generate a {theme} enemy with stats and weaknesses",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"Failed to generate enemy: {error.Message}");
-                    return;
-                }
-
                 try
                 {
                     // Deserialize JSON
@@ -2446,6 +2388,7 @@ public class GameDataGenerator : MonoBehaviour
                     Debug.LogError($"Failed to parse enemy data: {ex.Message}");
                 }
             },
+            error => Debug.LogError($"Failed to generate enemy: {error.Message}"),
             options
         ));
     }
@@ -2503,10 +2446,8 @@ void StreamingJsonExample()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "Generate a character profile",
-        (response, error) =>
+        response =>
         {
-            if (error != null) return;
-
             if (response.IsFinal)
             {
                 // Complete JSON
@@ -2520,6 +2461,7 @@ void StreamingJsonExample()
                 Debug.Log($"Partial: {response.Content}");
             }
         },
+        error => { },
         options
     ));
 }
@@ -2621,10 +2563,8 @@ public class NPCChatSystem : MonoBehaviour
         
         StartCoroutine(_client.SendMessageStreamingAsync(
             userMessage,
-            (response, error) =>
-            {
-                OnNPCResponse(response, error);
-            },
+            response => OnNPCResponse(response),
+            error => OnError(error),
             options
         ));
     }
@@ -2650,15 +2590,14 @@ public class NPCChatSystem : MonoBehaviour
         }
     }
 
+    void OnError(ChatError error)
+    {
+        HandleError(error);
+        ResetUI();
+    }
+
     void OnNPCResponse(ChatResponse response, ChatError error)
     {
-        if (error != null)
-        {
-            HandleError(error);
-            ResetUI();
-            return;
-        }
-        
         // Streamed incremental display
         npcDialogueText.text = response.Content;
         
@@ -2800,17 +2739,12 @@ public class MultiNPCManager : MonoBehaviour
         
         StartCoroutine(_client.SendMessageAsync(
             playerMessage,
-            (response, error) =>
+            response => onComplete?.Invoke(response.Content),
+            error => 
             {
-                if (error != null)
-                {
-                    Debug.LogError($"NPC {npcId} error: {error.Message}");
-                    onComplete?.Invoke("...");
-                    return;
-                }
-                
-                onComplete?.Invoke(response.Content);
-            },
+                Debug.LogError($"NPC {npcId} error: {error.Message}");
+                onComplete?.Invoke("...");
+            }
             options
         ));
     }
@@ -3417,16 +3351,8 @@ public class RobustChatManager : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             message,
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    HandleError(error);
-                    return;
-                }
-
-                Debug.Log($"Assistant: {response.Content}");
-            },
+            response => Debug.Log($"Assistant: {response.Content}"),
+            error => HandleError(error),
             options
         ));
     }

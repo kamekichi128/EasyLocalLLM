@@ -62,22 +62,16 @@ public class QuickStartTest : MonoBehaviour
 
         yield return client.SendMessageAsync(
             "Hello! What is your name?",
-            (chatResponse, error) =>
+            chatResponse =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
-                    Debug.LogError($"  HttpStatus: {error.HttpStatus}");
-                    completed = true;
-                    return;
-                }
-
-                if (chatResponse.IsFinal)
-                {
-                    response = chatResponse.Content;
-                    Debug.Log($"✓ Response received: {response}");
-                    completed = true;
-                }
+                response = chatResponse.Content;
+                Debug.Log($"✓ Response received: {response}");
+                completed = true;
+            },
+            error => {
+                Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
+                Debug.LogError($"  HttpStatus: {error.HttpStatus}");
+                completed = true;
             },
             new ChatRequestOptions { SessionId = "quick-test-session" }
         );
@@ -91,21 +85,16 @@ public class QuickStartTest : MonoBehaviour
 
         yield return client.SendMessageAsync(
             "Can you repeat your name again?",
-            (chatResponse, error) =>
+            chatResponse =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    completed = true;
-                    return;
-                }
-
-                if (chatResponse.IsFinal)
-                {
-                    Debug.Log($"✓ Follow-up response: {chatResponse.Content}");
-                    Debug.Log("✓ Session history is working correctly!");
-                    completed = true;
-                }
+                Debug.Log($"✓ Follow-up response: {chatResponse.Content}");
+                Debug.Log("✓ Session history is working correctly!");
+                completed = true;
+            },
+            error => {
+                Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
+                Debug.LogError($"  HttpStatus: {error.HttpStatus}");
+                completed = true;
             },
             new ChatRequestOptions { SessionId = "quick-test-session" }
         );
@@ -120,15 +109,8 @@ public class QuickStartTest : MonoBehaviour
 
         yield return client.SendMessageStreamingAsync(
             "Tell me a very brief fact about space",
-            (chatResponse, error) =>
+            chatResponse  =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    completed = true;
-                    return;
-                }
-
                 if (!chatResponse.IsFinal)
                 {
                     chunkCount++;
@@ -140,6 +122,10 @@ public class QuickStartTest : MonoBehaviour
                     Debug.Log($"  Response length: {chatResponse.Content.Length} chars");
                     completed = true;
                 }
+            },
+            error => {
+                Debug.LogError($"✗ Error: {error.Message}");
+                completed = true;
             },
             new ChatRequestOptions { SessionId = "quick-test-streaming" }
         );
@@ -169,19 +155,16 @@ public class QuickStartTest : MonoBehaviour
         // Send LLM message
         StartCoroutine(client.SendMessageAsync(
             "What is 125 + 378? And what time is it now?",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    completed = true;
-                    return;
-                }
-
                 // call tools automatically handled
                 Debug.Log($"✓ Tool call passed!");
                 Debug.Log($"Assistant: {response.Content}");
                 // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
+                completed = true;
+            },
+            error => {
+                Debug.LogError($"✗ Error: {error.Message}");
                 completed = true;
             },
             new ChatRequestOptions

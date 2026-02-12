@@ -44,7 +44,7 @@ Send messages normally. If the LLM decides a tool is needed, it will call it aut
 ```csharp
 StartCoroutine(client.SendMessageAsync(
     "What is 125 + 378?",
-    (response, error) =>
+    response =>
     {
         Debug.Log(response.Content);
         // Example output: "125 + 378 = 503"

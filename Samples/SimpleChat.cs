@@ -179,17 +179,16 @@ public class SimpleChat : MonoBehaviour
 
         StartCoroutine(client.SendMessageAsync(
             prompt,
-            (chatResponse, error) =>
+            chatResponse =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
-                    Debug.LogError($"  HttpStatus: {error.HttpStatus}");
-                    result.text = "error occured...";
-                    return;
-                }
                 Debug.Log($"✓ Response received: {chatResponse.Content}");
                 result.text = chatResponse.Content;
+            },
+            error =>
+            {
+                Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
+                Debug.LogError($"  HttpStatus: {error.HttpStatus}");
+                result.text = "error occured...";
             },
             new ChatRequestOptions
             {
@@ -209,15 +208,8 @@ public class SimpleChat : MonoBehaviour
 
         StartCoroutine(client.SendMessageStreamingAsync(
             prompt,
-            (chatResponse, error) =>
+            chatResponse =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
-                    Debug.LogError($"  HttpStatus: {error.HttpStatus}");
-                    result.text = "error occured...";
-                    return;
-                }
                 if (!chatResponse.IsFinal)
                 {
                     result.text = chatResponse.Content;
@@ -226,6 +218,11 @@ public class SimpleChat : MonoBehaviour
                 }
                 Debug.Log($"✓ Response received: {chatResponse.Content}");
                 result.text = chatResponse.Content;
+            },
+            error => {
+                Debug.LogError($"✗ Error: {error.ErrorType} - {error.Message}");
+                Debug.LogError($"  HttpStatus: {error.HttpStatus}");
+                result.text = "error occured...";
             },
             new ChatRequestOptions
             {

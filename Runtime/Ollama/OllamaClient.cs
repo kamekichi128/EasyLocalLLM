@@ -322,15 +322,8 @@ namespace EasyLocalLLM.LLM.Ollama
             }
             yield return SendMessageAsync(
                 "Please say hello",
-                (response, error) =>
-                {
-                    if (error != null)
-                    {
-                        progressCallback?.Invoke(new(1.0, true, false, $"Failed to run model '{modelName}': {error.Message}"));
-                        return;
-                    }
-                    progressCallback?.Invoke(new(1.0, true, true, $"Model '{modelName}' is loaded and runnable."));
-                },
+                response => progressCallback?.Invoke(new(1.0, true, true, $"Model '{modelName}' is loaded and runnable.")),
+                error => progressCallback?.Invoke(new(1.0, true, false, $"Failed to run model '{modelName}': {error.Message}")),
                 new ChatRequestOptions
                 {
                     ModelName = modelName,
@@ -397,10 +390,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     progressCallback?.Invoke(new(lastProgress, false, true, $"Pulling model '{modelName}': finished."));
                     pullSucceeded = true;
                 },
-                error =>
-                {
-                    progressCallback(new(lastProgress, true, false, $"Failed to pull model '{modelName}': {error.Message}"));
-                },
+                error => progressCallback(new(lastProgress, true, false, $"Failed to pull model '{modelName}': {error.Message}")),
                 cancellationToken
             );
 
@@ -621,16 +611,8 @@ namespace EasyLocalLLM.LLM.Ollama
 
             CoroutineRunner.Run(SendMessageAsync(
                 message,
-                (response, error) =>
-                {
-                    if (error != null)
-                    {
-                        tcs.TrySetException(new ChatLLMException(error));
-                        return;
-                    }
-
-                    tcs.TrySetResult(response);
-                },
+                response => tcs.TrySetResult(response),
+                error => tcs.TrySetException(new ChatLLMException(error)),
                 options
             ));
 
@@ -645,12 +627,14 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <summary>
         /// Send message asynchronously with IEnumerator (get complete response at once)
         /// <param name="message">Message to send</param>
-        /// <param name="callback">Response: (response, error)</param>
+        /// <param name="onResponse">Response: (response)</param>
+        /// <param name="onError">Response: (error)</param>
         /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageAsync(
             string message,
-            Action<ChatResponse, ChatError> callback,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError = null,
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
@@ -660,7 +644,7 @@ namespace EasyLocalLLM.LLM.Ollama
             yield return WaitForTurn(sessionId, options, error =>
             {
                 waitFailed = true;
-                callback?.Invoke(null, error);
+                onError?.Invoke(error);
             });
             if (waitFailed)
             {
@@ -700,7 +684,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 {
                     if (options.CancellationToken.IsCancellationRequested)
                     {
-                        callback?.Invoke(null, new ChatError
+                        onError?.Invoke(new ChatError
                         {
                             ErrorType = LLMErrorType.Cancelled,
                             Message = "Request cancelled"
@@ -854,13 +838,13 @@ namespace EasyLocalLLM.LLM.Ollama
 
                     if (errorInfo != null)
                     {
-                        callback?.Invoke(null, errorInfo);
+                        onError?.Invoke(errorInfo);
                         yield break;
                     }
 
                     if (!requestComplete || finalResponse == null)
                     {
-                        callback?.Invoke(null, new ChatError
+                        onError?.Invoke(new ChatError
                         {
                             ErrorType = LLMErrorType.Unknown,
                             Message = "Request incomplete"
@@ -926,7 +910,7 @@ namespace EasyLocalLLM.LLM.Ollama
                             Content = finalResponse.Content
                         }, options.MaxHistory);
 
-                        callback?.Invoke(finalResponse, null);
+                        onResponse?.Invoke(finalResponse);
                     }
                 }
 
@@ -938,7 +922,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
                     }
 
-                    callback?.Invoke(null, new ChatError
+                    onError?.Invoke(new ChatError
                     {
                         ErrorType = LLMErrorType.Unknown,
                         Message = $"Max tool iterations ({maxIterations}) reached"
@@ -1004,12 +988,14 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <summary>
         /// Send message asynchronously with IEnumerator (get response in streaming)
         /// <param name="message">The message to send</param>
-        /// <param name="callback">Response callback: (response, error)</param>
+        /// <param name="onResponse">Successed callback</param>
+        /// <param name="onError">Error callback</param>
         /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageStreamingAsync(
             string message,
-            Action<ChatResponse, ChatError> callback,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError = null,
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
@@ -1019,7 +1005,7 @@ namespace EasyLocalLLM.LLM.Ollama
             yield return WaitForTurn(sessionId, options, error =>
             {
                 waitFailed = true;
-                callback?.Invoke(null, error);
+                onError?.Invoke(error);
             });
             if (waitFailed)
             {
@@ -1059,7 +1045,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 {
                     if (options.CancellationToken.IsCancellationRequested)
                     {
-                        callback?.Invoke(null, new ChatError
+                        onError?.Invoke(new ChatError
                         {
                             ErrorType = LLMErrorType.Cancelled,
                             Message = "Request cancelled"
@@ -1200,7 +1186,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                         RawResponse = chunk
                                     };
 
-                                    callback?.Invoke(response, null);
+                                    onResponse?.Invoke(response);
                                 }
                             }
                             catch (Exception ex)
@@ -1217,7 +1203,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         },
                         error =>
                         {
-                            callback?.Invoke(null, error);
+                            onError?.Invoke(error);
                         },
                         options.CancellationToken
                     );
@@ -1297,7 +1283,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 RawResponse = lastRawChunk ?? fullResponse
                             };
 
-                            callback?.Invoke(finalResponse, null);
+                            onResponse?.Invoke(finalResponse);
                         }
                     }
                 }
@@ -1310,7 +1296,7 @@ namespace EasyLocalLLM.LLM.Ollama
                         UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
                     }
 
-                    callback?.Invoke(null, new ChatError
+                    onError?.Invoke(new ChatError
                     {
                         ErrorType = LLMErrorType.Unknown,
                         Message = $"Max tool iterations ({maxIterations}) reached"
@@ -1346,24 +1332,16 @@ namespace EasyLocalLLM.LLM.Ollama
 
             CoroutineRunner.Run(SendMessageStreamingAsync(
                 message,
-                (response, error) =>
+                response =>
                 {
-                    if (error != null)
-                    {
-                        tcs.TrySetException(new ChatLLMException(error));
-                        return;
-                    }
+                    onProgress?.Report(response);
 
-                    if (response != null)
+                    if (response.IsFinal)
                     {
-                        onProgress?.Report(response);
-
-                        if (response.IsFinal)
-                        {
-                            tcs.TrySetResult(response);
-                        }
+                        tcs.TrySetResult(response);
                     }
                 },
+                error => tcs.TrySetException(new ChatLLMException(error)),
                 options
             ));
 

@@ -56,13 +56,8 @@ public class QuickStart : MonoBehaviour
         
         StartCoroutine(client.SendMessageAsync(
             "こんにちは",
-            (response, error) => {
-                if (error != null) {
-                    Debug.LogError($"エラー: {error.Message}");
-                    return;
-                }
-                Debug.Log($"応答: {response.Content}");
-            }
+            response => Debug.Log($"応答: {response.Content}"),
+            error => Debug.LogError($"エラー: {error.Message}"),
         ));
     }
 }
@@ -95,9 +90,13 @@ void SendMessage()
 {
     StartCoroutine(client.SendMessageAsync(
         "Hello",
-        (response, error) =>
+        response =>
         {
             // コールバックで結果を処理
+        },
+        error =>
+        {
+            // コールバックでエラーを処理
         }
     ));
 }
@@ -233,16 +232,8 @@ void SendMessage()
 
     StartCoroutine(_client.SendMessageAsync(
         "こんにちは",
-        (response, error) =>
-        {
-            if (error != null)
-            {
-                Debug.LogError($"Error: {error.Message}");
-                return;
-            }
-
-            Debug.Log($"Assistant: {response.Content}");
-        },
+        response => Debug.Log($"Assistant: {response.Content}"),
+        error => Debug.LogError($"Error: {error.Message}"),
         options
     ));
 }
@@ -302,14 +293,8 @@ void SendStreamingMessage()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "日本語で詩を書いてください",
-        (response, error) =>
+        response =>
         {
-            if (error != null)
-            {
-                Debug.LogError($"Error: {error.Message}");
-                return;
-            }
-
             if (!response.IsFinal)
             {
                 // 複数回呼ばれる：部分応答
@@ -321,6 +306,7 @@ void SendStreamingMessage()
                 Debug.Log($"Complete: {response.Content}");
             }
         },
+        error => Debug.LogError($"Error: {error.Message}"),
         options
     ));
 }
@@ -1192,16 +1178,16 @@ void SendWithoutWaiting()
 
     StartCoroutine(_client.SendMessageAsync(
         "メッセージ",
-        (response, error) =>
+        response =>
         {
-            if (error != null)
+            // TODO
+        },
+        error =>
+        {
+            if (error.ErrorType == LLMErrorType.Unknown && 
+                error.Message.Contains("busy"))
             {
-                if (error.ErrorType == LLMErrorType.Unknown && 
-                    error.Message.Contains("busy"))
-                {
-                    Debug.Log("Client is busy, request was rejected");
-                }
-                return;
+                Debug.Log("Client is busy, request was rejected");
             }
         },
         options
@@ -1351,22 +1337,17 @@ void SendWithCancel()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "長い回答を生成して",
-        (response, error) =>
+        response => Debug.Log($"Receiving: {response.Content}"),
+        error => 
         {
-            if (error != null)
+            if (error.ErrorType == LLMErrorType.Cancelled)
             {
-                if (error.ErrorType == LLMErrorType.Cancelled)
-                {
-                    Debug.Log("Request cancelled");
-                }
-                else
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                }
-                return;
+                Debug.Log("Request cancelled");
             }
-            
-            Debug.Log($"Receiving: {response.Content}");
+            else
+            {
+                Debug.LogError($"Error: {error.Message}");
+            }
         },
         options
     ));
@@ -1401,23 +1382,18 @@ void SendWithTimeout()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "回答を生成して",
-        (response, error) =>
+        response => Debug.Log($"Receiving: {response.Content}"),
+        error => 
         {
-            if (error != null)
+            if (error.ErrorType == LLMErrorType.Cancelled)
             {
-                if (error.ErrorType == LLMErrorType.Cancelled)
-                {
-                    Debug.Log("Request timeout");
-                }
-                else
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                }
-                return;
+                Debug.Log("Request timeout");
             }
-            
-            Debug.Log($"Receiving: {response.Content}");
-        },
+            else
+            {
+                Debug.LogError($"Error: {error.Message}");
+            }
+        }
         options
     ));
 }
@@ -1489,18 +1465,13 @@ void SendMessageAndHandleError()
 
     StartCoroutine(_client.SendMessageAsync(
         "メッセージ",
-        (response, error) =>
+        response => Debug.Log($"応答: {response.Content}"),
+        error => 
         {
-            if (error != null)
-            {
-                // ここに到達するエラーは、すべて MaxRetries 回のリトライ後
-                Debug.LogError($"Error after retries: {error.Message}");
-                
-                HandleError(error);
-                return;
-            }
-
-            Debug.Log($"応答: {response.Content}");
+            // ここに到達するエラーは、すべて MaxRetries 回のリトライ後
+            Debug.LogError($"Error after retries: {error.Message}");
+            
+            HandleError(error);
         },
         options
     ));
@@ -1626,7 +1597,8 @@ void SaveAndLoadSession()
     // セッションで会話
     StartCoroutine(client.SendMessageAsync(
         "こんにちは",
-        (response, error) => { },
+        response => { },
+        error => { },
         new ChatRequestOptions { SessionId = "my-session" }
     ));
     
@@ -1647,9 +1619,8 @@ void RestoreSession()
     // 復元されたセッションで新しい会話を続行
     StartCoroutine(client.SendMessageAsync(
         "前の会話を覚えていますか？",
-        (response, error) => {
-            Debug.Log($"Assistant: {response.Content}");
-        },
+        response => Debug.Log($"Assistant: {response.Content}"),
+        error => { },
         new ChatRequestOptions { SessionId = "my-session" }
     ));
 }
@@ -1801,14 +1772,12 @@ public class ChatSessionManager : MonoBehaviour
     {
         StartCoroutine(_client.SendMessageAsync(
             message,
-            (response, error) =>
+            response =>
             {
-                if (error == null)
-                {
-                    // メッセージ送信成功時にセッションを自動保存
-                    SaveSession(sessionId);
-                }
+                // メッセージ送信成功時にセッションを自動保存
+                SaveSession(sessionId);
             },
+            error => { },
             new ChatRequestOptions { SessionId = sessionId }
         ));
     }
@@ -1970,18 +1939,13 @@ public class ToolExample : MonoBehaviour
         // LLM にメッセージ送信
         StartCoroutine(_client.SendMessageAsync(
             "What is 125 + 378? And what time is it now?",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-
                 // LLM がツールを自動的に呼び出して回答
                 Debug.Log($"Assistant: {response.Content}");
                 // 例: "125 + 378 = 503. The current time is 2026-02-07 15:30:45."
-            }
+            },
+            error => Debug.LogError($"Error: {error.Message}")
         ));
     }
 }
@@ -2111,11 +2075,12 @@ void SendWithToolOptions()
 
     StartCoroutine(_client.SendMessageAsync(
         "Calculate 5 + 3, then multiply by 2, then subtract 4",
-        (response, error) =>
+        response =>
         {
             // LLM が複数回ツールを呼び出して計算
             Debug.Log(response.Content);
         },
+        error => { },
         options
     ));
 }
@@ -2153,10 +2118,8 @@ void StreamingWithTools()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "What time is it?",
-        (response, error) =>
+        response =>
         {
-            if (error != null) return;
-
             if (!response.IsFinal)
             {
                 // ストリーミング中の部分応答
@@ -2168,6 +2131,7 @@ void StreamingWithTools()
                 Debug.Log($"Final: {response.Content}");
             }
         },
+        error => { }
         new ChatRequestOptions { SessionId = "streaming-session" }
     ));
 }
@@ -2246,14 +2210,8 @@ public class JsonFormatExample : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             "Generate a user profile with name, age, and email",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"Error: {error.Message}");
-                    return;
-                }
-
                 // レスポンスは JSON 文字列
                 Debug.Log($"JSON Response: {response.Content}");
                 // 例: {"name": "John Doe", "age": 30, "email": "john@example.com"}
@@ -2264,6 +2222,7 @@ public class JsonFormatExample : MonoBehaviour
                 int age = json["age"]?.Value<int>() ?? 0;
                 Debug.Log($"User: {name}, Age: {age}");
             },
+            error => Debug.LogError($"Error: {error.Message}"),
             options
         ));
     }
@@ -2306,14 +2265,12 @@ public class JsonSchemaExample : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             "Create a user profile for a 25-year-old software engineer named Alice",
-            (response, error) =>
+            response =>
             {
-                if (error == null)
-                {
-                    Debug.Log($"Structured JSON: {response.Content}");
-                    // レスポンスは指定したスキーマに従った JSON
-                }
+                Debug.Log($"Structured JSON: {response.Content}");
+                // レスポンスは指定したスキーマに従った JSON
             },
+            error => { },
             options
         ));
     }
@@ -2355,23 +2312,21 @@ void RequestArrayData()
 
     StartCoroutine(_client.SendMessageAsync(
         "Generate a fantasy RPG party with 4 members",
-        (response, error) =>
+        response =>
         {
-            if (error == null)
+            var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
+            string teamName = json["teamName"]?.ToString();
+            var members = json["members"] as Newtonsoft.Json.Linq.JArray;
+            
+            Debug.Log($"Team: {teamName}");
+            foreach (var member in members)
             {
-                var json = Newtonsoft.Json.Linq.JObject.Parse(response.Content);
-                string teamName = json["teamName"]?.ToString();
-                var members = json["members"] as Newtonsoft.Json.Linq.JArray;
-                
-                Debug.Log($"Team: {teamName}");
-                foreach (var member in members)
-                {
-                    string name = member["name"]?.ToString();
-                    string role = member["role"]?.ToString();
-                    Debug.Log($"- {name} ({role})");
-                }
+                string name = member["name"]?.ToString();
+                string role = member["role"]?.ToString();
+                Debug.Log($"- {name} ({role})");
             }
         },
+        error => { }
         options
     ));
 }
@@ -2429,14 +2384,8 @@ public class GameDataGenerator : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             $"Generate a {theme} enemy with stats and weaknesses",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"Failed to generate enemy: {error.Message}");
-                    return;
-                }
-
                 try
                 {
                     // JSON をデシリアライズ
@@ -2449,6 +2398,7 @@ public class GameDataGenerator : MonoBehaviour
                     Debug.LogError($"Failed to parse enemy data: {ex.Message}");
                 }
             },
+            error => Debug.LogError($"Failed to generate enemy: {error.Message}"),
             options
         ));
     }
@@ -2506,10 +2456,8 @@ void StreamingJsonExample()
 
     StartCoroutine(_client.SendMessageStreamingAsync(
         "Generate a character profile",
-        (response, error) =>
+        response =>
         {
-            if (error != null) return;
-
             if (response.IsFinal)
             {
                 // 最終的な完全な JSON
@@ -2523,6 +2471,7 @@ void StreamingJsonExample()
                 Debug.Log($"Partial: {response.Content}");
             }
         },
+        error => { },
         options
     ));
 }
@@ -2624,10 +2573,8 @@ public class NPCChatSystem : MonoBehaviour
         
         StartCoroutine(_client.SendMessageStreamingAsync(
             userMessage,
-            (response, error) =>
-            {
-                OnNPCResponse(response, error);
-            },
+            response => OnNPCResponse(response),
+            error => OnError(error),
             options
         ));
     }
@@ -2654,14 +2601,7 @@ public class NPCChatSystem : MonoBehaviour
     }
 
     void OnNPCResponse(ChatResponse response, ChatError error)
-    {
-        if (error != null)
-        {
-            HandleError(error);
-            ResetUI();
-            return;
-        }
-        
+    {        
         // ストリーミングで段階的に表示
         npcDialogueText.text = response.Content;
         
@@ -2671,6 +2611,12 @@ public class NPCChatSystem : MonoBehaviour
             SaveCurrentSession();
             ResetUI();
         }
+    }
+
+    void OnError(ChatError error)
+    {
+        HandleError(error);
+        ResetUI();
     }
     
     void SaveCurrentSession()
@@ -2803,17 +2749,12 @@ public class MultiNPCManager : MonoBehaviour
         
         StartCoroutine(_client.SendMessageAsync(
             playerMessage,
-            (response, error) =>
+            response => onComplete?.Invoke(response.Content),
+            error =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"NPC {npcId} error: {error.Message}");
-                    onComplete?.Invoke("...");
-                    return;
-                }
-                
-                onComplete?.Invoke(response.Content);
-            },
+                Debug.LogError($"NPC {npcId} error: {error.Message}");
+                onComplete?.Invoke("...");
+            }
             options
         ));
     }
@@ -3420,16 +3361,8 @@ public class RobustChatManager : MonoBehaviour
 
         StartCoroutine(_client.SendMessageAsync(
             message,
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    HandleError(error);
-                    return;
-                }
-
-                Debug.Log($"Assistant: {response.Content}");
-            },
+            response => Debug.Log($"Assistant: {response.Content}"),
+            error => HandlError(error),
             options
         ));
     }

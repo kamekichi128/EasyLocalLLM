@@ -29,11 +29,13 @@ namespace EasyLocalLLM.LLM.Core
         /// Send message asynchronously (IEnumerator based)
         /// </summary>
         /// <param name="message">Message to send</param>
-        /// <param name="callback">Response: (response, error) - completion determined by response.IsFinal</param>
+        /// <param name="onResponse">Successed callback</param>
+        /// <param name="onError">Error callback</param>
         /// <param name="options">Request options</param>
         IEnumerator SendMessageAsync(
             string message,
-            Action<ChatResponse, ChatError> callback,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError,
             ChatRequestOptions options = null);
 
         /// <summary>
@@ -51,11 +53,13 @@ namespace EasyLocalLLM.LLM.Core
         /// Send message with streaming (IEnumerator based)
         /// </summary>
         /// <param name="message">Message to send</param>
-        /// <param name="callback">Response: (response, error) - completion determined by response.IsFinal</param>
+        /// <param name="onResponse">Response: (response) - completion determined by response.IsFinal</param>
+        /// <param name="onError">Error callback</param>
         /// <param name="options">Request options</param>
         IEnumerator SendMessageStreamingAsync(
             string message,
-            Action<ChatResponse, ChatError> callback,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError,
             ChatRequestOptions options = null);
 
         /// <summary>

@@ -181,18 +181,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
             + "お題 : 鍵を持っていない男は、家の前で女を待っていた。その直後、女が帰ってきて鍵を開けると、男はその場を立ち去ってしまった。いったいなぜ？\n"
             + "真相 : 配達員の男は、インターホンを押して反応を待っていたが、女が帰ってきたので荷物を渡して帰った。女は配達時間を帰宅時間と同じくらいに設定していたが、配達員のほうがわずかに早く到着してしまった。"
             + "あなたは例として挙げたお題以外の、新しいお題と真相を考えてください。お題、真相は可能な限り簡潔に記載してください。超常現象や超能力、サイエンスフィクション（SF）などは避けてください。",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error generating puzzle: {error.Message}");
-                    puzzleGenerateButton.SetEnabled(true);
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
                 // レスポンスをパース
                 ExtractPuzzleAndTruth(response.Content, out var puzzle, out var truth);
                 currentPuzzle = puzzle;
@@ -217,6 +207,10 @@ public class LateralThinkingQuizJP : MonoBehaviour
 
                 // 対戦相手AIの自動質問・回答ループを開始
                 opponentCoroutine = StartCoroutine(OpponentAILoop());
+            },
+            error => {
+                Debug.LogError($"✗ Error generating puzzle: {error.Message}");
+                puzzleGenerateButton.SetEnabled(true);
             },
             new ChatRequestOptions
             {
@@ -253,19 +247,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
 
         StartCoroutine(client.SendMessageAsync(
             $"お題：{currentPuzzle}\n真相：{currentTruth}\n\n質問：{question}\n\nYes、No、または分からないで短く答えてください。",
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
-                AddChatMessage($"[Yes/No Answerer]\n{response.Content}");
-            },
+            response => AddChatMessage($"[Yes/No Answerer]\n{response.Content}"),
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SystemPrompt = "あなたはあるクイズの非常に論理的で有能なYes/No回答者です。" +
@@ -285,17 +268,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             "あなたは今、あるお題を読んで、そのお題の裏側にある真相を答えるゲームをしています。これまでの質問と回答から、このお題の真相を推測してください。情報が足りないと考えた場合は、真相を突き止めるのに有用な、必ず**Yes/Noで答えられる**、これまでのやり取りに出現していない新しい観点での質問を投げかけてください。\n\n"
             + $"これまでのやり取り：\n{chatContext}",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
                 try
                 {
                     var opponentResponse = JsonUtility.FromJson<OpponentResponseData>(response.Content);
@@ -318,6 +292,7 @@ public class LateralThinkingQuizJP : MonoBehaviour
                     Debug.LogWarning($"Failed to parse opponent response: {e.Message}\nResponse: {response.Content}");
                 }
             },
+            error => Debug.LogError($"✗ Error: {error.Message}"), 
             new ChatRequestOptions
             {
                 SystemPrompt = "あなたはクイズゲームの非常に論理的で有能な対戦相手です。" +
@@ -343,16 +318,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
         // 対戦相手からの質問に対応する単発のセッション
         StartCoroutine(client.SendMessageAsync(
             $"お題：{currentPuzzle}\n真相：{currentTruth}\n\n質問：{question}\n\nYes、No、または分からないで短く答えてください。",
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                AddChatMessage($"[Yes/No Answerer (Opponent Query)]\n{response.Content}");
-            },
+            response => AddChatMessage($"[Yes/No Answerer (Opponent Query)]\n{response.Content}"),
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SystemPrompt = "あなたはあるクイズの非常に論理的で有能なYes/No回答者です。" +
@@ -386,14 +353,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             $"クイズのお題は『{currentPuzzle}』、真相は『{currentTruth}』です。\n" +
             $"プレイヤーの回答『{answer}』が正解かどうか判定してください。",
-            (response, error) =>
+            response  =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
                 try
                 {
                     var judgement = JsonUtility.FromJson<JudgementData>(response.Content);
@@ -411,6 +372,7 @@ public class LateralThinkingQuizJP : MonoBehaviour
                     Debug.LogWarning($"Failed to parse judge response: {e.Message}\nResponse: {response.Content}");
                 }
             },
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SessionId = JudgeSession,
@@ -436,17 +398,8 @@ public class LateralThinkingQuizJP : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             $"クイズゲームのお題は『{currentPuzzle}』、真相は『{currentTruth}』です。\n" +
             $"対戦相手AIの回答『{opponentAnswer}』が正解かどうか判定してください。",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
                 try
                 {
                     var judgement = JsonUtility.FromJson<JudgementData>(response.Content);
@@ -464,6 +417,7 @@ public class LateralThinkingQuizJP : MonoBehaviour
                     Debug.LogWarning($"Failed to parse judge response: {e.Message}\nResponse: {response.Content}");
                 }
             },
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SessionId = JudgeSession,

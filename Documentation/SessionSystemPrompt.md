@@ -122,7 +122,8 @@ client.SetSessionSystemPrompt("teacher",
 // Independent conversation per session
 StartCoroutine(client.SendMessageAsync(
     "Translate 'Hello' to Japanese",
-    (response, error) => Debug.Log(response.Content),
+    response => Debug.Log(response.Content),
+    error => { },
     new ChatRequestOptions { SessionId = "translator" }
 ));
 ```

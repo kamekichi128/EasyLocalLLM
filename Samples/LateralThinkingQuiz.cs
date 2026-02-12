@@ -181,15 +181,8 @@ public class LateralThinkingQuiz : MonoBehaviour
         + "Truth: The man was a delivery worker. He rang the intercom and waited, but the woman happened to return home, so he handed her the package and left. She had scheduled the delivery for around the same time she expected to get home, but the delivery worker arrived slightly earlier.\n\n"
         + "Please create a new puzzle and truth that are not among the examples above.\n"
         + "Keep both the puzzle and the truth as concise as possible.  Avoid supernatural phenomena, superpowers, and science fiction elements.",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error generating puzzle: {error.Message}");
-                    puzzleGenerateButton.SetEnabled(true);
-                    return;
-                }
-
                 if (!response.IsFinal)
                     return;
 
@@ -217,6 +210,10 @@ public class LateralThinkingQuiz : MonoBehaviour
 
                 // Start opponent AI's automatic question and answer loop
                 opponentCoroutine = StartCoroutine(OpponentAILoop());
+            },
+            error => {
+                Debug.LogError($"✗ Error generating puzzle: {error.Message}");
+                puzzleGenerateButton.SetEnabled(true);
             },
             new ChatRequestOptions
             {
@@ -253,19 +250,8 @@ public class LateralThinkingQuiz : MonoBehaviour
 
         StartCoroutine(client.SendMessageAsync(
             $"Puzzle: {currentPuzzle}\nTruth: {currentTruth}\n\nQuestion: {question}\n\nPlease answer briefly with Yes, No, or I don't know.",
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
-                AddChatMessage($"[Yes/No Answerer]\n{response.Content}");
-            },
+            response => AddChatMessage($"[Yes/No Answerer]\n{response.Content}"),
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SystemPrompt = "You are a highly logical and capable Yes/No answerer for a puzzle." +
@@ -285,17 +271,8 @@ public class LateralThinkingQuiz : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             $"Chat history so far:\n{chatContext}\n\n" +
             "You are currently playing a game where you read a puzzle and try to answer the truth behind the puzzle. Based on the questions and answers so far, please guess the truth of the puzzle. If you think there is not enough information, ask a new question that can be answered with Yes/No and has not been asked before.",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
                 try
                 {
                     var opponentResponse = JsonUtility.FromJson<OpponentResponseData>(response.Content);
@@ -318,6 +295,7 @@ public class LateralThinkingQuiz : MonoBehaviour
                     Debug.LogWarning($"Failed to parse opponent response: {e.Message}\nResponse: {response.Content}");
                 }
             },
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SystemPrompt = "You are a highly logical and capable opponent in a puzzle game." +
@@ -343,16 +321,8 @@ public class LateralThinkingQuiz : MonoBehaviour
         // Single session about question from opponent AI
         StartCoroutine(client.SendMessageAsync(
             $"Puzzle: {currentPuzzle}\nTruth: {currentTruth}\n\nQuestion: {question}\n\nPlease answer briefly with Yes, No, or I don't know.",
-            (response, error) =>
-            {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                AddChatMessage($"[Yes/No Answerer (Opponent Query)]\n{response.Content}");
-            },
+            response => AddChatMessage($"[Yes/No Answerer (Opponent Query)]\n{response.Content}"),
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SystemPrompt = "You are a highly logical and capable Yes/No answerer for a puzzle." +
@@ -386,14 +356,8 @@ public class LateralThinkingQuiz : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             $"Puzzle: {currentPuzzle}\nTruth: {currentTruth}\n\n" +
             $"Please judge whether the player's answer '{answer}' is correct or not.",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
                 try
                 {
                     var judgement = JsonUtility.FromJson<JudgementData>(response.Content);
@@ -411,6 +375,7 @@ public class LateralThinkingQuiz : MonoBehaviour
                     Debug.LogWarning($"Failed to parse judge response: {e.Message}\nResponse: {response.Content}");
                 }
             },
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SessionId = JudgeSession,
@@ -436,17 +401,8 @@ public class LateralThinkingQuiz : MonoBehaviour
         StartCoroutine(client.SendMessageAsync(
             $"Puzzle: {currentPuzzle}\nTruth: {currentTruth}\n\n" +
             $"Please judge whether the opponent AI's answer '{opponentAnswer}' is correct or not.",
-            (response, error) =>
+            response =>
             {
-                if (error != null)
-                {
-                    Debug.LogError($"✗ Error: {error.Message}");
-                    return;
-                }
-
-                if (!response.IsFinal)
-                    return;
-
                 try
                 {
                     var judgement = JsonUtility.FromJson<JudgementData>(response.Content);
@@ -464,6 +420,7 @@ public class LateralThinkingQuiz : MonoBehaviour
                     Debug.LogWarning($"Failed to parse judge response: {e.Message}\nResponse: {response.Content}");
                 }
             },
+            error => Debug.LogError($"✗ Error: {error.Message}"),
             new ChatRequestOptions
             {
                 SessionId = JudgeSession,
