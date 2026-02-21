@@ -32,13 +32,44 @@ namespace EasyLocalLLM.LLM.Core
 
         /// <summary>
         /// Answer diversity (0.0 = deterministic, 1.0+ = more diverse)
+        /// null = Ollama default
         /// </summary>
-        public float Temperature { get; set; } = 0.7f;
+        public float? Temperature { get; set; }
 
         /// <summary>
         /// Random seed (-1 = random)
         /// </summary>
         public int? Seed { get; set; }
+
+        /// <summary>
+        /// Limits token selection to the top K likely candidates
+        /// </summary>
+        public int? TopK { get; set; }
+
+        /// <summary>
+        /// Nucleus sampling threshold (0.0 to 1.0)
+        /// </summary>
+        public float? TopP { get; set; }
+
+        /// <summary>
+        /// Minimum probability threshold for token filtering (0.0 to 1.0)
+        /// </summary>
+        public float? MinP { get; set; }
+
+        /// <summary>
+        /// Stop sequences; generation stops when any sequence is encountered
+        /// </summary>
+        public List<string> Stop { get; set; }
+
+        /// <summary>
+        /// Context window size (maximum tokens in context)
+        /// </summary>
+        public int? NumCtx { get; set; }
+
+        /// <summary>
+        /// Maximum number of tokens to predict
+        /// </summary>
+        public int? NumPredict { get; set; }
 
         /// <summary>
         /// Request priority (higher value = higher priority)

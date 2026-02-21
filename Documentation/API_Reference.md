@@ -12,15 +12,16 @@ EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
   - [4.2 Load Model](#42-load-model)
   - [4.3 Send Message (Single Complete Response)](#43-send-message-single-complete-response)
   - [4.4 Streaming Message (Receive Partial Responses)](#44-streaming-message-receive-partial-responses)
-  - [4.5 Ollama Server Auto-Management](#45-ollama-server-auto-management)
-  - [4.6 Session Management](#46-session-management)
-  - [4.7 System Prompts](#47-system-prompts)
-  - [4.8 Priority Scheduling](#48-priority-scheduling)
-  - [4.9 Cancellation](#49-cancellation)
-  - [4.10 Retry and Error Handling](#410-retry-and-error-handling)
-  - [4.11 Message Persistence](#411-message-persistence)
-  - [4.12 Tools (Function Calling)](#412-tools-function-calling)
-  - [4.13 JSON Response Format](#413-json-response-format)
+  - [4.5 Generation options](#45-generation-options)
+  - [4.6 Ollama Server Auto-Management](#46-ollama-server-auto-management)
+  - [4.7 Session Management](#47-session-management)
+  - [4.8 System Prompts](#48-system-prompts)
+  - [4.9 Priority Scheduling](#49-priority-scheduling)
+  - [4.10 Cancellation](#410-cancellation)
+  - [4.11 Retry and Error Handling](#411-retry-and-error-handling)
+  - [4.12 Message Persistence](#412-message-persistence)
+  - [4.13 Tools (Function Calling)](#413-tools-function-calling)
+  - [4.14 JSON Response Format](#414-json-response-format)
 - [5. Practical Examples](#5-practical-examples)
 - [6. Class Structure](#6-class-structure)
 - [7. Configuration Options](#7-configuration-options)
@@ -65,7 +66,7 @@ public class QuickStart : MonoBehaviour
 
 **For detailed setup and usage, see [4.1 Basic Initialization](#41-basic-initialization).**
 
-**If Ollama is not set up yet, see [4.5 Ollama Server Auto-Management](#45-ollama-server-auto-management).**
+**If Ollama is not set up yet, see [4.6 Ollama Server Auto-Management](#46-ollama-server-auto-management).**
 
 ## 3. Limitations
 
@@ -112,7 +113,7 @@ Quick Start uses the default settings; this section explains full configuration.
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the model is installed.
 
-**If Ollama is not set up yet, see [4.5 Ollama Server Auto-Management](#45-ollama-server-auto-management).**
+**If Ollama is not set up yet, see [4.6 Ollama Server Auto-Management](#46-ollama-server-auto-management).**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -346,7 +347,46 @@ async Task SendStreamingMessageAsync()
 }
 ```
 
-### 4.5 Ollama Server Auto-Management
+#### 4.5 Generation options
+
+Use these parameters when you need to control response style, randomness, or output length.
+If a parameter is not set, Ollama/model defaults are used.
+
+| Parameter | What it controls | Typical starting values |
+|-----------|------------------|-------------------------|
+| `Temperature` | Creativity/randomness. Lower = more deterministic, higher = more diverse. | `0.2` to `0.8` |
+| `Seed` | Reproducibility for similar outputs. | Any fixed integer (e.g., `42`) |
+| `TopK` | Limits token candidates to top-K likely tokens. | `20` to `80` |
+| `TopP` | Nucleus sampling probability mass. | `0.8` to `0.95` |
+| `MinP` | Filters very low-probability tokens. | `0.01` to `0.1` |
+| `Stop` | Stops generation when any stop sequence appears. | e.g., `"\nUser:"`, `"</END>"` |
+| `NumCtx` | Context window size (how much history can be considered). | `2048`, `4096`, `8192` |
+| `NumPredict` | Maximum number of generated tokens. | `128` to `1024` |
+
+**Practical presets**
+
+- **Deterministic Q&A**: `Temperature=0.2`, `Seed=42`, `TopP=0.9`, `NumPredict=256`
+- **Creative writing**: `Temperature=0.8`, `TopP=0.95`, `TopK=60`, `NumPredict=512`
+- **Strict short output**: `Temperature=0.3`, `Stop=["\nUser:"]`, `NumPredict=128`
+
+```csharp
+using System.Collections.Generic;
+
+var options = new ChatRequestOptions
+{
+    SessionId = "chat-session-1",
+    Temperature = 0.7f,
+    Seed = 42,
+    TopK = 40,
+    TopP = 0.9f,
+    MinP = 0.05f,
+    Stop = new List<string> { "\nUser:", "<|eot_id|>" },
+    NumCtx = 4096,
+    NumPredict = 512
+};
+```
+
+### 4.6 Ollama Server Auto-Management
 
 #### Choose a Setup Method
 
@@ -585,7 +625,7 @@ public class OllamaSetupManager : MonoBehaviour
 }
 ```
 
-### 4.6 Session Management
+### 4.7 Session Management
 
 #### Session concept
 
@@ -758,7 +798,7 @@ public class MultiSessionChat : MonoBehaviour
 - **Memory**: Keeping many sessions increases memory usage; clear unused sessions with `ClearMessages()`.
 - **Session info**: `GetSession()` returns a `ChatSession` with `CreatedAt`, `LastUpdatedAt`, and `History`.
 
-### 4.7 System Prompts
+### 4.9 System Prompts
 
 #### What is a system prompt?
 
@@ -1310,7 +1350,7 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 - **MaxConcurrentSessions**: Tune to GPU capacity (1-4 typical). Too high can cause OOM or overload.
 - **Monitor resources**: In production, watch GPU and system memory.
 
-### 4.9 Cancellation
+### 4.10 Cancellation
 
 Supports the standard Unity `CancellationToken` pattern. Use `CancellationTokenSource` when cancellation is needed.
 
@@ -1391,7 +1431,7 @@ void SendWithTimeout()
 }
 ```
 
-### 4.10 Retry and Error Handling
+### 4.11 Retry and Error Handling
 
 #### How automatic retries work
 
@@ -1571,7 +1611,7 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 // [Ollama] Response received: {...}
 ```
 
-### 4.11 Message Persistence
+### 4.12 Message Persistence
 
 Session history can be saved to and restored from files. You can also encrypt saved files.
 
@@ -1803,7 +1843,7 @@ public class ChatSessionManager : MonoBehaviour
 }
 ```
 
-### 4.12 Tools (Function Calling)
+### 4.14 Tools (Function Calling)
 
 Supports Function Calling so the LLM can invoke external tools.
 You only register callback functions and the LLM uses them automatically.

@@ -591,6 +591,54 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
+        /// Build Ollama generation options payload from request options
+        /// </summary>
+        private object BuildOllamaGenerationOptions(ChatRequestOptions options)
+        {
+            var generationOptions = new Dictionary<string, object>
+            {
+                ["seed"] = options.Seed ?? _config.DefaultSeed
+            };
+
+            if (options.Temperature.HasValue)
+            {
+                generationOptions["temperature"] = options.Temperature.Value;
+            }
+
+            if (options.TopK.HasValue)
+            {
+                generationOptions["top_k"] = options.TopK.Value;
+            }
+
+            if (options.TopP.HasValue)
+            {
+                generationOptions["top_p"] = options.TopP.Value;
+            }
+
+            if (options.MinP.HasValue)
+            {
+                generationOptions["min_p"] = options.MinP.Value;
+            }
+
+            if (options.Stop != null && options.Stop.Count > 0)
+            {
+                generationOptions["stop"] = options.Stop;
+            }
+
+            if (options.NumCtx.HasValue)
+            {
+                generationOptions["num_ctx"] = options.NumCtx.Value;
+            }
+
+            if (options.NumPredict.HasValue)
+            {
+                generationOptions["num_predict"] = options.NumPredict.Value;
+            }
+
+            return generationOptions;
+        }
+
+        /// <summary>
         /// Send message asynchronously with Task (get complete response at once)
         /// <param name="message">Message to send</param>
         /// <param name="options">Request options</param>
@@ -716,11 +764,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 stream = false,
                                 format = formatValue,
                                 tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                         else
@@ -731,11 +775,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 messages = SerializeMessages(history),
                                 stream = false,
                                 tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                     }
@@ -750,11 +790,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 messages = SerializeMessages(history),
                                 stream = false,
                                 format = formatValue,
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                         else
@@ -764,11 +800,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 model = options.ModelName ?? _config.DefaultModelName,
                                 messages = SerializeMessages(history),
                                 stream = false,
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                     }
@@ -1076,11 +1108,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 stream = true,
                                 format = formatValue,
                                 tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                         else
@@ -1091,11 +1119,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 messages = SerializeMessages(history),
                                 stream = true,
                                 tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                     }
@@ -1109,11 +1133,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 messages = SerializeMessages(history),
                                 stream = true,
                                 format = formatValue,
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                         else
@@ -1123,11 +1143,7 @@ namespace EasyLocalLLM.LLM.Ollama
                                 model = options.ModelName ?? _config.DefaultModelName,
                                 messages = SerializeMessages(history),
                                 stream = true,
-                                options = new
-                                {
-                                    seed = options.Seed ?? _config.DefaultSeed,
-                                    temperature = options.Temperature
-                                }
+                                options = BuildOllamaGenerationOptions(options)
                             };
                         }
                     }
