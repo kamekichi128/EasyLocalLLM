@@ -35,7 +35,7 @@ namespace EasyLocalLLM.LLM.Core
         IEnumerator SendMessageAsync(
             string message,
             Action<ChatResponse> onResponse,
-            Action<ChatError> onError,
+            Action<ChatError> onError = null,
             ChatRequestOptions options = null);
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace EasyLocalLLM.LLM.Core
         IEnumerator SendMessageStreamingAsync(
             string message,
             Action<ChatResponse> onResponse,
-            Action<ChatError> onError,
+            Action<ChatError> onError = null,
             ChatRequestOptions options = null);
 
         /// <summary>
