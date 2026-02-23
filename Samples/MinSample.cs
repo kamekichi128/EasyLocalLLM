@@ -34,7 +34,7 @@ public class QuickStart : MonoBehaviour
         if (successed)
         {
             Debug.Log("? Ollama server initialized successfully.");
-            StartCoroutine(client.LoadModelRunnable(client.GetConfig().DefaultModelName, true, OnModelRunnable));
+            StartCoroutine(client.LoadModelRunnable(client.GetConfig().DefaultModelName, 180.0f, OnModelRunnable, true));
         }
         else
         {

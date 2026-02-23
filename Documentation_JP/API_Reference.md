@@ -172,7 +172,7 @@ public class ModelPreloader : MonoBehaviour
 
         yield return client.LoadModelRunnable(
             modelName,
-            true,  // useCache: キャッシュ済みモデルを利用するか
+            180.0f, // モデルのウォームアップにかけられるHTTPタイムアウト時間
             progress =>
             {
                 if (progress.IsCompleted)
@@ -191,7 +191,8 @@ public class ModelPreloader : MonoBehaviour
                 // 読み込み進捗を表示
                 float percentage = progress.Progress * 100f;
                 Debug.Log($"読み込み中: {percentage:0.00}% | {progress.Message}");
-            }
+            },
+            true // モデルが利用不可の場合Cloudからモデルを取得
         );
     }
 }
@@ -199,12 +200,13 @@ public class ModelPreloader : MonoBehaviour
 
 **パラメータ：**
 - **modelName** (string): 読み込むモデル（例：「mistral」「llama2」）
-- **pullIfModelNotAvailable** (bool): `true` の場合、モデルが利用不可の場合Ollama Cloudから取得する
+- **timeoutSecondsForWarmup** (float): モデルのウォームアップにかけられるHTTPタイムアウト時間
 - **progressCallback**: `LoadProgress` を返すコールバック：
   - `IsCompleted` (bool): 読み込み完了したかどうか
   - `IsSuccessed` (bool): 読み込み成功したかどうか
   - `Progress` (float): 進捗度合い 0.0 ～ 1.0
   - `Message` (string): ステータスメッセージ
+- **pullIfModelNotAvailable** (bool): `true` の場合、モデルが利用不可の場合Ollama Cloudから取得する
 
 **戻り値：** Yield する対象のコルーチン
 

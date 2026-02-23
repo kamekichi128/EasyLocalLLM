@@ -1,0 +1,12 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="Background" style="flex-grow: 1; background-color: rgb(255, 255, 255);">
+        <ui:VisualElement name="TargetImage" style="flex-grow: 1; -unity-background-scale-mode: scale-to-fit; flex-shrink: 0;" />
+        <ui:TextField placeholder-text="prompt" name="PromptInput" enabled="false" />
+        <ui:Button text="Send (Oneshot)" name="SendAsync" enabled="false" />
+        <ui:Button text="Send (Streaming)" name="SendStreaming" enabled="false" />
+        <ui:Button text="Clear History" name="ClearHistory" enabled="false" />
+        <ui:ScrollView focusable="false" style="flex-grow: 1; background-color: rgb(255, 255, 215); font-size: 20px;">
+            <ui:Label name="Result" style="flex-grow: 1; background-color: rgb(255, 255, 215); white-space: normal;" />
+        </ui:ScrollView>
+    </ui:VisualElement>
+</ui:UXML>

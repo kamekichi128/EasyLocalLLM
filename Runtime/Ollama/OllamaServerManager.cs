@@ -3,6 +3,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
 using UnityEngine.Networking;
 
 namespace EasyLocalLLM.LLM.Ollama
@@ -20,11 +23,27 @@ namespace EasyLocalLLM.LLM.Ollama
         private Process _process;
         private bool _isRunning = false;
         private Action<bool> _initializationCallback;
+        private Thread _stdoutReaderThread;
+        private Thread _stderrReaderThread;
+        private volatile bool _logReaderStopRequested;
+        private readonly Queue<QueuedLogEntry> _logQueue = new();
+        private readonly object _logQueueLock = new();
+
+        private struct QueuedLogEntry
+        {
+            public LogType Type;
+            public string Message;
+        }
 
         /// <summary>
         /// Get server running status
         /// </summary>
         public bool IsRunning => _isRunning;
+
+        private void Update()
+        {
+            FlushQueuedLogs();
+        }
 
         /// <summary>
         /// Initialize OllamaServerManager (with config + callback)
@@ -40,7 +59,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 return;
             }
 
-            GameObject managerGO = new ("OllamaServerManager");
+            GameObject managerGO = new("OllamaServerManager");
             _instance = managerGO.AddComponent<OllamaServerManager>();
             _instance._config = config;
             _instance._initializationCallback = initializationCallback;
@@ -106,8 +125,8 @@ namespace EasyLocalLLM.LLM.Ollama
                     Arguments = "serve",
                     UseShellExecute = false,
                     RedirectStandardInput = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false,
+                    RedirectStandardOutput = _config.DebugMode,
+                    RedirectStandardError = _config.DebugMode,
                     CreateNoWindow = true,
                     WorkingDirectory = System.Environment.CurrentDirectory
                 };
@@ -128,7 +147,13 @@ namespace EasyLocalLLM.LLM.Ollama
                 startInfo.EnvironmentVariables["OLLAMA_MODELS"] = _config.ModelsDirectory;
 
                 _process = new Process { StartInfo = startInfo };
+
                 _process.Start();
+
+                if (_config.DebugMode)
+                {
+                    StartLogReaderThreads();
+                }
                 _isRunning = true;
 
                 if (_config.DebugMode)
@@ -280,10 +305,171 @@ namespace EasyLocalLLM.LLM.Ollama
             _initializationCallback?.Invoke(false);
         }
 
+        private void StartLogReaderThreads()
+        {
+            if (_process == null)
+            {
+                return;
+            }
+
+            _logReaderStopRequested = false;
+
+            _stdoutReaderThread = new Thread(() =>
+                ReadStreamLoop(_process.StandardOutput, LogType.Log, "stdout"))
+            {
+                IsBackground = true,
+                Name = "OllamaStdoutReader"
+            };
+
+            _stderrReaderThread = new Thread(() =>
+                ReadStreamLoop(_process.StandardError, LogType.Warning, "stderr"))
+            {
+                IsBackground = true,
+                Name = "OllamaStderrReader"
+            };
+
+            _stdoutReaderThread.Start();
+            _stderrReaderThread.Start();
+        }
+
+        private void StopLogReaderThreads()
+        {
+            _logReaderStopRequested = true;
+
+            if (_stdoutReaderThread != null && _stdoutReaderThread.IsAlive)
+            {
+                _stdoutReaderThread.Join(300);
+            }
+
+            if (_stderrReaderThread != null && _stderrReaderThread.IsAlive)
+            {
+                _stderrReaderThread.Join(300);
+            }
+
+            _stdoutReaderThread = null;
+            _stderrReaderThread = null;
+        }
+
+        private void ReadStreamLoop(StreamReader reader, LogType logType, string streamName)
+        {
+            StringBuilder lineBuffer = new();
+            char[] chunk = new char[512];
+            DateTime lastFlushAt = DateTime.UtcNow;
+            TimeSpan partialFlushInterval = TimeSpan.FromMilliseconds(250);
+
+            try
+            {
+                while (!_logReaderStopRequested)
+                {
+                    int read = reader.Read(chunk, 0, chunk.Length);
+
+                    if (read <= 0)
+                    {
+                        break;
+                    }
+
+                    for (int i = 0; i < read; i++)
+                    {
+                        char current = chunk[i];
+
+                        if (current == '\r')
+                        {
+                            continue;
+                        }
+
+                        if (current == '\n')
+                        {
+                            if (lineBuffer.Length > 0)
+                            {
+                                EnqueueLog(logType, $"[Ollama {streamName}] {lineBuffer}");
+                                lineBuffer.Clear();
+                            }
+
+                            lastFlushAt = DateTime.UtcNow;
+                            continue;
+                        }
+
+                        lineBuffer.Append(current);
+                    }
+
+                    if (lineBuffer.Length > 0 && DateTime.UtcNow - lastFlushAt >= partialFlushInterval)
+                    {
+                        EnqueueLog(logType, $"[Ollama {streamName}] {lineBuffer}");
+                        lineBuffer.Clear();
+                        lastFlushAt = DateTime.UtcNow;
+                    }
+                }
+
+                if (lineBuffer.Length > 0)
+                {
+                    EnqueueLog(logType, $"[Ollama {streamName}] {lineBuffer}");
+                }
+            }
+            catch (Exception ex)
+            {
+                if (!_logReaderStopRequested)
+                {
+                    EnqueueLog(LogType.Error, $"[Ollama {streamName}] Reader error: {ex.Message}");
+                }
+            }
+        }
+
+        private void EnqueueLog(LogType type, string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            lock (_logQueueLock)
+            {
+                _logQueue.Enqueue(new QueuedLogEntry
+                {
+                    Type = type,
+                    Message = message
+                });
+            }
+        }
+
+        private void FlushQueuedLogs()
+        {
+            while (true)
+            {
+                QueuedLogEntry entry;
+
+                lock (_logQueueLock)
+                {
+                    if (_logQueue.Count == 0)
+                    {
+                        break;
+                    }
+
+                    entry = _logQueue.Dequeue();
+                }
+
+                switch (entry.Type)
+                {
+                    case LogType.Warning:
+                        UnityEngine.Debug.LogWarning(entry.Message);
+                        break;
+                    case LogType.Error:
+                    case LogType.Assert:
+                    case LogType.Exception:
+                        UnityEngine.Debug.LogError(entry.Message);
+                        break;
+                    default:
+                        UnityEngine.Debug.Log(entry.Message);
+                        break;
+                }
+            }
+        }
+
 
         private void OnDestroy()
         {
+            StopLogReaderThreads();
             StopServer();
+            FlushQueuedLogs();
         }
     }
 }

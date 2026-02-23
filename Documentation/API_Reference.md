@@ -172,7 +172,7 @@ public class ModelPreloader : MonoBehaviour
 
         yield return client.LoadModelRunnable(
             modelName,
-            true,  // pull If Model is not available
+            180.0f, // timeout seconds for wamup
             progress =>
             {
                 if (progress.IsCompleted)
@@ -191,7 +191,8 @@ public class ModelPreloader : MonoBehaviour
                 // Show loading progress
                 float percentage = progress.Progress * 100f;
                 Debug.Log($"Loading: {percentage:0.00}% | {progress.Message}");
-            }
+            },
+            true  // pull If Model is not available
         );
     }
 }
@@ -199,12 +200,13 @@ public class ModelPreloader : MonoBehaviour
 
 **Parameters:**
 - **modelName** (string): Model to load (e.g., "mistral", "llama2")
-- **pullIfModelNotAvailable** (bool): If `true`, try to pull model from ollama cloud, if the model not available
+- **timeoutSecondsForWarmup** (float): HTTP timeout for warmup chat
 - **progressCallback**: Called with `LoadProgress` containing:
   - `IsCompleted` (bool): Whether loading finished
   - `IsSuccessed` (bool): Whether loading was successful
   - `Progress` (float): Progress 0.0 to 1.0
   - `Message` (string): Status message
+- **pullIfModelNotAvailable** (bool): If `true`, try to pull model from ollama cloud, if the model not available
 
 **Returns:** Coroutine to yield on.
 

@@ -37,7 +37,7 @@ namespace EasyLocalLLM.Samples
 
             // Step 2: Load model
             Debug.Log("[Step 2] Loading model...");
-            yield return client.LoadModelRunnable(config.DefaultModelName, true,
+            yield return client.LoadModelRunnable(config.DefaultModelName, 180.0f,
                 progress =>
                 {
                     if (progress.IsCompleted)

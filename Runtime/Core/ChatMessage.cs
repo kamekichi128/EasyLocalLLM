@@ -21,6 +21,8 @@ namespace EasyLocalLLM.LLM.Core
         /// </summary>
         public string Content { get; set; }
 
+        public List<string> Images { get; set; }
+
         /// <summary>
         /// List of tool call information (when assistant calls tools)
         /// </summary>

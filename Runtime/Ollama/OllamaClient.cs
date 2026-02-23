@@ -228,10 +228,12 @@ namespace EasyLocalLLM.LLM.Ollama
         /// Load model as runnable
         /// </summary>
         /// <param name="modelName">Name of model. e.g. mistral or kamekichi128/qwen4-4b-instruct-2507</param>
-        /// <param name="pullIfModelNotAvailable">pull model if not available</param>
+        /// <param name="timeoutSecondsForWarmup">Time out in seconds for model warmup (after model is available). The default value is ollamaConfigValue. If the model is not warmed up within the time out, it will be considered as failed.</param>
         /// <param name="progressCallback">Load progress callback</param>
+        /// <param name="pullIfModelNotAvailable">pull model if not available</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        public IEnumerator LoadModelRunnable(string modelName, bool pullIfModelNotAvailable, Action<LoadModelProgress> progressCallback = null, CancellationToken cancellationToken = default)
+        public IEnumerator LoadModelRunnable(string modelName, float timeoutSecondsForWarmup = 0.0f, Action<LoadModelProgress> progressCallback = null, bool pullIfModelNotAvailable = false, CancellationToken cancellationToken = default)
         {
             if (_config.DebugMode)
             {
@@ -300,12 +302,12 @@ namespace EasyLocalLLM.LLM.Ollama
             if (modelAvailable)
             {
                 // Warm up model by sending a short message
-                yield return WarmupModel(modelName, progressCallback);
+                yield return WarmupModel(modelName, timeoutSecondsForWarmup, progressCallback);
             }
             else if (pullModel)
             {
                 // Pulling model in progress
-                yield return PullModel(modelName, progressCallback, cancellationToken);
+                yield return PullModel(modelName, timeoutSecondsForWarmup, progressCallback, cancellationToken);
             }
         }
 
@@ -313,12 +315,19 @@ namespace EasyLocalLLM.LLM.Ollama
         /// Warm up model by sending a short message
         /// </summary>
         /// <param name="modelName">Name of model</param>
+        /// <param name="timeoutSecondsForWarmup">Time out in seconds for model warmup</param>
         /// <param name="progressCallback">Progress callback</param>
-        private IEnumerator WarmupModel(string modelName, Action<LoadModelProgress> progressCallback)
+        private IEnumerator WarmupModel(string modelName, float timeoutSecondsForWarmup, Action<LoadModelProgress> progressCallback)
         {
             if (_config.DebugMode)
             {
                 UnityEngine.Debug.Log($"[Ollama] Model {modelName} warm up start.");
+            }
+            // temporay overwrite config to set timeout for warmup request
+            float previousTimeout = _config.HttpTimeoutSeconds;
+            if (timeoutSecondsForWarmup > 0)
+            {
+                _config.HttpTimeoutSeconds = timeoutSecondsForWarmup;
             }
             yield return SendMessageAsync(
                 "Please say hello",
@@ -329,15 +338,18 @@ namespace EasyLocalLLM.LLM.Ollama
                     ModelName = modelName,
                 }
             );
+            // restore config
+            _config.HttpTimeoutSeconds = previousTimeout;
         }
 
         /// <summary>
         /// Pull model via /api/pull
         /// </summary>
         /// <param name="modelName">Name of model</param>
+        /// <param name="timeoutSecondsForWarmup">Time out in seconds for model warmup after pulling</param>
         /// <param name="progressCallback">Progress callback</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        private IEnumerator PullModel(string modelName, Action<LoadModelProgress> progressCallback, CancellationToken cancellationToken = default)
+        private IEnumerator PullModel(string modelName, float timeoutSecondsForWarmup, Action<LoadModelProgress> progressCallback, CancellationToken cancellationToken = default)
         {
             if (_config.DebugMode)
             {
@@ -396,7 +408,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
             if (pullSucceeded)
             {
-                yield return WarmupModel(modelName, progressCallback);
+                yield return WarmupModel(modelName, timeoutSecondsForWarmup, progressCallback);
             }
         }
 
@@ -641,13 +653,27 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <summary>
         /// Send message asynchronously with Task (get complete response at once)
         /// <param name="message">Message to send</param>
+        /// <param name="options">Request options</param>
+        /// <param name="cancellationToken">External cancellation token</param>
+        /// </summary>
+        public Task<ChatResponse> SendMessageTaskAsync(
+            string message,
+            ChatRequestOptions options = null,
+            CancellationToken cancellationToken = default)
+        { 
+            return SendMessageTaskAsync(message, null, options, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send message asynchronously with images with Task (get complete response at once)
+        /// <param name="message">Message to send</param>
         /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// <param name="cancellationToken">External cancellation token</param>
         /// </summary>
         public Task<ChatResponse> SendMessageTaskAsync(
             string message,
-            List<Texture2D> images = null,
+            List<Texture2D> images,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default)
         {
@@ -661,9 +687,9 @@ namespace EasyLocalLLM.LLM.Ollama
 
             CoroutineRunner.Run(SendMessageAsync(
                 message,
+                images,
                 response => tcs.TrySetResult(response),
                 error => tcs.TrySetException(new ChatLLMException(error)),
-                images,
                 options
             ));
 
@@ -675,19 +701,36 @@ namespace EasyLocalLLM.LLM.Ollama
             }, TaskScheduler.Default).Unwrap();
         }
 
+
         /// <summary>
         /// Send message asynchronously with IEnumerator (get complete response at once)
         /// <param name="message">Message to send</param>
         /// <param name="onResponse">Response: (response)</param>
         /// <param name="onError">Response: (error)</param>
-        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageAsync(
             string message,
             Action<ChatResponse> onResponse,
             Action<ChatError> onError = null,
-            List<Texture2D> images = null,
+            ChatRequestOptions options = null)
+        {
+            return SendMessageAsync(message, null, onResponse, onError, options);
+        }
+
+        /// <summary>
+        /// Send message asynchronously with images with IEnumerator (get complete response at once)
+        /// <param name="message">Message to send</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
+        /// <param name="onResponse">Response: (response)</param>
+        /// <param name="onError">Response: (error)</param>
+        /// <param name="options">Request options</param>
+        /// </summary>
+        public IEnumerator SendMessageAsync(
+            string message,
+            List<Texture2D> images,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError = null,
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
@@ -726,7 +769,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 }
 
                 // Add user message
-                history.Add(new ChatMessage { Role = "user", Content = message });
+                history.Add(new ChatMessage { Role = "user", Content = message, Images = images?.Select(ConvertTexture2DToBase64).ToList() });
 
                 // Tool call handling loop
                 int toolIterations = 0;
@@ -988,7 +1031,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     result.Add(new
                     {
                         role = "tool",
-                        content = msg.Content
+                        content = msg.Content,
                     });
                 }
                 else if (msg.ToolCalls != null && msg.ToolCalls.Count > 0)
@@ -1014,7 +1057,8 @@ namespace EasyLocalLLM.LLM.Ollama
                     result.Add(new
                     {
                         role = msg.Role,
-                        content = msg.Content
+                        content = msg.Content,
+                        images = msg.Images != null && msg.Images.Count > 0 ? msg.Images.ToArray() : null
                     });
                 }
             }
@@ -1022,19 +1066,41 @@ namespace EasyLocalLLM.LLM.Ollama
             return result.ToArray();
         }
 
+        private string ConvertTexture2DToBase64(Texture2D texture)
+        {
+            byte[] imageBytes = texture.EncodeToPNG();
+            return Convert.ToBase64String(imageBytes);
+        }
+
         /// <summary>
         /// Send message asynchronously with IEnumerator (get response in streaming)
         /// <param name="message">The message to send</param>
         /// <param name="onResponse">Successed callback</param>
         /// <param name="onError">Error callback</param>
-        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageStreamingAsync(
             string message,
             Action<ChatResponse> onResponse,
             Action<ChatError> onError = null,
-            List<Texture2D> images = null,
+            ChatRequestOptions options = null)
+        {
+            return SendMessageStreamingAsync(message, null, onResponse, onError, options);
+        }
+
+        /// <summary>
+        /// Send message asynchronously with IEnumerator (get response in streaming)
+        /// <param name="message">The message to send</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
+        /// <param name="onResponse">Successed callback</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="options">Request options</param>
+        /// </summary>
+        public IEnumerator SendMessageStreamingAsync(
+            string message,
+            List<Texture2D> images,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError = null,
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
@@ -1073,7 +1139,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 }
 
                 // Add user message
-                history.Add(new ChatMessage { Role = "user", Content = message });
+                history.Add(new ChatMessage { Role = "user", Content = message, Images = images?.Select(ConvertTexture2DToBase64).ToList() });
 
                 // Tool call handling loop
                 int toolIterations = 0;
@@ -1336,14 +1402,30 @@ namespace EasyLocalLLM.LLM.Ollama
         /// Send message with streaming (Task version)
         /// <param name="message">Message to send</param>
         /// <param name="onProgress">Progress during streaming reception</param>
-        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// <param name="cancellationToken">External cancellation token</param>
         /// </summary>
         public Task<ChatResponse> SendMessageStreamingTaskAsync(
             string message,
             IProgress<ChatResponse> onProgress,
-            List<Texture2D> images = null,
+            ChatRequestOptions options = null,
+            CancellationToken cancellationToken = default)
+        {
+            return SendMessageStreamingTaskAsync(message, null, onProgress, options, cancellationToken);
+        }
+
+        /// <summary>
+        /// Send message with streaming (Task version)
+        /// <param name="message">Message to send</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
+        /// <param name="onProgress">Progress during streaming reception</param>
+        /// <param name="options">Request options</param>
+        /// <param name="cancellationToken">External cancellation token</param>
+        /// </summary>
+        public Task<ChatResponse> SendMessageStreamingTaskAsync(
+            string message,
+            List<Texture2D> images,
+            IProgress<ChatResponse> onProgress,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default)
         {
@@ -1357,6 +1439,7 @@ namespace EasyLocalLLM.LLM.Ollama
 
             CoroutineRunner.Run(SendMessageStreamingAsync(
                 message,
+                images,
                 response =>
                 {
                     onProgress?.Report(response);
@@ -1367,7 +1450,6 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                 },
                 error => tcs.TrySetException(new ChatLLMException(error)),
-                images,
                 options
             ));
 
