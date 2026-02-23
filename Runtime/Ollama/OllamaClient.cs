@@ -641,11 +641,13 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <summary>
         /// Send message asynchronously with Task (get complete response at once)
         /// <param name="message">Message to send</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// <param name="cancellationToken">External cancellation token</param>
         /// </summary>
         public Task<ChatResponse> SendMessageTaskAsync(
             string message,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default)
         {
@@ -661,6 +663,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 message,
                 response => tcs.TrySetResult(response),
                 error => tcs.TrySetException(new ChatLLMException(error)),
+                images,
                 options
             ));
 
@@ -677,12 +680,14 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <param name="message">Message to send</param>
         /// <param name="onResponse">Response: (response)</param>
         /// <param name="onError">Response: (error)</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageAsync(
             string message,
             Action<ChatResponse> onResponse,
             Action<ChatError> onError = null,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
@@ -1022,12 +1027,14 @@ namespace EasyLocalLLM.LLM.Ollama
         /// <param name="message">The message to send</param>
         /// <param name="onResponse">Successed callback</param>
         /// <param name="onError">Error callback</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// </summary>
         public IEnumerator SendMessageStreamingAsync(
             string message,
             Action<ChatResponse> onResponse,
             Action<ChatError> onError = null,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null)
         {
             options ??= new ChatRequestOptions();
@@ -1329,12 +1336,14 @@ namespace EasyLocalLLM.LLM.Ollama
         /// Send message with streaming (Task version)
         /// <param name="message">Message to send</param>
         /// <param name="onProgress">Progress during streaming reception</param>
+        /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="options">Request options</param>
         /// <param name="cancellationToken">External cancellation token</param>
         /// </summary>
         public Task<ChatResponse> SendMessageStreamingTaskAsync(
             string message,
             IProgress<ChatResponse> onProgress,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default)
         {
@@ -1358,6 +1367,7 @@ namespace EasyLocalLLM.LLM.Ollama
                     }
                 },
                 error => tcs.TrySetException(new ChatLLMException(error)),
+                images,
                 options
             ));
 

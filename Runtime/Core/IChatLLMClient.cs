@@ -36,6 +36,7 @@ namespace EasyLocalLLM.LLM.Core
             string message,
             Action<ChatResponse> onResponse,
             Action<ChatError> onError = null,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null);
 
         /// <summary>
@@ -46,6 +47,7 @@ namespace EasyLocalLLM.LLM.Core
         /// <param name="cancellationToken">External cancellation token</param>
         Task<ChatResponse> SendMessageTaskAsync(
             string message,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default);
 
@@ -60,6 +62,7 @@ namespace EasyLocalLLM.LLM.Core
             string message,
             Action<ChatResponse> onResponse,
             Action<ChatError> onError = null,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null);
 
         /// <summary>
@@ -72,6 +75,7 @@ namespace EasyLocalLLM.LLM.Core
         Task<ChatResponse> SendMessageStreamingTaskAsync(
             string message,
             IProgress<ChatResponse> onProgress,
+            List<Texture2D> images = null,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default);
 
