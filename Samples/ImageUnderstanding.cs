@@ -111,11 +111,17 @@ namespace EasyLocalLLM.Samples
             var root = UIDocument.rootVisualElement;
             var promptInput = root.Q<TextField>("PromptInput");
             var result = root.Q<Label>("Result");
+            var images = new List<Texture2D>();
             string prompt = promptInput.value;
+
+            if (client.GetSessionMessageCount(SESSION_ID) == 0)
+            {
+                images.Add(imageTexture);
+            }
 
             StartCoroutine(client.SendMessageAsync(
                 prompt,
-                new List<Texture2D> { imageTexture },
+                images,
                 chatResponse =>
                 {
                     Debug.Log($"✓ Response received: {chatResponse.Content}");
