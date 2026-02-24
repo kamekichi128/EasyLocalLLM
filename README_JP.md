@@ -1,3 +1,5 @@
+![Title](Images/PromoBannerEasyLocalLLM.png)
+
 # EasyLocalLLM
 
 Unity でローカル LLM（Ollama）を簡単に使えるようにするライブラリです。わずか数行のコードで、オフラインで動作する AI チャットボットや、ゲーム内 NPC との自然な会話を実装できます。
@@ -37,6 +39,17 @@ public class QuickStart : MonoBehaviour
 **前提条件**: Ollama サーバが `localhost:11434` で起動済み、`mistral` モデルがインストール済み
 
 Ollamaサーバ自体のセットアップ、あるいはOllamaサーバを含めたゲームの構築については [Ollama サーバの自動管理](Documentation_JP/API_Reference.md#46-ollama-サーバの自動管理) を参照してください。
+
+## 🎬 デモ
+
+### LLM with multi session control
+
+![Demo1](Images/Demo1.gif)
+
+
+### VL (qwen3-VL) and Streaming Response
+
+![Demo2](Images/Demo2.gif)
 
 ## 💻 動作環境
 
