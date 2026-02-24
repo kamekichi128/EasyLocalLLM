@@ -42,12 +42,12 @@ For setting up Ollama itself, or building a game that includes Ollama server man
 
 ## 🎬 Demo
 
-### LLM with multi session control
+### LLM with Multi Session Control
 
 ![Demo1](Images/Demo1.gif)
 
 
-### VL (qwen3-VL) and Streaming Response
+### VLM (qwen3-VL) and Streaming Response
 
 ![Demo2](Images/Demo2.gif)
 
