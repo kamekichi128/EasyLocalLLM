@@ -38,7 +38,7 @@ public class QuickStart : MonoBehaviour
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the `mistral` model is installed.
 
-For setting up Ollama itself, or building a game that includes Ollama server management, see [Ollama Server Auto-Management](Documentation/API_Reference.md#46-ollama-server-auto-management).
+For setting up Ollama itself, or building a game that includes Ollama server management, see [Ollama Server Auto-Management](Documentation/API_Reference.md#47-ollama-server-auto-management).
 
 ## 🎬 Demo
 
@@ -69,11 +69,11 @@ For detailed usage, API reference, sample code, and troubleshooting:
 
 - [Basic Initialization](Documentation/API_Reference.md#41-basic-initialization)
 - [Streaming Message (Receive Partial Responses)](Documentation/API_Reference.md#44-streaming-message-receive-partial-responses)
-- [Ollama Server Auto-Management](Documentation/API_Reference.md#46-ollama-server-auto-management)
-- [Session Management](Documentation/API_Reference.md#47-session-management)
-- [System Prompts](Documentation/API_Reference.md#48-system-prompts)
-- [Tools (Function Calling)](Documentation/API_Reference.md#413-tools-function-calling)
-- [Retry and Error Handling](Documentation/API_Reference.md#411-retry-and-error-handling)
+- [Ollama Server Auto-Management](Documentation/API_Reference.md#47-ollama-server-auto-management)
+- [Session Management](Documentation/API_Reference.md#48-session-management)
+- [System Prompts](Documentation/API_Reference.md#49-system-prompts)
+- [Tools (Function Calling)](Documentation/API_Reference.md#414-tools-function-calling)
+- [Retry and Error Handling](Documentation/API_Reference.md#412-retry-and-error-handling)
 
 ## 📦 Samples
 

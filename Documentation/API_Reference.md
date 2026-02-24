@@ -13,15 +13,16 @@ EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
   - [4.3 Send Message (Single Complete Response)](#43-send-message-single-complete-response)
   - [4.4 Streaming Message (Receive Partial Responses)](#44-streaming-message-receive-partial-responses)
   - [4.5 Generation options](#45-generation-options)
-  - [4.6 Ollama Server Auto-Management](#46-ollama-server-auto-management)
-  - [4.7 Session Management](#47-session-management)
-  - [4.8 System Prompts](#48-system-prompts)
-  - [4.9 Priority Scheduling](#49-priority-scheduling)
-  - [4.10 Cancellation](#410-cancellation)
-  - [4.11 Retry and Error Handling](#411-retry-and-error-handling)
-  - [4.12 Message Persistence](#412-message-persistence)
-  - [4.13 Tools (Function Calling)](#413-tools-function-calling)
-  - [4.14 JSON Response Format](#414-json-response-format)
+  - [4.6 Images argument (List<Texture2D>)](#46-images-argument-listtexture2d)
+  - [4.7 Ollama Server Auto-Management](#47-ollama-server-auto-management)
+  - [4.8 Session Management](#48-session-management)
+  - [4.9 System Prompts](#49-system-prompts)
+  - [4.10 Priority Scheduling](#410-priority-scheduling)
+  - [4.11 Cancellation](#411-cancellation)
+  - [4.12 Retry and Error Handling](#412-retry-and-error-handling)
+  - [4.13 Message Persistence](#413-message-persistence)
+  - [4.14 Tools (Function Calling)](#414-tools-function-calling)
+  - [4.15 JSON Response Format](#415-json-response-format)
 - [5. Practical Examples](#5-practical-examples)
 - [6. Class Structure](#6-class-structure)
 - [7. Configuration Options](#7-configuration-options)
@@ -66,7 +67,7 @@ public class QuickStart : MonoBehaviour
 
 **For detailed setup and usage, see [4.1 Basic Initialization](#41-basic-initialization).**
 
-**If Ollama is not set up yet, see [4.6 Ollama Server Auto-Management](#46-ollama-server-auto-management).**
+**If Ollama is not set up yet, see [4.7 Ollama Server Auto-Management](#47-ollama-server-auto-management).**
 
 ## 3. Limitations
 
@@ -113,7 +114,7 @@ Quick Start uses the default settings; this section explains full configuration.
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the model is installed.
 
-**If Ollama is not set up yet, see [4.6 Ollama Server Auto-Management](#46-ollama-server-auto-management).**
+**If Ollama is not set up yet, see [4.7 Ollama Server Auto-Management](#47-ollama-server-auto-management).**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -388,7 +389,95 @@ var options = new ChatRequestOptions
 };
 ```
 
-### 4.6 Ollama Server Auto-Management
+### 4.6 Images argument (`List<Texture2D>`)
+
+You can attach images to inference requests by passing `List<Texture2D>` to the image-aware overloads.
+This is useful for multimodal-capable models (image + text input).
+
+**Supported APIs:**
+
+- `SendMessageAsync(string message, List<Texture2D> images, ...)`
+- `SendMessageTaskAsync(string message, List<Texture2D> images, ...)`
+- `SendMessageStreamingAsync(string message, List<Texture2D> images, ...)`
+- `SendMessageStreamingTaskAsync(string message, List<Texture2D> images, ...)`
+
+**Coroutine API example**
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+
+void SendMessageWithImages(Texture2D screenshot, Texture2D minimap)
+{
+    var images = new List<Texture2D> { screenshot, minimap };
+
+    StartCoroutine(_client.SendMessageAsync(
+        "Describe what you see in these images.",
+        images,
+        response => Debug.Log($"Vision response: {response.Content}"),
+        error => Debug.LogError($"Error: {error.Message}"),
+        new ChatRequestOptions { SessionId = "vision-session" }
+    ));
+}
+```
+
+**Task API example**
+
+```csharp
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using UnityEngine;
+
+async Task SendMessageWithImagesAsync(Texture2D screenshot)
+{
+    var images = new List<Texture2D> { screenshot };
+    var response = await _client.SendMessageTaskAsync(
+        "Summarize the key objects in this image.",
+        images,
+        new ChatRequestOptions { SessionId = "vision-task-session" }
+    );
+
+    Debug.Log(response.Content);
+}
+```
+
+**Streaming API example**
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+
+void SendStreamingWithImages(Texture2D screenshot)
+{
+    var images = new List<Texture2D> { screenshot };
+
+    StartCoroutine(_client.SendMessageStreamingAsync(
+        "Read this image and explain it step by step.",
+        images,
+        response =>
+        {
+            if (!response.IsFinal)
+            {
+                Debug.Log($"Receiving: {response.Content}");
+            }
+            else
+            {
+                Debug.Log($"Complete: {response.Content}");
+            }
+        },
+        error => Debug.LogError($"Error: {error.Message}"),
+        new ChatRequestOptions { SessionId = "vision-stream-session" }
+    ));
+}
+```
+
+**Notes:**
+
+- Images are internally encoded as Base64 PNG before being sent to Ollama.
+- If the selected model does not support image input, the request may fail or ignore images.
+- For performance and memory stability, keep image dimensions reasonable (resize/compress before sending).
+
+### 4.7 Ollama Server Auto-Management
 
 #### Choose a Setup Method
 
@@ -627,7 +716,7 @@ public class OllamaSetupManager : MonoBehaviour
 }
 ```
 
-### 4.7 Session Management
+### 4.8 Session Management
 
 #### Session concept
 
@@ -1120,7 +1209,7 @@ _client.SetSessionSystemPrompt(
 
 See [SessionSystemPrompt.md](SessionSystemPrompt.md) for the detailed API reference.
 
-### 4.8 Priority Scheduling
+### 4.10 Priority Scheduling
 
 
 
@@ -1352,7 +1441,7 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 - **MaxConcurrentSessions**: Tune to GPU capacity (1-4 typical). Too high can cause OOM or overload.
 - **Monitor resources**: In production, watch GPU and system memory.
 
-### 4.10 Cancellation
+### 4.11 Cancellation
 
 Supports the standard Unity `CancellationToken` pattern. Use `CancellationTokenSource` when cancellation is needed.
 
@@ -1433,7 +1522,7 @@ void SendWithTimeout()
 }
 ```
 
-### 4.11 Retry and Error Handling
+### 4.12 Retry and Error Handling
 
 #### How automatic retries work
 
@@ -1613,7 +1702,7 @@ var client = LLMClientFactory.CreateOllamaClient(config);
 // [Ollama] Response received: {...}
 ```
 
-### 4.12 Message Persistence
+### 4.13 Message Persistence
 
 Session history can be saved to and restored from files. You can also encrypt saved files.
 
@@ -2209,7 +2298,7 @@ void RegisterToolWithManualSchema()
 - **Return types**: Primitive types, custom objects, and arrays are all auto-converted.
 - **Performance**: Tool calls require additional LLM requests, so multiple round-trips occur.
 
-### 4.13 JSON Response Format
+### 4.15 JSON Response Format
 
 You can request responses in JSON format. This is useful for structured data or schema-constrained output.
 
@@ -3103,7 +3192,7 @@ void SetupRemoteServerEnvironment()
 ## 9. Error Types and Handling
 
 This section describes each error type and how to handle it.
-For retry behavior, see [4.9 Retry and Error Handling](#49-retry-and-error-handling).
+For retry behavior, see [4.12 Retry and Error Handling](#412-retry-and-error-handling).
 
 ### Error types and sample messages
 
