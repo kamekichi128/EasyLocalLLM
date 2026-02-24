@@ -36,7 +36,7 @@ public class QuickStart : MonoBehaviour
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the `mistral` model is installed.
 
-For setting up Ollama itself, or building a game that includes Ollama server management, see [Ollama Server Auto-Management](Documentation/API_Reference.md#45-ollama-server-auto-management).
+For setting up Ollama itself, or building a game that includes Ollama server management, see [Ollama Server Auto-Management](Documentation/API_Reference.md#46-ollama-server-auto-management).
 
 ## 💻 Requirements
 
