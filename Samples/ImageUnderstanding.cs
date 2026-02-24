@@ -11,6 +11,7 @@ namespace EasyLocalLLM.Samples
     /// <summary>
     /// Image understanding sample
     /// Sends prompts with image to the loaded LLM model and receives responses
+    /// To Enable this sample, add "sample-picture" (a jpg or png file) to Assets/Resources folder and enable Read/Write property.
     /// </summary>
     public class ImageUnderstanding : MonoBehaviour
     {
