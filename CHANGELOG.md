@@ -2,8 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
-## [0.1.0] - 2026-02-12
+
+## [0.2.0] - 2026-02-24
+
 ### Added
+
+- Vision Language Model sample
+
+### Fixed
+
+- Refactoring and fix documentations
+
+## [0.1.0] - 2026-02-12
+
+### Added
+
 - Initial release of EasyLocalLLM.
 - Local LLM chat integration for Unity using Ollama.
 - Streaming responses, session management, and system prompts.
