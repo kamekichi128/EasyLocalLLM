@@ -64,6 +64,11 @@ namespace EasyLocalLLM.LLM.Ollama
         private long _pendingSequence = 0;
 
         /// <summary>
+        /// Ollama chat endpoint URL.
+        /// </summary>
+        private string ChatApiUrl => _config.ServerUrl + "/api/chat";
+
+        /// <summary>
         /// Pending request information
         /// </summary>
         private class PendingRequest
@@ -77,6 +82,54 @@ namespace EasyLocalLLM.LLM.Ollama
                 SessionId = sessionId;
                 Priority = priority;
                 Order = order;
+            }
+        }
+
+        /// <summary>
+        /// Container for the result of one request-loop iteration.
+        /// </summary>
+        private sealed class RequestLoopIterationData
+        {
+            /// <summary>
+            /// Assistant content generated in this iteration.
+            /// </summary>
+            public string AssistantContent { get; private set; }
+
+            /// <summary>
+            /// Tool calls detected in this iteration.
+            /// </summary>
+            public List<Core.ToolCall> ToolCalls { get; private set; }
+
+            /// <summary>
+            /// Finalization action when no tool call is detected.
+            /// </summary>
+            public Action FinalizeAction { get; private set; }
+
+            /// <summary>
+            /// True when the outer loop should abort.
+            /// </summary>
+            public bool ShouldAbort { get; private set; }
+
+            /// <summary>
+            /// Set successful iteration result.
+            /// </summary>
+            /// <param name="assistantContent">Assistant content</param>
+            /// <param name="toolCalls">Detected tool calls</param>
+            /// <param name="finalizeAction">Action to finalize the response when no tool calls exist</param>
+            public void SetResult(string assistantContent, List<Core.ToolCall> toolCalls, Action finalizeAction)
+            {
+                AssistantContent = assistantContent;
+                ToolCalls = toolCalls;
+                FinalizeAction = finalizeAction;
+                ShouldAbort = false;
+            }
+
+            /// <summary>
+            /// Mark this iteration as aborted.
+            /// </summary>
+            public void Abort()
+            {
+                ShouldAbort = true;
             }
         }
 
@@ -651,6 +704,728 @@ namespace EasyLocalLLM.LLM.Ollama
         }
 
         /// <summary>
+        /// Prepare chat history for a new request.
+        /// Adds system prompt (if needed) and user message.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="message">User message</param>
+        /// <param name="images">Optional images</param>
+        /// <param name="options">Chat request options</param>
+        /// <returns>Mutable history list for this session</returns>
+        private List<ChatMessage> PrepareHistoryForRequest(
+            string sessionId,
+            string message,
+            List<Texture2D> images,
+            ChatRequestOptions options)
+        {
+            var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
+            var history = session.History;
+
+            if (history.Count == 0)
+            {
+                string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
+                if (!string.IsNullOrEmpty(systemPrompt))
+                {
+                    history.Add(new ChatMessage
+                    {
+                        Role = "system",
+                        Content = systemPrompt
+                    });
+                }
+            }
+
+            history.Add(new ChatMessage
+            {
+                Role = "user",
+                Content = message,
+                Images = images?.Select(ConvertTexture2DToBase64).ToList()
+            });
+
+            return history;
+        }
+
+        /// <summary>
+        /// Check cancellation and report cancellation error when requested.
+        /// </summary>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onError">Error callback</param>
+        /// <returns>True if cancelled</returns>
+        private static bool TryHandleCancellation(ChatRequestOptions options, Action<ChatError> onError)
+        {
+            if (!options.CancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
+            onError?.Invoke(new ChatError
+            {
+                ErrorType = LLMErrorType.Cancelled,
+                Message = "Request cancelled"
+            });
+            return true;
+        }
+
+        /// <summary>
+        /// Resolve the tool list to send with a request.
+        /// </summary>
+        /// <param name="options">Chat request options</param>
+        /// <returns>Resolved tool definitions</returns>
+        private List<Core.ToolDefinition> ResolveTools(ChatRequestOptions options)
+        {
+            var tools = _toolManager.GetAllTools();
+            if (options.Tools != null && options.Tools.Count > 0)
+            {
+                tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
+            }
+
+            return tools;
+        }
+
+        /// <summary>
+        /// Build the payload object for Ollama /api/chat.
+        /// </summary>
+        /// <param name="history">Current message history</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="tools">Resolved tool definitions</param>
+        /// <param name="stream">True for streaming mode</param>
+        /// <returns>Serializable request payload</returns>
+        private object BuildChatRequestContent(
+            List<ChatMessage> history,
+            ChatRequestOptions options,
+            List<Core.ToolDefinition> tools,
+            bool stream)
+        {
+            object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
+
+            var requestContent = new Dictionary<string, object>
+            {
+                ["model"] = options.ModelName ?? _config.DefaultModelName,
+                ["messages"] = SerializeMessages(history),
+                ["stream"] = stream,
+                ["options"] = BuildOllamaGenerationOptions(options)
+            };
+
+            if (formatValue != null)
+            {
+                requestContent["format"] = formatValue;
+            }
+
+            if (tools != null && tools.Count > 0)
+            {
+                requestContent["tools"] = tools.Select(t => t.ToOllamaFormat()).ToArray();
+            }
+
+            return requestContent;
+        }
+
+        /// <summary>
+        /// Parse non-streaming /api/chat response.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="responseBody">Raw response body</param>
+        /// <param name="response">Parsed chat response</param>
+        /// <param name="error">Parse error when failed</param>
+        /// <returns>True if parse succeeded</returns>
+        private bool TryParseChatResponse(string sessionId, string responseBody, out ChatResponse response, out ChatError error)
+        {
+            response = null;
+            error = null;
+
+            try
+            {
+                var chatResponse = JObject.Parse(responseBody);
+                var chatMessage = chatResponse["message"];
+
+                response = new ChatResponse
+                {
+                    SessionId = sessionId,
+                    Content = chatMessage?["content"]?.ToString() ?? "",
+                    Role = chatMessage?["role"]?.ToString() ?? "assistant",
+                    IsFinal = true,
+                    RawResponse = responseBody
+                };
+
+                var parsedToolCalls = ParseToolCalls(chatMessage?["tool_calls"]);
+                if (parsedToolCalls != null && parsedToolCalls.Count > 0)
+                {
+                    response.ToolCalls = parsedToolCalls;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = new ChatError
+                {
+                    ErrorType = LLMErrorType.InvalidResponse,
+                    Message = $"Failed to parse response: {ex.Message}",
+                    Exception = ex
+                };
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Parse tool call array from JSON token.
+        /// </summary>
+        /// <param name="toolCallsToken">tool_calls token</param>
+        /// <returns>Parsed tool calls, or null when absent</returns>
+        private List<Core.ToolCall> ParseToolCalls(JToken toolCallsToken)
+        {
+            var toolCallsArray = toolCallsToken as JArray;
+            if (toolCallsArray == null || toolCallsArray.Count == 0)
+            {
+                return null;
+            }
+
+            var parsedCalls = new List<Core.ToolCall>();
+            foreach (var tc in toolCallsArray)
+            {
+                var toolCall = new Core.ToolCall
+                {
+                    ToolName = tc["function"]?["name"]?.ToString(),
+                    Arguments = tc["function"]?["arguments"]
+                };
+                parsedCalls.Add(toolCall);
+            }
+
+            return parsedCalls;
+        }
+
+        /// <summary>
+        /// Process detected tool calls for one iteration.
+        /// </summary>
+        /// <param name="history">Session history</param>
+        /// <param name="assistantContent">Assistant content</param>
+        /// <param name="toolCalls">Detected tool calls</param>
+        /// <param name="toolIterations">Current tool iteration count</param>
+        /// <param name="maxIterations">Maximum allowed iterations</param>
+        /// <returns>True if tool calls were processed</returns>
+        private bool TryProcessToolCallsIteration(
+            List<ChatMessage> history,
+            string assistantContent,
+            List<Core.ToolCall> toolCalls,
+            ref int toolIterations,
+            int maxIterations)
+        {
+            if (toolCalls == null || toolCalls.Count == 0)
+            {
+                return false;
+            }
+
+            toolIterations++;
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.Log($"[Ollama] Detected {toolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
+            }
+
+            history.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Content = assistantContent,
+                ToolCalls = toolCalls
+            });
+
+            ExecuteToolCallsAndAppendResults(history, toolCalls);
+            return true;
+        }
+
+        /// <summary>
+        /// Report error when max tool iterations are reached.
+        /// </summary>
+        /// <param name="toolIterations">Current iteration count</param>
+        /// <param name="maxIterations">Maximum allowed iterations</param>
+        /// <param name="hasToolCalls">Whether loop still had tool calls</param>
+        /// <param name="onError">Error callback</param>
+        private void ReportMaxToolIterationsReachedIfNeeded(
+            int toolIterations,
+            int maxIterations,
+            bool hasToolCalls,
+            Action<ChatError> onError)
+        {
+            if (toolIterations < maxIterations || !hasToolCalls)
+            {
+                return;
+            }
+
+            if (_config.DebugMode)
+            {
+                UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
+            }
+
+            onError?.Invoke(new ChatError
+            {
+                ErrorType = LLMErrorType.Unknown,
+                Message = $"Max tool iterations ({maxIterations}) reached"
+            });
+        }
+
+        /// <summary>
+        /// Shared loop for tool-aware request execution.
+        /// </summary>
+        /// <param name="history">Session history</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="executeIteration">Per-iteration request executor</param>
+        /// <returns>Coroutine enumerator</returns>
+        private IEnumerator ProcessToolAwareLoop(
+            List<ChatMessage> history,
+            ChatRequestOptions options,
+            Action<ChatError> onError,
+            Func<List<Core.ToolDefinition>, RequestLoopIterationData, IEnumerator> executeIteration)
+        {
+            int toolIterations = 0;
+            int maxIterations = options.MaxToolIterations;
+            bool hasToolCalls = true;
+
+            while (hasToolCalls && toolIterations < maxIterations)
+            {
+                if (TryHandleCancellation(options, onError))
+                {
+                    yield break;
+                }
+
+                var tools = ResolveTools(options);
+                var iterationData = new RequestLoopIterationData();
+
+                yield return executeIteration(tools, iterationData);
+
+                if (iterationData.ShouldAbort)
+                {
+                    yield break;
+                }
+
+                if (iterationData.AssistantContent == null)
+                {
+                    onError?.Invoke(new ChatError
+                    {
+                        ErrorType = LLMErrorType.Unknown,
+                        Message = "Request iteration returned invalid state"
+                    });
+                    yield break;
+                }
+
+                hasToolCalls = TryProcessToolCallsIteration(
+                    history,
+                    iterationData.AssistantContent,
+                    iterationData.ToolCalls,
+                    ref toolIterations,
+                    maxIterations);
+
+                if (hasToolCalls)
+                {
+                    continue;
+                }
+
+                if (iterationData.FinalizeAction == null)
+                {
+                    onError?.Invoke(new ChatError
+                    {
+                        ErrorType = LLMErrorType.Unknown,
+                        Message = "Request iteration finalize action is missing"
+                    });
+                    yield break;
+                }
+
+                iterationData.FinalizeAction();
+            }
+
+            ReportMaxToolIterationsReachedIfNeeded(toolIterations, maxIterations, hasToolCalls, onError);
+        }
+
+        /// <summary>
+        /// Execute one session-bound request with queueing and running-session tracking.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="requestRoutine">Request routine coroutine factory</param>
+        /// <returns>Coroutine enumerator</returns>
+        private IEnumerator ExecuteSessionRequest(
+            string sessionId,
+            ChatRequestOptions options,
+            Action<ChatError> onError,
+            Func<IEnumerator> requestRoutine)
+        {
+            bool waitFailed = false;
+            yield return WaitForTurn(sessionId, options, error =>
+            {
+                waitFailed = true;
+                onError?.Invoke(error);
+            });
+
+            if (waitFailed)
+            {
+                yield break;
+            }
+
+            _runningSessions.Add(sessionId);
+
+            try
+            {
+                yield return requestRoutine();
+            }
+            finally
+            {
+                _runningSessions.Remove(sessionId);
+            }
+        }
+
+        /// <summary>
+        /// Execute tool calls and append tool-result messages to history.
+        /// </summary>
+        /// <param name="history">Session history</param>
+        /// <param name="toolCalls">Tool calls to execute</param>
+        private void ExecuteToolCallsAndAppendResults(List<ChatMessage> history, List<Core.ToolCall> toolCalls)
+        {
+            foreach (var toolCall in toolCalls)
+            {
+                string toolResult;
+                try
+                {
+                    toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments?.ToString());
+                }
+                catch (Exception ex)
+                {
+                    toolResult = $"Error: {ex.Message}";
+                    if (_config.DebugMode)
+                    {
+                        UnityEngine.Debug.LogError($"[Ollama] Tool execution failed: {ex.Message}");
+                    }
+                }
+
+                history.Add(new ChatMessage
+                {
+                    Role = "tool",
+                    Content = toolResult
+                });
+            }
+        }
+
+        /// <summary>
+        /// Finalize non-streaming response when no tool call remains.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="finalResponse">Final response</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onResponse">Response callback</param>
+        private void FinalizeNonToolResponse(
+            string sessionId,
+            ChatResponse finalResponse,
+            ChatRequestOptions options,
+            Action<ChatResponse> onResponse)
+        {
+            _historyManager.AddMessage(sessionId, new ChatMessage
+            {
+                Role = finalResponse.Role,
+                Content = finalResponse.Content
+            }, options.MaxHistory);
+
+            onResponse?.Invoke(finalResponse);
+        }
+
+        /// <summary>
+        /// Execute one non-streaming request iteration.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="history">Session history</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="tools">Resolved tools</param>
+        /// <param name="onResponse">Response callback</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="iterationData">Iteration result container</param>
+        /// <returns>Coroutine enumerator</returns>
+        private IEnumerator ExecuteNonStreamingIteration(
+            string sessionId,
+            List<ChatMessage> history,
+            ChatRequestOptions options,
+            List<Core.ToolDefinition> tools,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError,
+            RequestLoopIterationData iterationData)
+        {
+            object requestContent = BuildChatRequestContent(history, options, tools, false);
+
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
+            string url = ChatApiUrl;
+
+            ChatError errorInfo = null;
+            ChatResponse finalResponse = null;
+            bool requestComplete = false;
+
+            yield return _httpHelper.ExecuteWithRetry(
+                url,
+                json,
+                responseBody =>
+                {
+                    requestComplete = true;
+                    if (TryParseChatResponse(sessionId, responseBody, out var parsedResponse, out var parseError))
+                    {
+                        finalResponse = parsedResponse;
+                    }
+                    else
+                    {
+                        errorInfo = parseError;
+                    }
+                },
+                error =>
+                {
+                    errorInfo = error;
+                    requestComplete = true;
+                },
+                options.CancellationToken
+            );
+
+            if (errorInfo != null)
+            {
+                onError?.Invoke(errorInfo);
+                iterationData.Abort();
+                yield break;
+            }
+
+            if (!requestComplete || finalResponse == null)
+            {
+                onError?.Invoke(new ChatError
+                {
+                    ErrorType = LLMErrorType.Unknown,
+                    Message = "Request incomplete"
+                });
+                iterationData.Abort();
+                yield break;
+            }
+
+            iterationData.SetResult(
+                finalResponse.Content,
+                finalResponse.ToolCalls,
+                () => FinalizeNonToolResponse(sessionId, finalResponse, options, onResponse));
+        }
+
+        /// <summary>
+        /// Process tool-aware loop for non-streaming requests.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="history">Session history</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onResponse">Response callback</param>
+        /// <param name="onError">Error callback</param>
+        /// <returns>Coroutine enumerator</returns>
+        private IEnumerator ProcessNonStreamingRequestLoop(
+            string sessionId,
+            List<ChatMessage> history,
+            ChatRequestOptions options,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError)
+        {
+            yield return ProcessToolAwareLoop(
+                history,
+                options,
+                onError,
+                (tools, iterationData) => ExecuteNonStreamingIteration(
+                    sessionId,
+                    history,
+                    options,
+                    tools,
+                    onResponse,
+                    onError,
+                    iterationData));
+        }
+
+        /// <summary>
+        /// Handle one streaming chunk and update accumulated state.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="chunk">Raw chunk</param>
+        /// <param name="onResponse">Response callback</param>
+        /// <param name="fullResponse">Accumulated response content</param>
+        /// <param name="fullRole">Current role</param>
+        /// <param name="lastRawChunk">Last raw chunk</param>
+        /// <param name="detectedToolCalls">Detected tool calls</param>
+        private void HandleStreamingChunk(
+            string sessionId,
+            string chunk,
+            Action<ChatResponse> onResponse,
+            ref string fullResponse,
+            ref string fullRole,
+            ref string lastRawChunk,
+            ref List<Core.ToolCall> detectedToolCalls)
+        {
+            try
+            {
+                lastRawChunk = chunk;
+                var chunkJson = JObject.Parse(chunk);
+                var chunkMessage = chunkJson["message"];
+
+                if (chunkMessage == null)
+                {
+                    return;
+                }
+
+                string content = chunkMessage["content"]?.ToString() ?? "";
+                string role = chunkMessage["role"]?.ToString() ?? "assistant";
+
+                fullResponse += content;
+                fullRole = role;
+
+                detectedToolCalls = ParseToolCalls(chunkMessage["tool_calls"]);
+
+                onResponse?.Invoke(new ChatResponse
+                {
+                    SessionId = sessionId,
+                    Content = fullResponse,
+                    Role = fullRole,
+                    IsFinal = false,
+                    RawResponse = chunk
+                });
+            }
+            catch (Exception ex)
+            {
+                if (_config.DebugMode)
+                {
+                    UnityEngine.Debug.LogWarning($"[Ollama] Failed to parse chunk: {ex.Message}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Finalize streaming response when no tool call remains.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="fullResponse">Accumulated response content</param>
+        /// <param name="fullRole">Assistant role</param>
+        /// <param name="lastRawChunk">Last raw chunk</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onResponse">Response callback</param>
+        private void FinalizeStreamingNonToolResponse(
+            string sessionId,
+            string fullResponse,
+            string fullRole,
+            string lastRawChunk,
+            ChatRequestOptions options,
+            Action<ChatResponse> onResponse)
+        {
+            if (string.IsNullOrEmpty(fullResponse))
+            {
+                return;
+            }
+
+            _historyManager.AddMessage(sessionId, new ChatMessage
+            {
+                Role = fullRole,
+                Content = fullResponse
+            }, options.MaxHistory);
+
+            var finalResponse = new ChatResponse
+            {
+                SessionId = sessionId,
+                Content = fullResponse,
+                Role = fullRole,
+                IsFinal = true,
+                RawResponse = lastRawChunk ?? fullResponse
+            };
+
+            onResponse?.Invoke(finalResponse);
+        }
+
+        /// <summary>
+        /// Execute one streaming request iteration.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="history">Session history</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="tools">Resolved tools</param>
+        /// <param name="onResponse">Response callback</param>
+        /// <param name="onError">Error callback</param>
+        /// <param name="iterationData">Iteration result container</param>
+        /// <returns>Coroutine enumerator</returns>
+        private IEnumerator ExecuteStreamingIteration(
+            string sessionId,
+            List<ChatMessage> history,
+            ChatRequestOptions options,
+            List<Core.ToolDefinition> tools,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError,
+            RequestLoopIterationData iterationData)
+        {
+            object requestContent = BuildChatRequestContent(history, options, tools, true);
+
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
+            string url = ChatApiUrl;
+
+            string fullResponse = "";
+            string fullRole = "assistant";
+            string lastRawChunk = null;
+            List<Core.ToolCall> detectedToolCalls = null;
+            bool streamComplete = false;
+
+            yield return _httpHelper.ExecuteStreamingWithRetry(
+                url,
+                json,
+                chunk =>
+                {
+                    HandleStreamingChunk(
+                        sessionId,
+                        chunk,
+                        onResponse,
+                        ref fullResponse,
+                        ref fullRole,
+                        ref lastRawChunk,
+                        ref detectedToolCalls);
+                },
+                isSuccess =>
+                {
+                    streamComplete = isSuccess;
+                },
+                error =>
+                {
+                    onError?.Invoke(error);
+                },
+                options.CancellationToken
+            );
+
+            if (!streamComplete)
+            {
+                iterationData.Abort();
+                yield break;
+            }
+
+            iterationData.SetResult(
+                fullResponse,
+                detectedToolCalls,
+                () => FinalizeStreamingNonToolResponse(sessionId, fullResponse, fullRole, lastRawChunk, options, onResponse));
+        }
+
+        /// <summary>
+        /// Process tool-aware loop for streaming requests.
+        /// </summary>
+        /// <param name="sessionId">Session ID</param>
+        /// <param name="history">Session history</param>
+        /// <param name="options">Chat request options</param>
+        /// <param name="onResponse">Response callback</param>
+        /// <param name="onError">Error callback</param>
+        /// <returns>Coroutine enumerator</returns>
+        private IEnumerator ProcessStreamingRequestLoop(
+            string sessionId,
+            List<ChatMessage> history,
+            ChatRequestOptions options,
+            Action<ChatResponse> onResponse,
+            Action<ChatError> onError)
+        {
+            yield return ProcessToolAwareLoop(
+                history,
+                options,
+                onError,
+                (tools, iterationData) => ExecuteStreamingIteration(
+                    sessionId,
+                    history,
+                    options,
+                    tools,
+                    onResponse,
+                    onError,
+                    iterationData));
+        }
+
+        /// <summary>
         /// Send message asynchronously with Task (get complete response at once)
         /// <param name="message">Message to send</param>
         /// <param name="options">Request options</param>
@@ -660,7 +1435,7 @@ namespace EasyLocalLLM.LLM.Ollama
             string message,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default)
-        { 
+        {
             return SendMessageTaskAsync(message, null, options, cancellationToken);
         }
 
@@ -704,6 +1479,9 @@ namespace EasyLocalLLM.LLM.Ollama
 
         /// <summary>
         /// Send message asynchronously with IEnumerator (get complete response at once)
+        /// Execution flow:
+        /// 1) Delegate to image-aware overload.
+        /// 2) Queue/session control and main request loop are handled there.
         /// <param name="message">Message to send</param>
         /// <param name="onResponse">Response: (response)</param>
         /// <param name="onError">Response: (error)</param>
@@ -720,6 +1498,11 @@ namespace EasyLocalLLM.LLM.Ollama
 
         /// <summary>
         /// Send message asynchronously with images with IEnumerator (get complete response at once)
+        /// Execution structure:
+        /// 1) Resolve/Create sessionId from options.
+        /// 2) Enter ExecuteSessionRequest (wait turn + running-session tracking).
+        /// 3) Build history for this request (system prompt/user message).
+        /// 4) Run ProcessNonStreamingRequestLoop (request/response + tool-call iterations).
         /// <param name="message">Message to send</param>
         /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="onResponse">Response: (response)</param>
@@ -736,283 +1519,21 @@ namespace EasyLocalLLM.LLM.Ollama
             options ??= new ChatRequestOptions();
             string sessionId = options.SessionId ?? Guid.NewGuid().ToString();
 
-            bool waitFailed = false;
-            yield return WaitForTurn(sessionId, options, error =>
-            {
-                waitFailed = true;
-                onError?.Invoke(error);
-            });
-            if (waitFailed)
-            {
-                yield break;
-            }
-
-            _runningSessions.Add(sessionId);
-
-            try
-            {
-                var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
-                var history = session.History;
-
-                // Add system prompt if history is empty (first message)
-                if (history.Count == 0)
+            // High-level orchestration:
+            // - ExecuteSessionRequest: queue wait + running session enter/leave
+            // - lambda body: per-request preparation + non-streaming processing loop
+            yield return ExecuteSessionRequest(
+                sessionId,
+                options,
+                onError,
+                () =>
                 {
-                    string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
-                    if (!string.IsNullOrEmpty(systemPrompt))
-                    {
-                        history.Add(new ChatMessage
-                        {
-                            Role = "system",
-                            Content = systemPrompt
-                        });
-                    }
-                }
+                    // Prepare initial request context for this session.
+                    var history = PrepareHistoryForRequest(sessionId, message, images, options);
 
-                // Add user message
-                history.Add(new ChatMessage { Role = "user", Content = message, Images = images?.Select(ConvertTexture2DToBase64).ToList() });
-
-                // Tool call handling loop
-                int toolIterations = 0;
-                int maxIterations = options.MaxToolIterations;
-                bool hasToolCalls = true;
-
-                while (hasToolCalls && toolIterations < maxIterations)
-                {
-                    if (options.CancellationToken.IsCancellationRequested)
-                    {
-                        onError?.Invoke(new ChatError
-                        {
-                            ErrorType = LLMErrorType.Cancelled,
-                            Message = "Request cancelled"
-                        });
-                        yield break;
-                    }
-
-                    // Get tools to include
-                    var tools = _toolManager.GetAllTools();
-                    if (options.Tools != null && options.Tools.Count > 0)
-                    {
-                        tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
-                    }
-
-                    // Decide format value based on options
-                    object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
-
-                    // Make request content
-                    object requestContent;
-                    if (tools != null && tools.Count > 0)
-                    {
-                        // Request with registered tools
-                        if (formatValue != null)
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = false,
-                                format = formatValue,
-                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                        else
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = false,
-                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                    }
-                    else
-                    {
-                        // Request without tools
-                        if (formatValue != null)
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = false,
-                                format = formatValue,
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                        else
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = false,
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                    }
-
-                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
-                    string url = _config.ServerUrl + "/api/chat";
-
-                    ChatError errorInfo = null;
-                    ChatResponse finalResponse = null;
-                    bool requestComplete = false;
-
-                    yield return _httpHelper.ExecuteWithRetry(
-                        url,
-                        json,
-                        responseBody =>
-                        {
-                            try
-                            {
-                                var chatResponse = JObject.Parse(responseBody);
-                                var chatMessage = chatResponse["message"];
-
-                                var response = new ChatResponse
-                                {
-                                    SessionId = sessionId,
-                                    Content = chatMessage?["content"]?.ToString() ?? "",
-                                    Role = chatMessage?["role"]?.ToString() ?? "assistant",
-                                    IsFinal = true,
-                                    RawResponse = responseBody
-                                };
-
-                                // Extract tool calls
-                                var toolCallsArray = chatMessage?["tool_calls"] as JArray;
-                                if (toolCallsArray != null && toolCallsArray.Count > 0)
-                                {
-                                    response.ToolCalls = new List<Core.ToolCall>();
-                                    foreach (var tc in toolCallsArray)
-                                    {
-                                        var toolCall = new Core.ToolCall
-                                        {
-                                            ToolName = tc["function"]?["name"]?.ToString(),
-                                            Arguments = tc["function"]?["arguments"]
-                                        };
-                                        response.ToolCalls.Add(toolCall);
-                                    }
-                                }
-
-                                finalResponse = response;
-                                requestComplete = true;
-                            }
-                            catch (Exception ex)
-                            {
-                                errorInfo = new ChatError
-                                {
-                                    ErrorType = LLMErrorType.InvalidResponse,
-                                    Message = $"Failed to parse response: {ex.Message}",
-                                    Exception = ex
-                                };
-                            }
-                        },
-                        error =>
-                        {
-                            errorInfo = error;
-                            requestComplete = true;
-                        },
-                        options.CancellationToken
-                    );
-
-                    if (errorInfo != null)
-                    {
-                        onError?.Invoke(errorInfo);
-                        yield break;
-                    }
-
-                    if (!requestComplete || finalResponse == null)
-                    {
-                        onError?.Invoke(new ChatError
-                        {
-                            ErrorType = LLMErrorType.Unknown,
-                            Message = "Request incomplete"
-                        });
-                        yield break;
-                    }
-
-                    // Tool calls handling
-                    if (finalResponse.ToolCalls != null && finalResponse.ToolCalls.Count > 0)
-                    {
-                        toolIterations++;
-
-                        if (_config.DebugMode)
-                        {
-                            UnityEngine.Debug.Log($"[Ollama] Detected {finalResponse.ToolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
-                        }
-
-                        // Add assistant message with tool calls to history
-                        history.Add(new ChatMessage
-                        {
-                            Role = "assistant",
-                            Content = finalResponse.Content,
-                            ToolCalls = finalResponse.ToolCalls
-                        });
-
-                        // Execute each tool call
-                        foreach (var toolCall in finalResponse.ToolCalls)
-                        {
-                            string toolResult;
-                            try
-                            {
-                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments?.ToString());
-                            }
-                            catch (Exception ex)
-                            {
-                                toolResult = $"Error: {ex.Message}";
-                                if (_config.DebugMode)
-                                {
-                                    UnityEngine.Debug.LogError($"[Ollama] Tool execution failed: {ex.Message}");
-                                }
-                            }
-
-                            // Add tool result message to history
-                            history.Add(new ChatMessage
-                            {
-                                Role = "tool",
-                                Content = toolResult
-                            });
-                        }
-
-                        // Resend including tool results in the next loop
-                        hasToolCalls = true;
-                    }
-                    else
-                    {
-                        // No tool calls, end loop
-                        hasToolCalls = false;
-
-                        // Add to history
-                        _historyManager.AddMessage(sessionId, new ChatMessage
-                        {
-                            Role = finalResponse.Role,
-                            Content = finalResponse.Content
-                        }, options.MaxHistory);
-
-                        onResponse?.Invoke(finalResponse);
-                    }
-                }
-
-                // Max iterations reached
-                if (toolIterations >= maxIterations && hasToolCalls)
-                {
-                    if (_config.DebugMode)
-                    {
-                        UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
-                    }
-
-                    onError?.Invoke(new ChatError
-                    {
-                        ErrorType = LLMErrorType.Unknown,
-                        Message = $"Max tool iterations ({maxIterations}) reached"
-                    });
-                }
-            }
-            finally
-            {
-                _runningSessions.Remove(sessionId);
-            }
+                    // Execute non-streaming request loop (includes tool call iterations).
+                    return ProcessNonStreamingRequestLoop(sessionId, history, options, onResponse, onError);
+                });
         }
 
         /// <summary>
@@ -1066,6 +1587,11 @@ namespace EasyLocalLLM.LLM.Ollama
             return result.ToArray();
         }
 
+        /// <summary>
+        /// Convert a Texture2D image into Base64 PNG string.
+        /// </summary>
+        /// <param name="texture">Texture to convert</param>
+        /// <returns>Base64 encoded PNG</returns>
         private string ConvertTexture2DToBase64(Texture2D texture)
         {
             byte[] imageBytes = texture.EncodeToPNG();
@@ -1090,6 +1616,11 @@ namespace EasyLocalLLM.LLM.Ollama
 
         /// <summary>
         /// Send message asynchronously with IEnumerator (get response in streaming)
+        /// Execution structure:
+        /// 1) Resolve/Create sessionId from options.
+        /// 2) Enter ExecuteSessionRequest (wait turn + running-session tracking).
+        /// 3) Build history for this request (system prompt/user message).
+        /// 4) Run ProcessStreamingRequestLoop (streaming chunks + tool-call iterations).
         /// <param name="message">The message to send</param>
         /// <param name="images">List of images to send (if supported by the model)</param>
         /// <param name="onResponse">Successed callback</param>
@@ -1106,296 +1637,21 @@ namespace EasyLocalLLM.LLM.Ollama
             options ??= new ChatRequestOptions();
             string sessionId = options.SessionId ?? Guid.NewGuid().ToString();
 
-            bool waitFailed = false;
-            yield return WaitForTurn(sessionId, options, error =>
-            {
-                waitFailed = true;
-                onError?.Invoke(error);
-            });
-            if (waitFailed)
-            {
-                yield break;
-            }
-
-            _runningSessions.Add(sessionId);
-
-            try
-            {
-                var session = _historyManager.GetOrCreateSession(sessionId, options.SystemPrompt);
-                var history = session.History;
-
-                // Add system prompt if not present
-                if (history.Count == 0)
+            // High-level orchestration:
+            // - ExecuteSessionRequest: queue wait + running session enter/leave
+            // - lambda body: per-request preparation + streaming processing loop
+            yield return ExecuteSessionRequest(
+                sessionId,
+                options,
+                onError,
+                () =>
                 {
-                    string systemPrompt = options.SystemPrompt ?? session.SystemPrompt ?? GlobalSystemPrompt;
-                    if (!string.IsNullOrEmpty(systemPrompt))
-                    {
-                        history.Add(new ChatMessage
-                        {
-                            Role = "system",
-                            Content = systemPrompt
-                        });
-                    }
-                }
+                    // Prepare initial request context for this session.
+                    var history = PrepareHistoryForRequest(sessionId, message, images, options);
 
-                // Add user message
-                history.Add(new ChatMessage { Role = "user", Content = message, Images = images?.Select(ConvertTexture2DToBase64).ToList() });
-
-                // Tool call handling loop
-                int toolIterations = 0;
-                int maxIterations = options.MaxToolIterations;
-                bool hasToolCalls = true;
-
-                while (hasToolCalls && toolIterations < maxIterations)
-                {
-                    if (options.CancellationToken.IsCancellationRequested)
-                    {
-                        onError?.Invoke(new ChatError
-                        {
-                            ErrorType = LLMErrorType.Cancelled,
-                            Message = "Request cancelled"
-                        });
-                        yield break;
-                    }
-
-                    // Get tools to include
-                    var tools = _toolManager.GetAllTools();
-                    if (options.Tools != null && options.Tools.Count > 0)
-                    {
-                        tools = tools.Where(t => options.Tools.Contains(t.Name)).ToList();
-                    }
-
-                    // Determine format field
-                    object formatValue = options.FormatSchema ?? (string.IsNullOrEmpty(options.Format) ? null : options.Format);
-
-                    // Create request
-                    object requestContent;
-                    if (tools != null && tools.Count > 0)
-                    {
-                        if (formatValue != null)
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = true,
-                                format = formatValue,
-                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                        else
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = true,
-                                tools = tools.Select(t => t.ToOllamaFormat()).ToArray(),
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                    }
-                    else
-                    {
-                        if (formatValue != null)
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = true,
-                                format = formatValue,
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                        else
-                        {
-                            requestContent = new
-                            {
-                                model = options.ModelName ?? _config.DefaultModelName,
-                                messages = SerializeMessages(history),
-                                stream = true,
-                                options = BuildOllamaGenerationOptions(options)
-                            };
-                        }
-                    }
-
-                    string json = Newtonsoft.Json.JsonConvert.SerializeObject(requestContent);
-                    string url = _config.ServerUrl + "/api/chat";
-
-                    string fullResponse = "";
-                    string fullRole = "assistant";
-                    string lastRawChunk = null;
-                    List<Core.ToolCall> detectedToolCalls = null;
-                    bool streamComplete = false;
-
-                    yield return _httpHelper.ExecuteStreamingWithRetry(
-                        url,
-                        json,
-                        chunk =>
-                        {
-                            try
-                            {
-                                lastRawChunk = chunk;
-                                var chunkJson = JObject.Parse(chunk);
-                                var chunkMessage = chunkJson["message"];
-
-                                if (chunkMessage != null)
-                                {
-                                    string content = chunkMessage["content"]?.ToString() ?? "";
-                                    string role = chunkMessage["role"]?.ToString() ?? "assistant";
-
-                                    fullResponse += content;
-                                    fullRole = role;
-
-                                    // Detect tool calls (final chunk)
-                                    var toolCallsArray = chunkMessage["tool_calls"] as JArray;
-                                    if (toolCallsArray != null && toolCallsArray.Count > 0)
-                                    {
-                                        detectedToolCalls = new List<Core.ToolCall>();
-                                        foreach (var tc in toolCallsArray)
-                                        {
-                                            var toolCall = new Core.ToolCall
-                                            {
-                                                ToolName = tc["function"]?["name"]?.ToString(),
-                                                Arguments = tc["function"]?["arguments"]
-                                            };
-                                            detectedToolCalls.Add(toolCall);
-                                        }
-                                    }
-
-                                    // Progress callback (IsFinal = false)
-                                    var response = new ChatResponse
-                                    {
-                                        SessionId = sessionId,
-                                        Content = fullResponse,
-                                        Role = fullRole,
-                                        IsFinal = false,
-                                        RawResponse = chunk
-                                    };
-
-                                    onResponse?.Invoke(response);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                if (_config.DebugMode)
-                                {
-                                    UnityEngine.Debug.LogWarning($"[Ollama] Failed to parse chunk: {ex.Message}");
-                                }
-                            }
-                        },
-                        isSuccess =>
-                        {
-                            streamComplete = isSuccess;
-                        },
-                        error =>
-                        {
-                            onError?.Invoke(error);
-                        },
-                        options.CancellationToken
-                    );
-
-                    if (!streamComplete)
-                    {
-                        yield break;
-                    }
-
-                    // Tool call handling
-                    if (detectedToolCalls != null && detectedToolCalls.Count > 0)
-                    {
-                        toolIterations++;
-
-                        if (_config.DebugMode)
-                        {
-                            UnityEngine.Debug.Log($"[Ollama] Detected {detectedToolCalls.Count} tool calls (iteration {toolIterations}/{maxIterations})");
-                        }
-
-                        // Assistant message with tool calls
-                        history.Add(new ChatMessage
-                        {
-                            Role = "assistant",
-                            Content = fullResponse,
-                            ToolCalls = detectedToolCalls
-                        });
-
-                        // Execute tool calls
-                        foreach (var toolCall in detectedToolCalls)
-                        {
-                            string toolResult;
-                            try
-                            {
-                                toolResult = _toolManager.ExecuteTool(toolCall.ToolName, toolCall.Arguments?.ToString());
-                            }
-                            catch (Exception ex)
-                            {
-                                toolResult = $"Error: {ex.Message}";
-                                if (_config.DebugMode)
-                                {
-                                    UnityEngine.Debug.LogError($"[Ollama] Tool execution failed: {ex.Message}");
-                                }
-                            }
-
-                            // Add tool result message to history
-                            history.Add(new ChatMessage
-                            {
-                                Role = "tool",
-                                Content = toolResult
-                            });
-                        }
-
-                        // Resend including tool results in the next loop
-                        hasToolCalls = true;
-                    }
-                    else
-                    {
-                        // No tool calls, end processing
-                        hasToolCalls = false;
-
-                        if (!string.IsNullOrEmpty(fullResponse))
-                        {
-                            // Add to history
-                            _historyManager.AddMessage(sessionId, new ChatMessage
-                            {
-                                Role = fullRole,
-                                Content = fullResponse
-                            }, options.MaxHistory);
-
-                            // Final chunk
-                            var finalResponse = new ChatResponse
-                            {
-                                SessionId = sessionId,
-                                Content = fullResponse,
-                                Role = fullRole,
-                                IsFinal = true,
-                                RawResponse = lastRawChunk ?? fullResponse
-                            };
-
-                            onResponse?.Invoke(finalResponse);
-                        }
-                    }
-                }
-
-                // Max iterations reached
-                if (toolIterations >= maxIterations && hasToolCalls)
-                {
-                    if (_config.DebugMode)
-                    {
-                        UnityEngine.Debug.LogWarning($"[Ollama] Max tool iterations ({maxIterations}) reached");
-                    }
-
-                    onError?.Invoke(new ChatError
-                    {
-                        ErrorType = LLMErrorType.Unknown,
-                        Message = $"Max tool iterations ({maxIterations}) reached"
-                    });
-                }
-            }
-            finally
-            {
-                _runningSessions.Remove(sessionId);
-            }
+                    // Execute streaming request loop (includes tool call iterations).
+                    return ProcessStreamingRequestLoop(sessionId, history, options, onResponse, onError);
+                });
         }
 
         /// <summary>
