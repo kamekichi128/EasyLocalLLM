@@ -37,7 +37,7 @@ namespace EasyLocalLLM.Samples
                 ServerUrl = "http://localhost:11434",
                 ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
                 ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-                DefaultModelName = "qwen3-vl:8b-instruct",
+                DefaultModelName = "qwen3-vl:4b-instruct",
                 AutoStartServer = true,
                 DebugMode = true
             };
