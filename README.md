@@ -1,6 +1,6 @@
 ![Title](Images/PromoBannerEasyLocalLLM.png)
 
-# EasyLocalLLM
+# [EasyLocalLLM](https://github.com/kamekichi128/EasyLocalLLM)
 
 EasyLocalLLM is a Unity library that makes it easy to use a local LLM (Ollama). With just a few lines of code, you can build offline AI chatbots and natural in-game NPC conversations.
 
