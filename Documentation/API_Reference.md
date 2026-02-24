@@ -1,4 +1,4 @@
-#+#+#+#+## EasyLocalLLM Runtime Library
+# EasyLocalLLM Runtime Library
 
 EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
 
