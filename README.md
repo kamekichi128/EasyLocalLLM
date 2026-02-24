@@ -106,7 +106,7 @@ SOFTWARE.
 
 ## 🤝 Support
 
-- **Bug reports & requests**: Please use [Github Issues](https://github.com/kamekichi128/kamekichi-games) for bug reports and feature requests. Responses and fixes are not guaranteed.
+- **Bug reports & requests**: Please use Github Issues for bug reports and feature requests. Responses and fixes are not guaranteed.
 - **Documentation**: See [Documentation/API_Reference.md](Documentation/API_Reference.md) for details
 - **Sample code**: See the `Samples/` folder
 
