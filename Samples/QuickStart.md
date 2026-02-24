@@ -1,110 +1,110 @@
-# EasyLocalLLM QuickStartシーン作成手順
+# EasyLocalLLM QuickStart Scene Setup Guide
 
-Unity エディタでQuickStartを実行するためのシーン設定手順です。
+This is a scene setup guide for running QuickStart in the Unity Editor.
 
-## 概要
+## Overview
 
-このドキュメントでは **QuickStart** を使用したシーンの作成方法を説明します。
+This document explains how to create a scene using **QuickStart**.
 
 ---
 
 ## QuickStart Scene
 
-実際のOllamaサーバーと通信を行い、LLMを動かすテストです。
+This is a test that communicates with a real Ollama server and runs an LLM.
 
-### 前提条件
+### Prerequisites
 
-- ✅ Ollama サーバが起動している（`ollama serve`）
-- ✅ モデルがインストールされている（`ollama pull mistral`）
+- ✅ Ollama server is running (`ollama serve`)
+- ✅ Model is installed (`ollama pull mistral`)
 
-### 準備手順
+### Setup Steps
 
-1. **新しいシーンを作成**
-   - Assets/EasyLocalLLM/Samples/Scenes/で右クリック -> Create -> Scene -> Scene
-   - 名前: `QuickStartScene.unity`
-   - 作成したシーンをダブルクリックして開く
+1. **Create a new scene**
+   - Right-click in `Assets/EasyLocalLLM/Samples/Scenes/` → Create → Scene → Scene
+   - Name: `QuickStartScene.unity`
+   - Double-click the created scene to open it
 
-2. **GameObject を作成**
-   - Hierarchy で右クリック
+2. **Create a GameObject**
+   - Right-click in Hierarchy
    - Create Empty
-   - 名前: `QuickStartManager`
+   - Name: `QuickStartManager`
 
-3. **スクリプトをアタッチ**
-   - Inspector で Add Component
-   - Script → `QuickStart` を検索
-   - アタッチ
+3. **Attach the script**
+   - In Inspector, click Add Component
+   - Search for Script → `QuickStart`
+   - Attach it
 
-4. **実行**
-   - Play ボタンをクリック
-   - Console ウィンドウでログを確認
+4. **Run**
+   - Click the Play button
+   - Check logs in the Console window
 
-### テスト内容
+### Test Details
 
-QuickStart は以下の4つのステップを実行します：
+QuickStart runs the following five steps:
 
-| ステップ | 説明 | 期待される出力 |
-|---------|------|--------------|
-| 1 | OllamaClient初期化 | `✓ Client initialized` |
-| 2 | シンプルなメッセージ送信 | `✓ Response received: ...` |
-| 3 | セッション履歴でのフォローアップ | `✓ Follow-up response: ...` |
-| 4 | ストリーミング機能テスト | `✓ Streaming completed!` |
-| 5 | ツール使用機能テスト | `✓ Tool call passed!` |
+| Step | Description | Expected Output |
+|------|-------------|-----------------|
+| 1 | Initialize OllamaClient | `✓ Client initialized` |
+| 2 | Send a simple message | `✓ Response received: ...` |
+| 3 | Follow-up with session history | `✓ Follow-up response: ...` |
+| 4 | Streaming feature test | `✓ Streaming completed!` |
+| 5 | Tool usage feature test | `✓ Tool call passed!` |
 
 
-## トラブルシューティング
+## Troubleshooting
 
-### ❌ "Failed to connect to server" エラー
+### ❌ "Failed to connect to server" Error
 
-**原因**: Ollama サーバが起動していない
+**Cause**: Ollama server is not running
 
-**対処法**:
+**Solution**:
 ```bash
 ollama serve
 ```
 
-### ❌ "Model not found" エラー
+### ❌ "Model not found" Error
 
-**原因**: 指定されたモデルがダウンロードされていない
+**Cause**: The specified model has not been downloaded
 
-**対処法**:
+**Solution**:
 ```bash
 ollama pull mistral
 ```
 
-### ❌ Timeout エラー
+### ❌ Timeout Error
 
-**原因**: サーバの応答が遅い
+**Cause**: Server response is slow
 
-**対処法**:
-1. HttpTimeoutSeconds を増やす
+**Solution**:
+1. Increase `HttpTimeoutSeconds`
    ```csharp
-   config.HttpTimeoutSeconds = 60; // デフォルト: 30
+   config.HttpTimeoutSeconds = 60; // Default: 30
    ```
-2. サーバのリソース使用状況を確認
-3. ネットワーク接続を確認
+2. Check server resource usage
+3. Check network connectivity
 
-### ❌ Console ログが表示されない
+### ❌ Console Logs Are Not Displayed
 
-**原因**: Scripting Backend が不正な設定
+**Cause**: Incorrect Scripting Backend configuration
 
-**対処法**:
-1. Window → General → Console を開く
-2. Debug.Log が有効か確認
-3. Scripting Backend = Mono であることを確認
-
----
-
-## テスト完了後の次のステップ
-
-1. **実際の使い方を学ぶ**
-   - SimpleChat / LateralThinkingQuiz を参照して実際のゲームでの使い方を学びましょう
-   - シーンはUnity 6.2（6000.2.6f2）で構築済みです
-
-2. **カスタムシーンでライブラリを使用**
-   - この手順書を参考にカスタムシーンにEasyLocalLLMをインポートして使いましょう
+**Solution**:
+1. Open Window → General → Console
+2. Make sure `Debug.Log` is enabled
+3. Confirm Scripting Backend is set to Mono
 
 ---
 
-## 参考リンク
+## Next Steps After Testing
 
-- [Documentation/API_Reference.md](../Documentation/API_Reference.md) - API ドキュメント
+1. **Learn practical usage**
+   - Refer to `SimpleChat` / `LateralThinkingQuiz` to learn how to use it in an actual game
+   - The scene is already built for Unity 6.2 (6000.2.6f2)
+
+2. **Use the library in a custom scene**
+   - Use this guide as a reference to import and use EasyLocalLLM in your custom scene
+
+---
+
+## Reference Link
+
+- [Documentation/API_Reference.md](../Documentation/API_Reference.md) - API documentation
