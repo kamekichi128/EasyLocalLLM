@@ -3,6 +3,13 @@
 All notable changes to this project are documented in this file.
 
 
+## [0.2.1] - 2026-03-02
+
+### Added
+
+- Add version info
+- Add explanation about Newtonsoft Json dependency
+
 ## [0.2.0] - 2026-02-24
 
 ### Added

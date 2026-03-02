@@ -1,3 +1,5 @@
+![Version](https://img.shields.io/badge/version-v0.2.1-blue)
+
 ![Title](Images/PromoBannerEasyLocalLLM.png)
 
 # [EasyLocalLLM](https://github.com/kamekichi128/EasyLocalLLM)
@@ -55,7 +57,7 @@ For setting up Ollama itself, or building a game that includes Ollama server man
 
 - **Unity version**: Unity 2021.3 or later recommended
 - **Supported OS**: Windows 10/11
-- **Dependencies**: Ollama server (see full documentation for setup)
+- **Dependencies**: Ollama server (see full documentation for setup), [Newtonsoft.Json](https://www.newtonsoft.com/json)
 - **GPU**: Recommended (CPU works, but responses are slower)
 
 ## 📖 Documentation
@@ -81,7 +83,8 @@ The `Samples/` folder includes the following sample scenes:
 
 - **SimpleChat** - Basic chat UI implementation
 - **LateralThinkingQuiz** - Lateral-thinking quiz game implementation
-- **QuickStartTest** - Minimal functionality check
+- **QuickStart** - Minimal functionality check. There are no scene file. To construct, see [QuickStart.md](Samples/QuickStart.md).
+- **ImageUnderstanding** - Simple sample of VLM
 
 ## 🔧 Limitations
 
