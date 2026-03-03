@@ -365,12 +365,14 @@ If a parameter is not set, Ollama/model defaults are used.
 | `Stop` | Stops generation when any stop sequence appears. | e.g., `"\nUser:"`, `"</END>"` |
 | `NumCtx` | Context window size (how much history can be considered). | `2048`, `4096`, `8192` |
 | `NumPredict` | Maximum number of generated tokens. | `128` to `1024` |
+| `Think` | Thinkingの生成有無。デフォルトはfalse（生成しない）。 | `true`　or `false` |
 
 **Practical presets**
 
 - **Deterministic Q&A**: `Temperature=0.2`, `Seed=42`, `TopP=0.9`, `NumPredict=256`
 - **Creative writing**: `Temperature=0.8`, `TopP=0.95`, `TopK=60`, `NumPredict=512`
 - **Strict short output**: `Temperature=0.3`, `Stop=["\nUser:"]`, `NumPredict=128`
+- **High quality response**: `Temperature=0.8`, `Think=true`
 
 ```csharp
 using System.Collections.Generic;
