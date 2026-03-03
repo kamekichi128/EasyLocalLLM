@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.2.2] - 2026-03-04
+
+### Added
+
+- Support think flag
+
+### Fixed
+
+- Fix Bug for tool call in streaming mode
 
 ## [0.2.1] - 2026-03-02
 
