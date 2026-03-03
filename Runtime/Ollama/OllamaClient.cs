@@ -1268,7 +1268,11 @@ namespace EasyLocalLLM.LLM.Ollama
                 fullResponse += content;
                 fullRole = role;
 
-                detectedToolCalls = ParseToolCalls(chunkMessage["tool_calls"]);
+                var parsedToolCalls = ParseToolCalls(chunkMessage["tool_calls"]);
+                if (parsedToolCalls != null && parsedToolCalls.Count > 0)
+                {
+                    detectedToolCalls = parsedToolCalls;
+                }
 
                 onResponse?.Invoke(new ChatResponse
                 {
