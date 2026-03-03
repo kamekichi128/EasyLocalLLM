@@ -72,6 +72,11 @@ namespace EasyLocalLLM.LLM.Core
         public int? NumPredict { get; set; }
 
         /// <summary>
+        /// Enable thinking mode (stream partial responses as they are generated)
+        /// </summary>
+        public bool Think { get; set; } = false;
+
+        /// <summary>
         /// Request priority (higher value = higher priority)
         /// </summary>
         public int Priority { get; set; } = 0;
