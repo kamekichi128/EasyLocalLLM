@@ -802,6 +802,7 @@ namespace EasyLocalLLM.LLM.Ollama
                 ["model"] = options.ModelName ?? _config.DefaultModelName,
                 ["messages"] = SerializeMessages(history),
                 ["stream"] = stream,
+                ["think"] = options.Think,
                 ["options"] = BuildOllamaGenerationOptions(options)
             };
 

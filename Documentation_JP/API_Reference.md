@@ -365,12 +365,14 @@ async Task SendStreamingMessageAsync()
 | `Stop` | 指定文字列が出たら生成を終了。 | 例: `"\nUser:"`, `"</END>"` |
 | `NumCtx` | コンテキスト長（履歴として参照できる量）。 | `2048`, `4096`, `8192` |
 | `NumPredict` | 最大生成トークン数。 | `128` ～ `1024` |
+| `Think` | Thinkingの生成有無。デフォルトはfalse（生成しない）。 | `true`　or `false` |
 
 **実用プリセット例**
 
 - **安定したQ&A**: `Temperature=0.2`, `Seed=42`, `TopP=0.9`, `NumPredict=256`
 - **創作向け**: `Temperature=0.8`, `TopP=0.95`, `TopK=60`, `NumPredict=512`
 - **短く確実に止めたい**: `Temperature=0.3`, `Stop=["\nUser:"]`, `NumPredict=128`
+- **高品質な応答**: `Temperature=0.8`, `Think=true`
 
 ```csharp
 using System.Collections.Generic;
