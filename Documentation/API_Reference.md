@@ -13,7 +13,7 @@ EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama (W
   - [4.3 Send Message (Single Complete Response)](#43-send-message-single-complete-response)
   - [4.4 Streaming Message (Receive Partial Responses)](#44-streaming-message-receive-partial-responses)
   - [4.5 Generation options](#45-generation-options)
-  - [4.6 Images argument (List<Texture2D>)](#46-images-argument-listtexture2d)
+  - [4.6 Images argument](#46-images-argument-listtexture2d)
   - [4.7 Inference Server Setup](#47-inference-server-setup)
   - [4.8 Session Management](#48-session-management)
   - [4.9 System Prompts](#49-system-prompts)
@@ -365,7 +365,7 @@ If a parameter is not set, Ollama/model defaults are used.
 | `Stop` | Stops generation when any stop sequence appears. | e.g., `"\nUser:"`, `"</END>"` |
 | `NumCtx` | Context window size (how much history can be considered). | `2048`, `4096`, `8192` |
 | `NumPredict` | Maximum number of generated tokens. | `128` to `1024` |
-| `Think` | Thinkingの生成有無。デフォルトはfalse（生成しない）。 | `true`　or `false` |
+| `Think` | true if thinking is enable. default value is false（do not generate）。 | `true`　or `false` |
 
 **Practical presets**
 
@@ -391,7 +391,7 @@ var options = new ChatRequestOptions
 };
 ```
 
-### 4.6 Images argument (`List<Texture2D>`)
+### 4.6 Images argument
 
 You can attach images to inference requests by passing `List<Texture2D>` to the image-aware overloads.
 This is useful for multimodal-capable models (image + text input).

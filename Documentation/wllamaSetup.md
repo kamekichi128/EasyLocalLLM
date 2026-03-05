@@ -1,6 +1,6 @@
 # wllama Setup Guide
 
-This guide covers the minimum setup for running WebGL inference with `WebGLLlamaCppClient`.
+This guide covers the minimum setup for running WebGL inference with `WllamaClient`.
 
 ## 1. One-command Preparation (recommended)
 
@@ -29,8 +29,8 @@ powershell -ExecutionPolicy Bypass -File Assets/EasyLocalLLM/Tools/prepare-webgl
 ## 3. Usage Example
 
 ```csharp
-var client = new EasyLocalLLM.LLM.WebGL.WebGLLlamaCppClient(
-    new EasyLocalLLM.LLM.WebGL.WebGLLlamaCppConfig
+var client = new EasyLocalLLM.LLM.WebGL.WllamaClient(
+    new EasyLocalLLM.LLM.WebGL.WllamaConfig
     {
         ModelUrl = Application.streamingAssetsPath + "/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
         ContextSize = 2048,
