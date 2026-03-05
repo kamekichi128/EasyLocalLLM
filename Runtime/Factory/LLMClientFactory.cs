@@ -19,13 +19,13 @@ namespace EasyLocalLLM.LLM.Factory
         }
 
         /// <summary>
-        /// Create WebGL llama.cpp client.
+        /// Create wllama client.
         /// </summary>
-        /// <param name="config">WebGL llama.cpp configuration (null for default settings)</param>
-        /// <returns>WebGLLlamaCppClient instance</returns>
-        public static WebGLLlamaCppClient CreateWebGLLlamaCppClient(WebGLLlamaCppConfig config = null)
+        /// <param name="config">Wllama configuration (null for default settings)</param>
+        /// <returns>WllamaClient instance</returns>
+        public static WllamaClient CreateWllamaClient(WllamaConfig config = null)
         {
-            return new WebGLLlamaCppClient(config);
+            return new WllamaClient(config);
         }
 
         // Future extension for other clients

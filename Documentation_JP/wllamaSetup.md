@@ -29,8 +29,8 @@ powershell -ExecutionPolicy Bypass -File Assets/EasyLocalLLM/Tools/prepare-webgl
 ## 3. 利用例
 
 ```csharp
-var client = new EasyLocalLLM.LLM.WebGL.WebGLLlamaCppClient(
-    new EasyLocalLLM.LLM.WebGL.WebGLLlamaCppConfig
+var client = new EasyLocalLLM.LLM.WebGL.WllamaClient(
+    new EasyLocalLLM.LLM.Wllama.WllamaConfig
     {
         ModelUrl = Application.streamingAssetsPath + "/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
         ContextSize = 2048,
@@ -41,5 +41,5 @@ var client = new EasyLocalLLM.LLM.WebGL.WebGLLlamaCppClient(
 
 ## 4. 注意点
 
-- `WebGLLlamaCppClient` は `UNITY_WEBGL && !UNITY_EDITOR` を前提にしています。
+- `WllamaClient` は `UNITY_WEBGL && !UNITY_EDITOR` を前提にしています。
 - 初期版は `tool calling` を無効化しています。

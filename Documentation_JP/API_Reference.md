@@ -492,7 +492,7 @@ void SendStreamingWithImages(Texture2D screenshot)
 
 補足:
 
-- WebGL では `ollama.exe` は利用できないため、`WebGLLlamaCppClient` + `wllama`を利用してください。
+- WebGL では `ollama.exe` は利用できないため、`WllamaClient`を利用してください。
 
 ### 4.8 セッション管理
 

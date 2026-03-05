@@ -17,9 +17,9 @@ namespace EasyLocalLLM.LLM.WebGL
     /// <summary>
     /// WebGL client implementation backed by llama.cpp WASM bridge.
     /// </summary>
-    public class WebGLLlamaCppClient : IChatLLMClient
+    public class WllamaClient : IChatLLMClient
     {
-        private readonly WebGLLlamaCppConfig _config;
+        private readonly WllamaConfig _config;
         private readonly ChatHistoryManager _historyManager;
         private readonly ToolManager _toolManager;
 
@@ -128,9 +128,9 @@ namespace EasyLocalLLM.LLM.WebGL
         /// <summary>
         /// Constructor.
         /// </summary>
-        public WebGLLlamaCppClient(WebGLLlamaCppConfig config = null)
+        public WllamaClient(WllamaConfig config = null)
         {
-            _config = config ?? new WebGLLlamaCppConfig();
+            _config = config ?? new WllamaConfig();
             _historyManager = new ChatHistoryManager();
             _toolManager = new ToolManager(_config.DebugMode);
             WebGLLlamaCppBridgeReceiver.BridgeEventReceived += HandleBridgeEvent;

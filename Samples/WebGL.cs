@@ -1,9 +1,7 @@
 using EasyLocalLLM.LLM.Core;
 using EasyLocalLLM.LLM.Factory;
 using EasyLocalLLM.LLM.WebGL;
-using System;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
 namespace EasyLocalLLM.Samples
@@ -17,10 +15,9 @@ namespace EasyLocalLLM.Samples
     {
         public UIDocument UIDocument;
 
-        private WebGLLlamaCppClient client;
+        private WllamaClient client;
 
-        private readonly string SESSION_ID = "webgl_session";
-
+        private readonly string SESSION_ID = "wllama_session";
 
         void Start()
         {
@@ -31,14 +28,14 @@ namespace EasyLocalLLM.Samples
 
         private void InitializeEasyLocalLLMClient()
         {
-            var config = new WebGLLlamaCppConfig
+            var config = new WllamaConfig
             {
                 ModelUrl = Application.streamingAssetsPath + "/EasyLocalLLM/models/qwen2-0_5b-instruct-q4_k_m.gguf",
                 ContextSize = 2048,
                 UseWebGpu = true,
                 DebugMode = true
             };
-            client = LLMClientFactory.CreateWebGLLlamaCppClient(config);
+            client = LLMClientFactory.CreateWllamaClient(config);
             EnableUI();
             Debug.Log("✓ Client initialized");
         }

@@ -3,12 +3,12 @@ namespace EasyLocalLLM.LLM.WebGL
     /// <summary>
     /// Configuration for WebGL llama.cpp WASM client.
     /// </summary>
-    public class WebGLLlamaCppConfig
+    public class WllamaConfig
     {
         /// <summary>
         /// Model URL passed to JS/WASM layer.
         /// </summary>
-        public string ModelUrl { get; set; } = "StreamingAssets/models/model.gguf";
+        public string ModelUrl { get; set; } = "StreamingAssets/EasyLocalLLM/models/model.gguf";
 
         /// <summary>
         /// Default context window size.
