@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.1] - 2026-03-05
+
+### Fixed
+
+- Fix some documents (typo)
+
 ## [0.3.0] - 2026-03-05
 
 ### Added

@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-v0.3.0-blue)
+![Version](https://img.shields.io/badge/version-v0.3.1-blue)
 
 ![Title](Images/PromoBannerEasyLocalLLM.png)
 
