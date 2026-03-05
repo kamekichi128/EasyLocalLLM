@@ -4,13 +4,13 @@
 
 # [EasyLocalLLM](https://github.com/kamekichi128/EasyLocalLLM)
 
-EasyLocalLLM is a Unity library that makes it easy to use a local LLM (Ollama). With just a few lines of code, you can build offline AI chatbots and natural in-game NPC conversations.
+EasyLocalLLM is a Unity library that makes it easy to use a local LLM (Ollama / wllama). With just a few lines of code, you can build offline AI chatbots and natural in-game NPC conversations.
 
 ## ✨ Main Features
 
 - 🚀 **Easy setup**: Start with minimal code (as little as 3 lines)
 - 💬 **Streaming support**: Receive responses incrementally in real time
-- 🔧 **Flexible configuration**: Fine-grained customization via `OllamaConfig`
+- 🔧 **Flexible configuration**: Fine-grained customization via `OllamaConfig` or `WllamaConfig`
 - 🔄 **Automatic retry**: Exponential backoff for network errors
 - 📝 **Session management**: Handle multiple conversations simultaneously
 - 🎭 **System prompts**: Set different roles/characters per session
@@ -40,7 +40,7 @@ public class QuickStart : MonoBehaviour
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the `mistral` model is installed.
 
-For setting up Ollama itself, or building a game that includes Ollama server management, see [Ollama Server Auto-Management](Documentation/API_Reference.md#47-ollama-server-auto-management).
+For setting up Ollama itself, or building a game that includes Ollama server management, see [Inference Server Setup](Documentation/API_Reference.md#47-inference-server-setup).
 
 ## 🎬 Demo
 
@@ -56,8 +56,8 @@ For setting up Ollama itself, or building a game that includes Ollama server man
 ## 💻 Requirements
 
 - **Unity version**: Unity 2021.3 or later recommended
-- **Supported OS**: Windows 10/11
-- **Dependencies**: Ollama server (see full documentation for setup), [Newtonsoft.Json](https://www.newtonsoft.com/json)
+- **Supported OS**: Windows 10/11 or WebGL
+- **Dependencies**: Ollama server for Windows, [Newtonsoft.Json](https://www.newtonsoft.com/json)
 - **GPU**: Recommended (CPU works, but responses are slower)
 
 ## 📖 Documentation
@@ -71,7 +71,7 @@ For detailed usage, API reference, sample code, and troubleshooting:
 
 - [Basic Initialization](Documentation/API_Reference.md#41-basic-initialization)
 - [Streaming Message (Receive Partial Responses)](Documentation/API_Reference.md#44-streaming-message-receive-partial-responses)
-- [Ollama Server Auto-Management](Documentation/API_Reference.md#47-ollama-server-auto-management)
+- [Inference Server Setup](Documentation/API_Reference.md#47-inference-server-setup)
 - [Session Management](Documentation/API_Reference.md#48-session-management)
 - [System Prompts](Documentation/API_Reference.md#49-system-prompts)
 - [Tools (Function Calling)](Documentation/API_Reference.md#414-tools-function-calling)
@@ -89,7 +89,7 @@ The `Samples/` folder includes the following sample scenes:
 ## 🔧 Limitations
 
 - Unity-only (depends on UnityWebRequest)
-- Windows-only support
+- Windows or WebGL support
 - Task-based APIs are internally coroutine-based
 
 ## 📄 License

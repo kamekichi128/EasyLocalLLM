@@ -493,6 +493,7 @@ void SendStreamingWithImages(Texture2D screenshot)
 補足:
 
 - WebGL では `ollama.exe` は利用できないため、`WllamaClient`を利用してください。
+- WebGL版で`Format` `FormatSchema` を利用する場合、Ollama版と比較し確度が低いため、Promptでの指定とC#側のJSONフォーマットチェックをお願いします。
 
 ### 4.8 セッション管理
 
