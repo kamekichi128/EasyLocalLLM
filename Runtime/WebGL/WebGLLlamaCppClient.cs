@@ -544,7 +544,7 @@ namespace EasyLocalLLM.LLM.WebGL
                         n_ctx = options.NumCtx ?? _config.ContextSize,
                         n_predict = options.NumPredict ?? _config.DefaultMaxTokens,
                         stop = options.Stop,
-                        format = options.Format,
+                        format = options.FormatSchema != null ? null : options.Format,
                         format_schema = options.FormatSchema,
                         think = options.Think
                     }

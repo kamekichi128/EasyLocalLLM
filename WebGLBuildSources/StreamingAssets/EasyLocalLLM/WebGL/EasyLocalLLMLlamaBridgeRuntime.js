@@ -159,6 +159,359 @@
         return result;
     }
 
+    function parseResponseFormat(req) {
+        var opts = (req && req.options) || {};
+        var rawFormat = typeof opts.format === "string" ? opts.format.toLowerCase() : "";
+        var hasSchema = typeof opts.format_schema !== "undefined" && opts.format_schema !== null;
+
+        return {
+            isJsonRequested: rawFormat === "json" || hasSchema,
+            format: rawFormat,
+            formatSchema: hasSchema ? opts.format_schema : null
+        };
+    }
+
+    function stringifySchemaForPrompt(schema) {
+        if (!schema) {
+            return "";
+        }
+
+        if (typeof schema === "string") {
+            return schema;
+        }
+
+        try {
+            return JSON.stringify(schema, null, 2);
+        } catch (_schemaStringifyError) {
+            return String(schema);
+        }
+    }
+
+    function buildJsonFormatInstruction(responseFormat) {
+        if (!responseFormat || !responseFormat.isJsonRequested) {
+            return "";
+        }
+
+        var baseInstruction = "You must output only valid JSON. Do not include markdown fences, explanations, or extra text.";
+        if (!responseFormat.formatSchema) {
+            return baseInstruction;
+        }
+
+        var schemaText = stringifySchemaForPrompt(responseFormat.formatSchema);
+        return baseInstruction + " Follow this JSON Schema exactly:\n" + schemaText;
+    }
+
+    function applyResponseFormatToMessages(messages, responseFormat) {
+        var formatInstruction = buildJsonFormatInstruction(responseFormat);
+        if (!formatInstruction) {
+            return messages;
+        }
+
+        var formatted = (messages || []).slice();
+        formatted.unshift({
+            role: "system",
+            content: formatInstruction
+        });
+
+        return formatted;
+    }
+
+    function applyResponseFormatToPrompt(prompt, responseFormat) {
+        var formatInstruction = buildJsonFormatInstruction(responseFormat);
+        if (!formatInstruction) {
+            return prompt;
+        }
+
+        return "<|system|>\n" + formatInstruction + "\n</s>\n" + (prompt || "");
+    }
+
+    function buildRuntimeFormatOptions(responseFormat) {
+        if (!responseFormat || !responseFormat.isJsonRequested) {
+            return null;
+        }
+
+        var formatValue = responseFormat.formatSchema ? responseFormat.formatSchema : "json";
+        return {
+            format: formatValue,
+            response_format: formatValue
+        };
+    }
+
+    function parseSchemaObject(formatSchema) {
+        if (!formatSchema) {
+            return null;
+        }
+
+        if (typeof formatSchema === "string") {
+            try {
+                return JSON.parse(formatSchema);
+            } catch (_schemaParseError) {
+                return null;
+            }
+        }
+
+        if (typeof formatSchema === "object") {
+            return formatSchema;
+        }
+
+        return null;
+    }
+
+    function escapeGrammarString(text) {
+        if (typeof text !== "string") {
+            text = String(text);
+        }
+
+        return text
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, "\\\"")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "\\r")
+            .replace(/\t/g, "\\t");
+    }
+
+    function createSchemaGrammarBuilder() {
+        return {
+            rules: [],
+            ruleMap: {},
+            counter: 0,
+            add: function (name, body) {
+                var existing = this.ruleMap[name];
+                if (existing === body) {
+                    return;
+                }
+
+                if (typeof existing === "string" && existing !== body) {
+                    return;
+                }
+
+                this.ruleMap[name] = body;
+                this.rules.push(name + " ::= " + body);
+            },
+            nextName: function (prefix) {
+                this.counter += 1;
+                return prefix + "_" + this.counter;
+            }
+        };
+    }
+
+    function buildSchemaEnumAlternatives(schema) {
+        if (!schema || !Array.isArray(schema.enum) || schema.enum.length === 0) {
+            return null;
+        }
+
+        var literals = [];
+        for (var i = 0; i < schema.enum.length; i++) {
+            var value = schema.enum[i];
+            if (typeof value === "string") {
+                literals.push("\"\\\"" + escapeGrammarString(value) + "\\\"\"");
+            } else if (typeof value === "number") {
+                literals.push("\"" + String(value) + "\"");
+            } else if (typeof value === "boolean") {
+                literals.push(value ? "\"true\"" : "\"false\"");
+            } else if (value === null) {
+                literals.push("\"null\"");
+            }
+        }
+
+        return literals.length > 0 ? literals : null;
+    }
+
+    function appendBaseJsonGrammarRules(builder) {
+        builder.add("value", "object | array | string | number | \"true\" | \"false\" | \"null\"");
+        builder.add("object", "\"{\" ws (string ws \":\" ws value (ws \",\" ws string ws \":\" ws value)*)? \"}\" ws");
+        builder.add("array", "\"[\" ws (value (ws \",\" ws value)*)? \"]\" ws");
+        builder.add("string", "\"\\\"\" chars \"\\\"\" ws");
+        builder.add("chars", "char chars |");
+        builder.add("char", "[^\"\\\\] | \\\"\\\\\\\" ([\"\\\\/bfnrt] | \"u\" hex hex hex hex)");
+        builder.add("hex", "[0-9a-fA-F]");
+        builder.add("number", "int frac? exp? ws");
+        builder.add("int", "\"-\"? (\"0\" | [1-9] [0-9]*)");
+        builder.add("frac", "\".\" [0-9]+");
+        builder.add("exp", "([eE] [+-]? [0-9]+)");
+        builder.add("ws", "[ \\t\\n\\r]*");
+    }
+
+    function buildSchemaValueRule(schema, builder, ruleName, depth, forceStrictObject) {
+        if (depth > 6) {
+            builder.add(ruleName, "value");
+            return;
+        }
+
+        var enumAlternatives = buildSchemaEnumAlternatives(schema);
+        if (enumAlternatives && enumAlternatives.length > 0) {
+            builder.add(ruleName, "(" + enumAlternatives.join(" | ") + ") ws");
+            return;
+        }
+
+        var typeName = schema && typeof schema.type === "string" ? schema.type : "";
+
+        if (typeName === "string") {
+            builder.add(ruleName, "string");
+            return;
+        }
+
+        if (typeName === "integer") {
+            builder.add(ruleName, "int ws");
+            return;
+        }
+
+        if (typeName === "number") {
+            builder.add(ruleName, "number");
+            return;
+        }
+
+        if (typeName === "boolean") {
+            builder.add(ruleName, "(\"true\" | \"false\") ws");
+            return;
+        }
+
+        if (typeName === "null") {
+            builder.add(ruleName, "\"null\" ws");
+            return;
+        }
+
+        if (typeName === "array") {
+            var itemRule = builder.nextName("schema_item");
+            buildSchemaValueRule(schema ? schema.items : null, builder, itemRule, depth + 1, false);
+            builder.add(ruleName, "\"[\" ws (" + itemRule + " (ws \",\" ws " + itemRule + ")*)? \"]\" ws");
+            return;
+        }
+
+        if (typeName === "object") {
+            buildSchemaObjectRule(schema, builder, ruleName, depth + 1, !!forceStrictObject || (schema && schema.additionalProperties === false));
+            return;
+        }
+
+        builder.add(ruleName, "value");
+    }
+
+    function buildSchemaObjectRule(schema, builder, ruleName, depth, strictMode) {
+        var properties = schema && schema.properties && typeof schema.properties === "object"
+            ? schema.properties
+            : null;
+
+        if (!properties) {
+            builder.add(ruleName, "object");
+            return;
+        }
+
+        var keys = Object.keys(properties);
+        var required = Array.isArray(schema.required) ? schema.required.slice() : [];
+        var requiredSet = {};
+
+        for (var i = 0; i < required.length; i++) {
+            if (!properties[required[i]]) {
+                builder.add(ruleName, "object");
+                return;
+            }
+            requiredSet[required[i]] = true;
+        }
+
+        if (!strictMode) {
+            builder.add(ruleName, "object");
+            return;
+        }
+
+        var requiredPairs = [];
+        var optionalPairs = [];
+
+        for (var k = 0; k < keys.length; k++) {
+            var keyName = keys[k];
+            var valueRule = builder.nextName("schema_value");
+            buildSchemaValueRule(properties[keyName], builder, valueRule, depth + 1, false);
+
+            var pairRule = builder.nextName("schema_pair");
+            builder.add(pairRule, "\"\\\"" + escapeGrammarString(keyName) + "\\\"\" ws \":\" ws " + valueRule);
+
+            if (requiredSet[keyName]) {
+                requiredPairs.push(pairRule);
+            } else {
+                optionalPairs.push(pairRule);
+            }
+        }
+
+        if (requiredPairs.length === 0 && optionalPairs.length === 0) {
+            builder.add(ruleName, "\"{\" ws \"}\" ws");
+            return;
+        }
+
+        if (requiredPairs.length > 0) {
+            var requiredSequence = requiredPairs.join(" ws \",\" ws ");
+            if (optionalPairs.length > 0) {
+                var optionalChoice = builder.nextName("schema_optional");
+                builder.add(optionalChoice, optionalPairs.join(" | "));
+                builder.add(ruleName, "\"{\" ws " + requiredSequence + " (ws \",\" ws " + optionalChoice + ")* \"}\" ws");
+                return;
+            }
+
+            builder.add(ruleName, "\"{\" ws " + requiredSequence + " \"}\" ws");
+            return;
+        }
+
+        var optionalOnlyChoice = builder.nextName("schema_optional");
+        builder.add(optionalOnlyChoice, optionalPairs.join(" | "));
+        builder.add(ruleName, "\"{\" ws (" + optionalOnlyChoice + " (ws \",\" ws " + optionalOnlyChoice + ")*)? \"}\" ws");
+    }
+
+    function buildSchemaObjectGrammar(schema) {
+        var parsed = parseSchemaObject(schema);
+        if (!parsed || parsed.type !== "object") {
+            return null;
+        }
+
+        var builder = createSchemaGrammarBuilder();
+        builder.add("root", "schema_root");
+        buildSchemaValueRule(parsed, builder, "schema_root", 0, true);
+        appendBaseJsonGrammarRules(builder);
+
+        return builder.rules.join("\n");
+    }
+
+    function buildJsonGrammar(responseFormat) {
+        if (!responseFormat || !responseFormat.isJsonRequested) {
+            return null;
+        }
+
+        var schemaBasedGrammar = buildSchemaObjectGrammar(responseFormat.formatSchema);
+        if (schemaBasedGrammar) {
+            return schemaBasedGrammar;
+        }
+
+        return [
+            "root   ::= value",
+            "value  ::= object | array | string | number | \"true\" | \"false\" | \"null\"",
+            "object ::= \"{\" ws (string ws \":\" ws value (ws \",\" ws string ws \":\" ws value)*)? \"}\" ws",
+            "array  ::= \"[\" ws (value (ws \",\" ws value)*)? \"]\" ws",
+            "string ::= \"\\\"\" chars \"\\\"\" ws",
+            "chars  ::= char chars |",
+            "char   ::= [^\"\\\\] | \\\"\\\\\\\" ([\"\\\\/bfnrt] | \"u\" hex hex hex hex)",
+            "hex    ::= [0-9a-fA-F]",
+            "number ::= int frac? exp? ws",
+            "int    ::= \"-\"? (\"0\" | [1-9] [0-9]*)",
+            "frac   ::= \".\" [0-9]+",
+            "exp    ::= ([eE] [+-]? [0-9]+)",
+            "ws     ::= [ \\t\\n\\r]*"
+        ].join("\n");
+    }
+
+    function buildSamplingConfigForRuntime(sampling, responseFormat) {
+        var samplingConfig = {
+            temp: sampling.temperature,
+            top_p: sampling.topP,
+            top_k: sampling.topK,
+            min_p: sampling.minP,
+            seed: sampling.seed
+        };
+
+        var grammar = buildJsonGrammar(responseFormat);
+        if (grammar) {
+            samplingConfig.grammar = grammar;
+        }
+
+        return samplingConfig;
+    }
+
     async function ensureRuntime() {
         if (state.runtime) {
             return state.runtime;
@@ -381,9 +734,12 @@
 
     async function generateWithRuntime(runtime, req, ctx) {
         var sampling = buildSampling(req);
-        var messages = req.messages || [];
-        var prompt = buildPrompt(messages);
+        var responseFormat = parseResponseFormat(req);
+        var messages = applyResponseFormatToMessages(req.messages || [], responseFormat);
+        var prompt = applyResponseFormatToPrompt(buildPrompt(messages), responseFormat);
         var chatMessages = buildChatMessages(messages);
+        var runtimeFormatOptions = buildRuntimeFormatOptions(responseFormat);
+        var runtimeSamplingConfig = buildSamplingConfigForRuntime(sampling, responseFormat);
         var content = "";
         var pieceToText = createPieceDecoder();
         var sanitizer = createTurnBoundarySanitizer();
@@ -403,17 +759,18 @@
 
         try {
             if (typeof runtime.createChatCompletion === "function") {
-                var stream = await runtime.createChatCompletion(chatMessages, {
+                var chatOptions = {
                     nPredict: sampling.nPredict,
-                    sampling: {
-                        temp: sampling.temperature,
-                        top_p: sampling.topP,
-                        top_k: sampling.topK,
-                        min_p: sampling.minP,
-                        seed: sampling.seed
-                    },
+                    sampling: runtimeSamplingConfig,
                     stream: true
-                });
+                };
+
+                if (runtimeFormatOptions) {
+                    chatOptions.format = runtimeFormatOptions.format;
+                    chatOptions.response_format = runtimeFormatOptions.response_format;
+                }
+
+                var stream = await runtime.createChatCompletion(chatMessages, chatOptions);
 
                 for await (var chunk of stream) {
                     if (aborted) {
@@ -438,15 +795,9 @@
                 var stopTokens = (sampling.stopTokens || []).slice();
                 stopTokens.push("<|user|>", "<|assistant|>", "<|system|>", "</s>");
 
-                await runtime.createCompletion(prompt, {
+                var completionOptions = {
                     nPredict: sampling.nPredict,
-                    sampling: {
-                        temp: sampling.temperature,
-                        top_p: sampling.topP,
-                        top_k: sampling.topK,
-                        min_p: sampling.minP,
-                        seed: sampling.seed
-                    },
+                    sampling: runtimeSamplingConfig,
                     stop: stopTokens,
                     onNewToken: function (_token, piece) {
                         if (aborted) {
@@ -467,14 +818,22 @@
                             ctx.onChunk(text);
                         }
                     }
-                });
+                };
+
+                if (runtimeFormatOptions) {
+                    completionOptions.format = runtimeFormatOptions.format;
+                    completionOptions.response_format = runtimeFormatOptions.response_format;
+                }
+
+                await runtime.createCompletion(prompt, completionOptions);
             } else if (typeof runtime.completion === "function") {
-                var response = await runtime.completion(prompt, {
+                var legacyCompletionOptions = {
                     n_predict: sampling.nPredict,
                     temperature: sampling.temperature,
                     top_p: sampling.topP,
                     top_k: sampling.topK,
                     min_p: sampling.minP,
+                    grammar: runtimeSamplingConfig.grammar,
                     stop: sampling.stopTokens,
                     stream: true,
                     onToken: function (piece) {
@@ -496,7 +855,14 @@
                             ctx.onChunk(text);
                         }
                     }
-                });
+                };
+
+                if (runtimeFormatOptions) {
+                    legacyCompletionOptions.format = runtimeFormatOptions.format;
+                    legacyCompletionOptions.response_format = runtimeFormatOptions.response_format;
+                }
+
+                var response = await runtime.completion(prompt, legacyCompletionOptions);
 
                 if (!content && response && typeof response.content === "string") {
                     content = sanitizer.push(response.content) + sanitizer.flush();
