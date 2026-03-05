@@ -473,25 +473,19 @@
             return null;
         }
 
-        var schemaBasedGrammar = buildSchemaObjectGrammar(responseFormat.formatSchema);
-        if (schemaBasedGrammar) {
-            return schemaBasedGrammar;
+        if (responseFormat.formatSchema) {
+            return null;
         }
 
         return [
-            "root   ::= value",
-            "value  ::= object | array | string | number | \"true\" | \"false\" | \"null\"",
-            "object ::= \"{\" ws (string ws \":\" ws value (ws \",\" ws string ws \":\" ws value)*)? \"}\" ws",
-            "array  ::= \"[\" ws (value (ws \",\" ws value)*)? \"]\" ws",
+            "root ::= value",
+            "value ::= object | array | string | number | \"true\" | \"false\" | \"null\"",
+            "object ::= \"{\" ws (string \":\" ws value (\",\" ws string \":\" ws value)*)? \"}\" ws",
+            "array ::= \"[\" ws (value (\",\" ws value)*)? \"]\" ws",
             "string ::= \"\\\"\" chars \"\\\"\" ws",
-            "chars  ::= char chars |",
-            "char   ::= [^\"\\\\] | \\\"\\\\\\\" ([\"\\\\/bfnrt] | \"u\" hex hex hex hex)",
-            "hex    ::= [0-9a-fA-F]",
-            "number ::= int frac? exp? ws",
-            "int    ::= \"-\"? (\"0\" | [1-9] [0-9]*)",
-            "frac   ::= \".\" [0-9]+",
-            "exp    ::= ([eE] [+-]? [0-9]+)",
-            "ws     ::= [ \\t\\n\\r]*"
+            "chars ::= ([^\"\\\\] | \\\"\\\\\\\" ([\"\\\\/bfnrt] | \"u\" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]))*",
+            "number ::= (\"-\"? ([0-9] | [1-9] [0-9]*)) (\".\" [0-9]+)? ([eE] [+-]? [0-9]+)? ws",
+            "ws ::= ([ \\t\\n\\r] ws)?"
         ].join("\n");
     }
 
@@ -510,6 +504,35 @@
         }
 
         return samplingConfig;
+    }
+
+    function buildSamplingConfigWithoutGrammar(samplingConfig) {
+        var copy = {
+            temp: samplingConfig.temp,
+            top_p: samplingConfig.top_p,
+            top_k: samplingConfig.top_k,
+            min_p: samplingConfig.min_p,
+            seed: samplingConfig.seed
+        };
+
+        return copy;
+    }
+
+    function isGrammarSamplerRuntimeFailure(error) {
+        if (!error) {
+            return false;
+        }
+
+        var message = "";
+        if (typeof error === "string") {
+            message = error;
+        } else if (error && typeof error.message === "string") {
+            message = error.message;
+        } else {
+            message = String(error);
+        }
+
+        return /GGML_ASSERT|llama-sampling|unreachable|sampling/i.test(message);
     }
 
     async function ensureRuntime() {
@@ -740,6 +763,7 @@
         var chatMessages = buildChatMessages(messages);
         var runtimeFormatOptions = buildRuntimeFormatOptions(responseFormat);
         var runtimeSamplingConfig = buildSamplingConfigForRuntime(sampling, responseFormat);
+        var runtimeSamplingConfigNoGrammar = buildSamplingConfigWithoutGrammar(runtimeSamplingConfig);
         var content = "";
         var pieceToText = createPieceDecoder();
         var sanitizer = createTurnBoundarySanitizer();
@@ -757,11 +781,11 @@
             ctx.signal.addEventListener("abort", abortHandler);
         }
 
-        try {
+        async function runGenerationWithSampling(activeSamplingConfig) {
             if (typeof runtime.createChatCompletion === "function") {
                 var chatOptions = {
                     nPredict: sampling.nPredict,
-                    sampling: runtimeSamplingConfig,
+                    sampling: activeSamplingConfig,
                     stream: true
                 };
 
@@ -797,7 +821,7 @@
 
                 var completionOptions = {
                     nPredict: sampling.nPredict,
-                    sampling: runtimeSamplingConfig,
+                    sampling: activeSamplingConfig,
                     stop: stopTokens,
                     onNewToken: function (_token, piece) {
                         if (aborted) {
@@ -833,7 +857,7 @@
                     top_p: sampling.topP,
                     top_k: sampling.topK,
                     min_p: sampling.minP,
-                    grammar: runtimeSamplingConfig.grammar,
+                    grammar: activeSamplingConfig.grammar,
                     stop: sampling.stopTokens,
                     stream: true,
                     onToken: function (piece) {
@@ -872,6 +896,21 @@
                 }
             } else {
                 throw new Error("Unsupported Wllama API. Expected createCompletion or completion.");
+            }
+        }
+
+        try {
+            try {
+                await runGenerationWithSampling(runtimeSamplingConfig);
+            } catch (firstError) {
+                if (runtimeSamplingConfig.grammar && isGrammarSamplerRuntimeFailure(firstError)) {
+                    if (state.config && state.config.debugMode) {
+                        console.warn("[EasyLocalLLM][wllama] grammar sampling failed. Retrying without grammar.", firstError);
+                    }
+                    await runGenerationWithSampling(runtimeSamplingConfigNoGrammar);
+                } else {
+                    throw firstError;
+                }
             }
 
             var remaining = sanitizer.flush();
