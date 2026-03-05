@@ -1,6 +1,6 @@
 # wllama セットアップ
 
-この手順は `WebGLLlamaCppClient` と `EasyLocalLLMLlamaBridge.jslib` を使い、WebGL ビルドで wllama を実行する最小構成です。
+この手順は `WllamaClient` と `EasyLocalLLMLlamaBridge.jslib` を使い、WebGL ビルドで wllama を実行する最小構成です。
 
 ## 1. ワンコマンド準備（推奨）
 
