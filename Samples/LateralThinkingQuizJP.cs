@@ -65,8 +65,8 @@ namespace EasyLocalLLM.Samples
             var config = new OllamaConfig
             {
                 ServerUrl = "http://localhost:11434",
-                ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-                ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
+                ExecutablePath = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/ollama.exe",
+                ModelsDirectory = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/models",
                 DefaultModelName = "kamekichi128/qwen3-4b-instruct-2507",
                 AutoStartServer = true,
                 DebugMode = true,
@@ -210,7 +210,8 @@ namespace EasyLocalLLM.Samples
                     // 対戦相手AIの自動質問・回答ループを開始
                     opponentCoroutine = StartCoroutine(OpponentAILoop());
                 },
-                error => {
+                error =>
+                {
                     Debug.LogError($"✗ Error generating puzzle: {error.Message}");
                     puzzleGenerateButton.SetEnabled(true);
                 },
@@ -294,7 +295,7 @@ namespace EasyLocalLLM.Samples
                         Debug.LogWarning($"Failed to parse opponent response: {e.Message}\nResponse: {response.Content}");
                     }
                 },
-                error => Debug.LogError($"✗ Error: {error.Message}"), 
+                error => Debug.LogError($"✗ Error: {error.Message}"),
                 new ChatRequestOptions
                 {
                     SystemPrompt = "あなたはクイズゲームの非常に論理的で有能な対戦相手です。" +
@@ -355,7 +356,7 @@ namespace EasyLocalLLM.Samples
             StartCoroutine(client.SendMessageAsync(
                 $"クイズのお題は『{currentPuzzle}』、真相は『{currentTruth}』です。\n" +
                 $"プレイヤーの回答『{answer}』が正解かどうか判定してください。",
-                response  =>
+                response =>
                 {
                     try
                     {

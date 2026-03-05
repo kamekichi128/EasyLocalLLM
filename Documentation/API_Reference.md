@@ -1,6 +1,6 @@
 # EasyLocalLLM Runtime Library
 
-EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
+EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama (Windows) or wllama (WebGL).
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
   - [4.4 Streaming Message (Receive Partial Responses)](#44-streaming-message-receive-partial-responses)
   - [4.5 Generation options](#45-generation-options)
   - [4.6 Images argument (List<Texture2D>)](#46-images-argument-listtexture2d)
-  - [4.7 Ollama Server Auto-Management](#47-ollama-server-auto-management)
+  - [4.7 Inference Server Setup](#47-inference-server-setup)
   - [4.8 Session Management](#48-session-management)
   - [4.9 System Prompts](#49-system-prompts)
   - [4.10 Priority Scheduling](#410-priority-scheduling)
@@ -67,14 +67,14 @@ public class QuickStart : MonoBehaviour
 
 **For detailed setup and usage, see [4.1 Basic Initialization](#41-basic-initialization).**
 
-**If Ollama is not set up yet, see [4.7 Ollama Server Auto-Management](#47-ollama-server-auto-management).**
+**If Ollama or wllama is not set up yet, see [4.7 Inference Server Setup](#47-inference-server-setup).**
 
 ## 3. Limitations
 
 ### Important Constraints
 
 - **Unity-only**: Depends on UnityWebRequest, so it does not work outside Unity.
-- **Windows-only**: Currently supported on Windows only.
+- **Windows / WebGL only**: Currently supported on Windows and WebGL.
 - **Main-thread dependency**: Task APIs are implemented by bridging coroutines.
 
 ### Usage Patterns
@@ -114,7 +114,7 @@ Quick Start uses the default settings; this section explains full configuration.
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the model is installed.
 
-**If Ollama is not set up yet, see [4.7 Ollama Server Auto-Management](#47-ollama-server-auto-management).**
+**If Ollama or wllama is not set up yet, see [4.7 Inference Server Setup](#47-inference-server-setup).**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -396,6 +396,8 @@ var options = new ChatRequestOptions
 You can attach images to inference requests by passing `List<Texture2D>` to the image-aware overloads.
 This is useful for multimodal-capable models (image + text input).
 
+**Due to memory/runtime limitations, image input is supported only on the Ollama path (Windows), not WebGL/wllama.**
+
 **Supported APIs:**
 
 - `SendMessageAsync(string message, List<Texture2D> images, ...)`
@@ -478,245 +480,21 @@ void SendStreamingWithImages(Texture2D screenshot)
 - Images are internally encoded as Base64 PNG before being sent to Ollama.
 - If the selected model does not support image input, the request may fail or ignore images.
 - For performance and memory stability, keep image dimensions reasonable (resize/compress before sending).
+- In WebGL (`WebGLLlamaCppClient`), image overloads are not supported.
 
-### 4.7 Ollama Server Auto-Management
+### 4.7 Inference Server Setup
 
-#### Choose a Setup Method
+Choose the runtime backend that matches your build target.
 
-When embedding Ollama in your application, there are two ways to obtain models.
-Pick the approach that fits your environment.
+| Environment | Inference Backend | Setup Guide | Model Management | Notes |
+| ---- | ---- | ---- | ---- | ---- |
+| Unity Editor / Windows | [Ollama](https://ollama.com/) | [OllamaSetup.md](OllamaSetup.md) | blob / manifest | No major restrictions |
+| Unity WebGL | [wllama](https://github.com/ngxson/wllama) | [wllamaSetup.md](wllamaSetup.md) | gguf | Tool calling / VLM not supported |
 
-**Method A: `ollama pull` (recommended, easiest)**
-- ✅ Easy setup
-- ✅ Automatically optimized
-- ✅ Easy model updates
-- ❌ Requires network download (first time can take a while)
+Notes:
 
-**Method B: Place GGUF files directly (custom/special use)**
-- ✅ Fully customizable models
-- ✅ Use custom models not supported by Ollama
-- ❌ More complex setup
-- ❌ Requires manual GGUF downloads
-
-**Recommended usage:**
-
-| Scenario | Recommended | Reason |
-|--------|--------|------|
-| Typical use | Method A | Simple and sufficient in most cases |
-| Custom models not supported by Ollama | Method B | Use your own GGUF file |
-| Fine-grained model customization | Method B | Tune parameters via Modelfile |
-
-**Method A is recommended for most cases.** Use Method B only when a specific GGUF or Modelfile customization is required.
-
-#### Setup Steps
-
-**Step 0: Common preparation**
-
-1. Download the Windows standalone binary from the [Ollama website](https://ollama.ai)
-   - [GitHub releases](https://github.com/ollama/ollama/releases)
-   - Typically named like `ollama-windows-amd64.zip`
-   - For AMD Radeon GPU: also download `ollama-windows-amd64-rocm.zip`
-
-2. Create the following directory structure in your Unity project:
-
-```
-Assets/StreamingAssets/Ollama/
-├── ollama.exe                    # Ollama binary
-├── lib /                         # Libraries used by Ollama
-└── models/                       # Model directory (empty initially)
-```
-
-**Method A: `ollama pull` (recommended)**
-
-This is the easiest and recommended setup.
-
-1. Open PowerShell and run:
-
-```powershell
-$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\Ollama\models"
-mkdir $env:OLLAMA_MODELS
-cd "<ProjectPath>\Assets\StreamingAssets\Ollama"
-.\ollama.exe serve
-```
-
-2. In a separate PowerShell window, run:
-
-```powershell
-# Example models: mistral, llama2, neural-chat, dolphin-mixtral, etc.
-cd "<ProjectPath>\Assets\StreamingAssets\Ollama"
-.\ollama.exe pull mistral
-```
-
-3. Wait until the download completes (minutes to hours depending on model size)
-
-4. Close both windows when finished
-
-5. `StreamingAssets/Ollama/models/` will now contain `blobs/` and `manifests/`
-
-**Model selection guide:**
-
-```
-Small (lightweight, fast)
-├── qwen3-4b-instruct-2507 (4B) Recommended. Good for Multiluingal, Used in sample（kamekichi128/qwen3-4b-instruct-2507）
-├── mistral (7B)                Recommended balance
-├── neural-chat (7B)            Optimized for chat
-└── phi (2.7B)                  Lightest option
-
-Medium (standard)
-├── llama2 (13B)          Higher accuracy
-└── dolphin-mixtral (8x7B) High performance (high memory)
-
-Large (high accuracy, high memory)
-└── llama2 (70B)          Research use; 24GB+ GPU memory recommended
-```
-
-**Method B: Place GGUF files directly (custom setup)**
-
-Use this if you want custom models or models not supported by Ollama.
-
-**Step 1: Download a GGUF file**
-
-Download a GGUF model from these sources:
-
-- [Hugging Face](https://huggingface.co/models?search=gguf) - Largest collection
-- [GGUF Zoo](https://ggml.ai) - Curated and optimized models
-
-Example: download a mistral model
-1. Open [mistral on Hugging Face](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF)
-2. Download `mistral-7b-instruct-v0.1.Q4_K_M.gguf` (recommended balance)
-   - `Q4_K_M` = 4-bit quantization, best size-quality balance
-   - `Q5_K_M` = 5-bit quantization, higher quality, larger size
-   - `Q2_K` = 2-bit quantization, smaller but lower accuracy
-
-3. Place it here:
-```
-Assets/StreamingAssets/Ollama/models/mistral/
-└── mistral-7b-instruct-v0.1.Q4_K_M.gguf
-```
-
-**Step 2: Create a Modelfile**
-
-Create a `Modelfile` in the same directory as the GGUF file.
-
-**Basic template:**
-```
-FROM ./your-model-name.Q4_K_M.gguf
-
-PARAMETER temperature 0.7
-PARAMETER top_k 40
-PARAMETER top_p 0.9
-```
-
-**Modelfile parameter reference:**
-
-| Parameter | Default | Description | Recommended |
-|----------|----------|------|--------|
-| `temperature` | 0.8 | Response diversity (low = deterministic, high = diverse) | 0.7 to 1.0 |
-| `top_k` | 40 | Choose from top-k candidates | 30 to 50 |
-| `top_p` | 0.9 | Choose from cumulative probability p | 0.85 to 0.95 |
-| `repeat_penalty` | 1.0 | Repetition penalty (1.0 = none, 1.1 = stronger) | 1.0 to 1.2 |
-
-**Step 3: Register the model with Ollama**
-
-Run the following in PowerShell:
-
-```powershell
-$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\Ollama\models"
-cd "<ProjectPath>\Assets\StreamingAssets\Ollama\models\mistral"
-..\..\ollama.exe create mistral -f ./Modelfile
-```
-
-**Step 4: Verify registration**
-
-```powershell
-# List registered models
-..\..\ollama.exe list
-```
-
-Example output:
-```
-NAME                                    ID              SIZE
-mistral:latest                          a1b2c3d4...     3.5GB
-```
-
-**Step 5: Configure in Unity**
-
-```csharp
-var config = new OllamaConfig
-{
-    ServerUrl = "http://localhost:11434",
-    ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-    ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-    DefaultModelName = "mistral",  // Registered model name
-    AutoStartServer = true,
-    DebugMode = true
-};
-
-OllamaServerManager.Initialize(config);
-var client = LLMClientFactory.CreateOllamaClient(config);
-```
-
-#### Troubleshooting
-
-**Q: Model download is slow**
-- A: Check your internet connection. Large models can be several GB to tens of GB.
-
-**Q: "ollama.exe serve" fails**
-- A: Ensure port 11434 is not already in use. `netstat -an | findstr :11434`
-
-**Q: "not found" error when creating Modelfile**
-- A: Ensure the GGUF file path is relative and starts with `./`.
-
-**Q: Out-of-memory error**
-- A: Use a smaller quantized model (e.g., Q2_K -> Q4_K_M) or set `MaxConcurrentSessions` to 1.
-
-**Q: Want more model customization examples**
-- A: Official guide: [Ollama Modelfile](https://github.com/ollama/ollama/blob/main/docs/modelfile.md)
-
-#### Recommended setup (game development)
-
-```csharp
-public class OllamaSetupManager : MonoBehaviour
-{
-    void Start()
-    {
-        // Choose settings based on environment
-        OllamaConfig config;
-
-#if UNITY_EDITOR
-        // Development: enable debug mode
-        config = new OllamaConfig
-        {
-            ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
-            ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-            ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-            AutoStartServer = true,
-            DebugMode = true,
-            MaxRetries = 5,
-            EnableHealthCheck = true
-        };
-#else
-        // Build: minimize logs
-        config = new OllamaConfig
-        {
-            ServerUrl = "http://localhost:11434",
-            DefaultModelName = "mistral",
-            ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-            ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
-            AutoStartServer = true,
-            DebugMode = false,
-            MaxRetries = 3,
-            HttpTimeoutSeconds = 90.0f,
-            EnableHealthCheck = true
-        };
-#endif
-
-        OllamaServerManager.Initialize(config);
-        var client = LLMClientFactory.CreateOllamaClient(config);
-    }
-}
-```
+- WebGL cannot run `ollama.exe` directly. Use `WebGLLlamaCppClient`.
+- If you need structured output in WebGL (`Format` / `FormatSchema`), prefer prompt+validation based handling and verify final JSON on the C# side.
 
 ### 4.8 Session Management
 

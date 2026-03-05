@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.0] - 2026-03-05
+
+### Added
+
+- Support WebGL (Experimental)
+
 ## [0.2.2] - 2026-03-04
 
 ### Added

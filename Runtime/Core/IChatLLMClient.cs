@@ -40,21 +40,6 @@ namespace EasyLocalLLM.LLM.Core
             Action<ChatError> onError = null,
             ChatRequestOptions options = null);
 
-        /// <summary>
-        /// Send message asynchronously with images(IEnumerator based)
-        /// </summary>
-        /// <param name="message">Message to send</param>
-        /// <param name="images">List of images to send</param>
-        /// <param name="onResponse">Successed callback</param>
-        /// <param name="onError">Error callback</param>
-        /// <param name="options">Request options</param>
-        IEnumerator SendMessageAsync(
-            string message,
-            List<Texture2D> images,
-            Action<ChatResponse> onResponse,
-            Action<ChatError> onError = null,
-            ChatRequestOptions options = null);
-
 
         /// <summary>
         /// Send message with Task (get complete answer)
@@ -64,20 +49,6 @@ namespace EasyLocalLLM.LLM.Core
         /// <param name="cancellationToken">External cancellation token</param>
         Task<ChatResponse> SendMessageTaskAsync(
             string message,
-            ChatRequestOptions options = null,
-            CancellationToken cancellationToken = default);
-
-
-        /// <summary>
-        /// Send message with images with Task (get complete answer)
-        /// </summary>
-        /// <param name="message">Message to send</param>
-        /// <param name="images">List of images to send</param>
-        /// <param name="options">Request options</param>
-        /// <param name="cancellationToken">External cancellation token</param>
-        Task<ChatResponse> SendMessageTaskAsync(
-            string message,
-            List<Texture2D> images,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default);
 
@@ -95,21 +66,6 @@ namespace EasyLocalLLM.LLM.Core
             ChatRequestOptions options = null);
 
         /// <summary>
-        /// Send message with images with streaming (IEnumerator based)
-        /// </summary>
-        /// <param name="message">Message to send</param>
-        /// <param name="images">List of images to send</param>
-        /// <param name="onResponse">Response: (response) - completion determined by response.IsFinal</param>
-        /// <param name="onError">Error callback</param>
-        /// <param name="options">Request options</param>
-        IEnumerator SendMessageStreamingAsync(
-            string message,
-            List<Texture2D> images,
-            Action<ChatResponse> onResponse,
-            Action<ChatError> onError = null,
-            ChatRequestOptions options = null);
-
-        /// <summary>
         /// Send message with streaming (Task version)
         /// </summary>
         /// <param name="message">Message to send</param>
@@ -118,21 +74,6 @@ namespace EasyLocalLLM.LLM.Core
         /// <param name="cancellationToken">External cancellation token</param>
         Task<ChatResponse> SendMessageStreamingTaskAsync(
             string message,
-            IProgress<ChatResponse> onProgress,
-            ChatRequestOptions options = null,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Send message with images with streaming (Task version)
-        /// </summary>
-        /// <param name="message">Message to send</param>
-        /// <param name="images">List of images to send</param>
-        /// <param name="onProgress">Progress during streaming reception</param>
-        /// <param name="options">Request options</param>
-        /// <param name="cancellationToken">External cancellation token</param>
-        Task<ChatResponse> SendMessageStreamingTaskAsync(
-            string message,
-            List<Texture2D> images,
             IProgress<ChatResponse> onProgress,
             ChatRequestOptions options = null,
             CancellationToken cancellationToken = default);
