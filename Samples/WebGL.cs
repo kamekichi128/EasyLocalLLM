@@ -3,14 +3,15 @@ using EasyLocalLLM.LLM.Factory;
 using EasyLocalLLM.LLM.WebGL;
 using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
 namespace EasyLocalLLM.Samples
 {
     /// <summary>
-    /// Simple chat screen sample
-    /// Sends prompts to the loaded LLM model and receives responses
-    /// Provides multiple AI types that can be switched to change system prompts and tools
+    /// WebGL Sample
+    /// Simple demo for using EasyLocalLLM in WebGL build. 
+    /// It initializes the client with a local model and provides a UI to send prompts and display responses.
     /// </summary>
     public class WebGL : MonoBehaviour
     {
@@ -30,11 +31,9 @@ namespace EasyLocalLLM.Samples
 
         private void InitializeEasyLocalLLMClient()
         {
-            // Initialize client
-            // If you have ollama.exe running to automatically start the server, please stop it or specify a port that is not in use.
             var config = new WebGLLlamaCppConfig
             {
-                ModelUrl = Application.streamingAssetsPath + "/models/qwen2-0_5b-instruct-q4_k_m.gguf",
+                ModelUrl = Application.streamingAssetsPath + "/EasyLocalLLM/models/qwen2-0_5b-instruct-q4_k_m.gguf",
                 ContextSize = 2048,
                 UseWebGpu = true,
                 DebugMode = true
@@ -136,30 +135,9 @@ namespace EasyLocalLLM.Samples
             client.ClearAllMessages();
         }
 
-
-        private void LoadHistory()
-        {
-            try
-            {
-                client.LoadAllSessions("webgl-histories");
-                Debug.Log("✓ History loaded");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning("✗ Failed to load history: " + e.Message);
-            }
-        }
-
-        private void SaveHistory()
-        {
-            client.SaveAllSessions("webgl-histories");
-            Debug.Log("✓ History saved");
-        }
-
         public void OnDisable()
         {
             RemoveUIEvent();
-            SaveHistory();
         }
     }
 }
