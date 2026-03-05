@@ -66,8 +66,8 @@ namespace EasyLocalLLM.Samples
             var config = new OllamaConfig
             {
                 ServerUrl = "http://localhost:11434",
-                ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-                ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
+                ExecutablePath = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/ollama.exe",
+                ModelsDirectory = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/models",
                 DefaultModelName = "kamekichi128/qwen3-4b-instruct-2507",
                 AutoStartServer = true,
                 DebugMode = true,

@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-v0.2.1-blue)
+![Version](https://img.shields.io/badge/version-v0.2.2-blue)
 
 ![Title](Images/PromoBannerEasyLocalLLM.png)
 
@@ -40,7 +40,7 @@ public class QuickStart : MonoBehaviour
 
 **前提条件**: Ollama サーバが `localhost:11434` で起動済み、`mistral` モデルがインストール済み
 
-Ollamaサーバ自体のセットアップ、あるいはOllamaサーバを含めたゲームの構築については [Ollama サーバの自動管理](Documentation_JP/API_Reference.md#47-ollama-サーバの自動管理) を参照してください。
+Ollama、あるいはwllamaのセットアップ、Ollamaサーバーを含めたゲームの構築については [推論サーバーの構築](Documentation_JP/API_Reference.md#47-推論サーバーの構築) を参照してください。
 
 ## 🎬 デモ
 

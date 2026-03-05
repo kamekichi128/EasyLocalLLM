@@ -1,4 +1,5 @@
 using EasyLocalLLM.LLM.Ollama;
+using EasyLocalLLM.LLM.WebGL;
 
 namespace EasyLocalLLM.LLM.Factory
 {
@@ -15,6 +16,16 @@ namespace EasyLocalLLM.LLM.Factory
         public static OllamaClient CreateOllamaClient(OllamaConfig config = null)
         {
             return new OllamaClient(config);
+        }
+
+        /// <summary>
+        /// Create WebGL llama.cpp client.
+        /// </summary>
+        /// <param name="config">WebGL llama.cpp configuration (null for default settings)</param>
+        /// <returns>WebGLLlamaCppClient instance</returns>
+        public static WebGLLlamaCppClient CreateWebGLLlamaCppClient(WebGLLlamaCppConfig config = null)
+        {
+            return new WebGLLlamaCppClient(config);
         }
 
         // Future extension for other clients

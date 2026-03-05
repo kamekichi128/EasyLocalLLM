@@ -1,80 +1,47 @@
-using UnityEngine;
 using EasyLocalLLM.LLM.Core;
-using EasyLocalLLM.LLM.Ollama;
 using EasyLocalLLM.LLM.Factory;
-using UnityEngine.UIElements;
-using System.Collections.Generic;
+using EasyLocalLLM.LLM.WebGL;
 using System;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace EasyLocalLLM.Samples
 {
     /// <summary>
-    /// Image understanding sample
-    /// Sends prompts with image to the loaded LLM model and receives responses
-    /// To Enable this sample, add "sample-picture" (a jpg or png file) to Assets/Resources folder and enable Read/Write property.
+    /// Simple chat screen sample
+    /// Sends prompts to the loaded LLM model and receives responses
+    /// Provides multiple AI types that can be switched to change system prompts and tools
     /// </summary>
-    public class ImageUnderstanding : MonoBehaviour
+    public class WebGL : MonoBehaviour
     {
         public UIDocument UIDocument;
 
-        private OllamaClient client;
+        private WebGLLlamaCppClient client;
 
-        private Texture2D imageTexture;
+        private readonly string SESSION_ID = "webgl_session";
 
-        private readonly string SESSION_ID = "ImageUnderstandingSession";
 
         void Start()
         {
-            Debug.Log("=== EasyLocalLLM Image Understanding Sample ===");
+            Debug.Log("=== EasyLocalLLM WebGL Sample ===");
 
             InitializeEasyLocalLLMClient();
         }
+
         private void InitializeEasyLocalLLMClient()
         {
             // Initialize client
             // If you have ollama.exe running to automatically start the server, please stop it or specify a port that is not in use.
-            var config = new OllamaConfig
+            var config = new WebGLLlamaCppConfig
             {
-                ServerUrl = "http://localhost:11434",
-                ExecutablePath = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/ollama.exe",
-                ModelsDirectory = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/models",
-                DefaultModelName = "qwen3-vl:4b-instruct",
-                AutoStartServer = true,
+                ModelUrl = Application.streamingAssetsPath + "/models/qwen2-0_5b-instruct-q4_k_m.gguf",
+                ContextSize = 2048,
+                UseWebGpu = true,
                 DebugMode = true
             };
-            OllamaServerManager.Initialize(config, OnOllamaServerInitialized);
-            client = LLMClientFactory.CreateOllamaClient(config);
+            client = LLMClientFactory.CreateWebGLLlamaCppClient(config);
+            EnableUI();
             Debug.Log("✓ Client initialized");
-        }
-
-        private void OnOllamaServerInitialized(bool successed)
-        {
-            if (successed)
-            {
-                Debug.Log("✓ Ollama server initialized successfully.");
-                StartCoroutine(client.LoadModelRunnable(client.GetConfig().DefaultModelName, 180.0f, OnModelRunnable, true));
-            }
-            else
-            {
-                Debug.LogError("✗ Failed to initialize Ollama server.");
-            }
-        }
-
-        private void OnModelRunnable(LoadModelProgress progress)
-        {
-            if (progress.IsCompleted)
-            {
-                if (progress.IsSuccessed)
-                {
-                    Debug.Log("✓ Model is runnable.");
-                    EnableUI();
-                }
-                else
-                {
-                    Debug.LogError($"✗ Model failed to load: {progress.Message}");
-                }
-            }
-            Debug.Log($"Model loading progress: {progress.Progress * 100}% | {progress.Message}");
         }
 
         private void EnableUI()
@@ -84,9 +51,6 @@ namespace EasyLocalLLM.Samples
             var sendStreaming = root.Q<Button>("SendStreaming");
             var promptInput = root.Q<TextField>("PromptInput");
             var clearHistory = root.Q<Button>("ClearHistory");
-            var targetImage = root.Q<VisualElement>("TargetImage");
-            imageTexture = Resources.Load<Texture2D>("sample-picture");
-            targetImage.style.backgroundImage = new StyleBackground(imageTexture);
             sendAsync.clicked += OnSendAsyncClicked;
             sendStreaming.clicked += OnSendStreamingClicked;
             clearHistory.clicked += OnClearHistoryClicked;
@@ -112,17 +76,10 @@ namespace EasyLocalLLM.Samples
             var root = UIDocument.rootVisualElement;
             var promptInput = root.Q<TextField>("PromptInput");
             var result = root.Q<Label>("Result");
-            var images = new List<Texture2D>();
             string prompt = promptInput.value;
-
-            if (client.GetSessionMessageCount(SESSION_ID) == 0)
-            {
-                images.Add(imageTexture);
-            }
 
             StartCoroutine(client.SendMessageAsync(
                 prompt,
-                images,
                 chatResponse =>
                 {
                     Debug.Log($"✓ Response received: {chatResponse.Content}");
@@ -150,7 +107,6 @@ namespace EasyLocalLLM.Samples
 
             StartCoroutine(client.SendMessageStreamingAsync(
                 prompt,
-                new List<Texture2D> { imageTexture },
                 chatResponse =>
                 {
                     if (!chatResponse.IsFinal)
@@ -180,9 +136,30 @@ namespace EasyLocalLLM.Samples
             client.ClearAllMessages();
         }
 
+
+        private void LoadHistory()
+        {
+            try
+            {
+                client.LoadAllSessions("webgl-histories");
+                Debug.Log("✓ History loaded");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("✗ Failed to load history: " + e.Message);
+            }
+        }
+
+        private void SaveHistory()
+        {
+            client.SaveAllSessions("webgl-histories");
+            Debug.Log("✓ History saved");
+        }
+
         public void OnDisable()
         {
             RemoveUIEvent();
+            SaveHistory();
         }
     }
 }
