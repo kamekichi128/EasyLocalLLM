@@ -79,6 +79,21 @@ namespace EasyLocalLLM.LLM.Core
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Load model and verify that it is runnable.
+        /// </summary>
+        /// <param name="modelName">Model name</param>
+        /// <param name="timeoutSecondsForWarmup">Timeout in seconds for warmup operation</param>
+        /// <param name="progressCallback">Progress callback</param>
+        /// <param name="pullIfModelNotAvailable">If true, implementation may try to download/pull the model</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        IEnumerator LoadModelRunnable(
+            string modelName,
+            float timeoutSecondsForWarmup = 0.0f,
+            Action<LoadModelProgress> progressCallback = null,
+            bool pullIfModelNotAvailable = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Save session history to file
         /// </summary>
         /// <param name="filePath">Save destination file path</param>

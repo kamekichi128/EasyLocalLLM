@@ -13,44 +13,6 @@ using UnityEngine.UIElements;
 namespace EasyLocalLLM.LLM.Ollama
 {
     /// <summary>
-    /// Load model progress information
-    /// </summary>
-    public class LoadModelProgress
-    {
-        /// <summary>
-        /// Progress value (0.0 to 1.0)
-        /// </summary>
-        public double Progress { get; private set; }
-        /// <summary>
-        /// true if loading is completed (even if failed)
-        /// </summary>
-        public bool IsCompleted { get; private set; }
-        /// <summary>
-        /// true if loading succeeded
-        /// </summary>
-        public bool IsSuccessed { get; private set; }
-        /// <summary>
-        /// Message about the loading status
-        /// </summary>
-        public string Message { get; private set; }
-
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// <param name="progress">Progress value</param>
-        /// <param name="isCompleted">true if loading is completed (even if failed)</param>
-        /// <param name="isSuccessed">true if loading succeeded</param>
-        /// <param name="message">Message about the loading status</param>
-        public LoadModelProgress(double progress, bool isCompleted, bool isSuccessed, string message)
-        {
-            Progress = progress;
-            IsCompleted = isCompleted;
-            IsSuccessed = isSuccessed;
-            Message = message;
-        }
-    }
-
-    /// <summary>
     /// Implementation of Ollama LLM client
     /// </summary>
     public class OllamaClient : IChatLLMClient

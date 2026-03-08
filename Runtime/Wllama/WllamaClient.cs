@@ -154,6 +154,118 @@ namespace EasyLocalLLM.LLM.WebGL
         }
 
         /// <summary>
+        /// Load model and verify that it is runnable.
+        /// </summary>
+        public IEnumerator LoadModelRunnable(
+            string modelName,
+            float timeoutSecondsForWarmup = 0.0f,
+            Action<LoadModelProgress> progressCallback = null,
+            bool pullIfModelNotAvailable = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(modelName))
+            {
+                progressCallback?.Invoke(new LoadModelProgress(1.0, true, false, "Model name cannot be empty."));
+                yield break;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                progressCallback?.Invoke(new LoadModelProgress(1.0, true, false, $"Loading model '{modelName}' was cancelled."));
+                yield break;
+            }
+
+            if (pullIfModelNotAvailable && _config.DebugMode)
+            {
+                Debug.Log("[WebGLLlamaCppClient] pullIfModelNotAvailable is ignored because WebGL model assets must be prepared before runtime.");
+            }
+
+            progressCallback?.Invoke(new LoadModelProgress(0.1, false, false, $"Initializing model '{modelName}'..."));
+
+            ChatError initError = null;
+            yield return EnsureBridgeInitialized(error => initError = error);
+            if (initError != null || !_bridgeInitSucceeded)
+            {
+                progressCallback?.Invoke(new LoadModelProgress(
+                    1.0,
+                    true,
+                    false,
+                    $"Failed to initialize model '{modelName}': {initError?.Message ?? _bridgeInitError ?? "Unknown error"}"));
+                yield break;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                progressCallback?.Invoke(new LoadModelProgress(1.0, true, false, $"Loading model '{modelName}' was cancelled."));
+                yield break;
+            }
+
+            progressCallback?.Invoke(new LoadModelProgress(0.6, false, true, $"Model '{modelName}' initialized. Running warmup..."));
+
+            bool warmupCompleted = false;
+            bool warmupSucceeded = false;
+            string warmupErrorMessage = null;
+
+            var warmupCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            bool timedOut = false;
+
+            var warmupRoutine = SendMessageAsync(
+                "Please say hello",
+                _ =>
+                {
+                    warmupCompleted = true;
+                    warmupSucceeded = true;
+                },
+                error =>
+                {
+                    warmupCompleted = true;
+                    if (!timedOut)
+                    {
+                        warmupErrorMessage = error?.Message ?? "Unknown error";
+                    }
+                },
+                new ChatRequestOptions
+                {
+                    SessionId = "_easyLocalLLM_warmup",
+                    ModelName = modelName,
+                    CancellationToken = warmupCts.Token
+                });
+
+            float warmupStart = Time.realtimeSinceStartup;
+            while (warmupRoutine.MoveNext())
+            {
+                if (!timedOut && timeoutSecondsForWarmup > 0.0f && Time.realtimeSinceStartup - warmupStart > timeoutSecondsForWarmup)
+                {
+                    timedOut = true;
+                    warmupErrorMessage = $"Warmup for model '{modelName}' timed out after {timeoutSecondsForWarmup:0.##} seconds.";
+                    warmupCts.Cancel();
+                }
+
+                yield return warmupRoutine.Current;
+            }
+
+            warmupCts.Dispose();
+
+            if (!warmupCompleted)
+            {
+                progressCallback?.Invoke(new LoadModelProgress(1.0, true, false, $"Failed to run model '{modelName}': warmup did not complete."));
+                yield break;
+            }
+
+            if (!warmupSucceeded)
+            {
+                progressCallback?.Invoke(new LoadModelProgress(
+                    1.0,
+                    true,
+                    false,
+                    $"Failed to run model '{modelName}': {warmupErrorMessage}"));
+                yield break;
+            }
+
+            progressCallback?.Invoke(new LoadModelProgress(1.0, true, true, $"Model '{modelName}' is loaded and runnable."));
+        }
+
+        /// <summary>
         /// Send message asynchronously (non-streaming).
         /// </summary>
         public IEnumerator SendMessageAsync(
