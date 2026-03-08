@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.2] - 2026-03-08
+
+- Add LoadModelRunnable function to WllamaClient
+
 ## [0.3.1] - 2026-03-05
 
 ### Fixed
