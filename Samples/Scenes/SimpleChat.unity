@@ -160,9 +160,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 643704229}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 056b6b5281d494c4a894f368e8f8eaeb, type: 3}
+  m_Script: {fileID: 11500000, guid: 414fd6eff5ef4334c97bda2cd0a6b2c2, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SimpleChat
+  m_EditorClassIdentifier: Assembly-CSharp::EasyLocalLLM.Samples.SimpleChat
   UIDocument: {fileID: 1666967245}
 --- !u!1 &1666967244
 GameObject:
@@ -193,9 +193,9 @@ MonoBehaviour:
   m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 763329058e799574aad5e895200d4e57, type: 2}
+  m_PanelSettings: {fileID: 11400000, guid: e2e997e89dbd79c43a50cc9886dac93b, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: a9619dc5c9d508a499da324626bddb52, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: 60d5b1ae5b0b1da4a8e105b2d553e6a6, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1

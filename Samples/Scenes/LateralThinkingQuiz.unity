@@ -160,7 +160,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 643704229}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5cfab98f429d4c74389dc60f486f837e, type: 3}
+  m_Script: {fileID: 11500000, guid: 7c1986a2636798642bac05056de58dd9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LateralThinkingQuiz
   UIDocument: {fileID: 1666967245}
@@ -193,9 +193,9 @@ MonoBehaviour:
   m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 763329058e799574aad5e895200d4e57, type: 2}
+  m_PanelSettings: {fileID: 11400000, guid: e2e997e89dbd79c43a50cc9886dac93b, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: a53f89f7374565f4fb18a772a37883af, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: 008520001e88d2e45892a0cffbce9dc9, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1
