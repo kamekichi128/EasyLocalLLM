@@ -67,14 +67,14 @@ public class QuickStart : MonoBehaviour
 
 **詳しい設定や使い方は、[4.1 基本的な初期化](#41-基本的な初期化)を参照してください。**
 
-**Ollama あるいは、wllamaのセットアップが未完了の場合は、[4.7 推論サーバーの構築](#47-推論サーバーの構築)を参照してください。**
+**Ollamaのセットアップが未完了の場合は、[4.7 推論サーバーの構築](#47-推論サーバーの構築)を参照してください。**
 
 ## 3. 制限事項
 
 ### ⚠️ 重要な制約
 
 - **Unity 専用**：UnityWebRequest に依存しているため、Unity 外では動作しません
-- **Windows / WebGL 専用**：現時点では WindowsとWebGL 以外に対応していません
+- **Windows専用**：現時点では Windows以外に対応していません
 - **メインスレッド依存**：Task 版 API も内部的にはコルーチンで動作します
 
 ### 処理パターン
@@ -488,12 +488,6 @@ void SendStreamingWithImages(Texture2D screenshot)
 | 環境 | 推論サーバー | セットアップ手順 | モデル管理 | 注意事項 |
 | ---- | ---- | ---- | ---- | ---- |
 | Unity Editor / Windows | [Ollama](https://ollama.com/) | [OllamaSetup.md](OllamaSetup.md) | blob / manifest | 特に制限なし |
-| Unity WebGL | [wllama](https://github.com/ngxson/wllama) | [wllamaSetup.md](wllamaSetup.md) | gguf | tool call / VLM 未対応 | 
-
-補足:
-
-- WebGL では `ollama.exe` は利用できないため、`WllamaClient`を利用してください。
-- WebGL版で`Format` `FormatSchema` を利用する場合、Ollama版と比較し確度が低いため、Promptでの指定とC#側のJSONフォーマットチェックをお願いします。
 
 ### 4.8 セッション管理
 
@@ -2780,8 +2774,8 @@ var prodConfig = new OllamaConfig
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
     AutoStartServer = true,      // ユーザー環境で自動起動
-    ExecutablePath = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/ollama.exe",
-    ModelsDirectory = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/models",
+    ExecutablePath = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/ollama.exe",
+    ModelsDirectory = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/models",
     DebugMode = false,           // ログ出力は最小限に
     MaxRetries = 2,              // 安定環境なので少なめ
     HttpTimeoutSeconds = 90.0f,  // 大型モデル対応
@@ -2911,8 +2905,8 @@ void SetupWindowsStandaloneEnvironment()
         ServerUrl = "http://localhost:11434",
         DefaultModelName = "mistral",
         AutoStartServer = true,
-        ExecutablePath = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/ollama.exe",
-        ModelsDirectory = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/models",
+        ExecutablePath = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/ollama.exe",
+        ModelsDirectory = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/models",
         DebugMode = false,
         MaxRetries = 3,
         HttpTimeoutSeconds = 90.0f,

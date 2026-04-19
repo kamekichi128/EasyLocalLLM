@@ -1,6 +1,6 @@
 # EasyLocalLLM Runtime Library
 
-EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama (Windows) or wllama (WebGL).
+EasyLocalLLM is a Unity library for communicating with a local LLM via Ollama.
 
 ## Table of Contents
 
@@ -67,14 +67,14 @@ public class QuickStart : MonoBehaviour
 
 **For detailed setup and usage, see [4.1 Basic Initialization](#41-basic-initialization).**
 
-**If Ollama or wllama is not set up yet, see [4.7 Inference Server Setup](#47-inference-server-setup).**
+**If Ollama is not set up yet, see [4.7 Inference Server Setup](#47-inference-server-setup).**
 
 ## 3. Limitations
 
 ### Important Constraints
 
 - **Unity-only**: Depends on UnityWebRequest, so it does not work outside Unity.
-- **Windows / WebGL only**: Currently supported on Windows and WebGL.
+- **Windows only**: Currently supported on Windows.
 - **Main-thread dependency**: Task APIs are implemented by bridging coroutines.
 
 ### Usage Patterns
@@ -114,7 +114,7 @@ Quick Start uses the default settings; this section explains full configuration.
 
 **Prerequisites**: Ollama server is running at `localhost:11434`, and the model is installed.
 
-**If Ollama or wllama is not set up yet, see [4.7 Inference Server Setup](#47-inference-server-setup).**
+**If Ollama is not set up yet, see [4.7 Inference Server Setup](#47-inference-server-setup).**
 
 ```csharp
 using EasyLocalLLM.LLM;
@@ -396,8 +396,6 @@ var options = new ChatRequestOptions
 You can attach images to inference requests by passing `List<Texture2D>` to the image-aware overloads.
 This is useful for multimodal-capable models (image + text input).
 
-**Due to memory/runtime limitations, image input is supported only on the Ollama path (Windows), not WebGL/wllama.**
-
 **Supported APIs:**
 
 - `SendMessageAsync(string message, List<Texture2D> images, ...)`
@@ -480,7 +478,6 @@ void SendStreamingWithImages(Texture2D screenshot)
 - Images are internally encoded as Base64 PNG before being sent to Ollama.
 - If the selected model does not support image input, the request may fail or ignore images.
 - For performance and memory stability, keep image dimensions reasonable (resize/compress before sending).
-- In WebGL (`WebGLLlamaCppClient`), image overloads are not supported.
 
 ### 4.7 Inference Server Setup
 
@@ -489,12 +486,6 @@ Choose the runtime backend that matches your build target.
 | Environment | Inference Backend | Setup Guide | Model Management | Notes |
 | ---- | ---- | ---- | ---- | ---- |
 | Unity Editor / Windows | [Ollama](https://ollama.com/) | [OllamaSetup.md](OllamaSetup.md) | blob / manifest | No major restrictions |
-| Unity WebGL | [wllama](https://github.com/ngxson/wllama) | [wllamaSetup.md](wllamaSetup.md) | gguf | Tool calling / VLM not supported |
-
-Notes:
-
-- WebGL cannot run `ollama.exe` directly. Use `WebGLLlamaCppClient`.
-- If you need structured output in WebGL (`Format` / `FormatSchema`), prefer prompt+validation based handling and verify final JSON on the C# side.
 
 ### 4.8 Session Management
 
@@ -2771,8 +2762,8 @@ var prodConfig = new OllamaConfig
     ServerUrl = "http://localhost:11434",
     DefaultModelName = "mistral",
     AutoStartServer = true,      // Auto-start for users
-    ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-    ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
+    ExecutablePath = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/ollama.exe",
+    ModelsDirectory = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/models",
     DebugMode = false,           // Minimal logs
     MaxRetries = 2,              // Stable environment
     HttpTimeoutSeconds = 90.0f,  // Large models
@@ -2902,8 +2893,8 @@ void SetupWindowsStandaloneEnvironment()
         ServerUrl = "http://localhost:11434",
         DefaultModelName = "mistral",
         AutoStartServer = true,
-        ExecutablePath = Application.streamingAssetsPath + "/Ollama/ollama.exe",
-        ModelsDirectory = Application.streamingAssetsPath + "/Ollama/models",
+        ExecutablePath = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/ollama.exe",
+        ModelsDirectory = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/models",
         DebugMode = false,
         MaxRetries = 3,
         HttpTimeoutSeconds = 90.0f,

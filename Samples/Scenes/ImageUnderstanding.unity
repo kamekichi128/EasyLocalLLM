@@ -160,7 +160,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 643704229}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 368a0032df2dce449a99949a026fa7cd, type: 3}
+  m_Script: {fileID: 11500000, guid: db0fa98b39d83424c8d2ae245c268807, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EasyLocalLLM.Samples.ImageUnderstanding
   UIDocument: {fileID: 1666967245}
@@ -193,9 +193,9 @@ MonoBehaviour:
   m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
-  m_PanelSettings: {fileID: 11400000, guid: 763329058e799574aad5e895200d4e57, type: 2}
+  m_PanelSettings: {fileID: 11400000, guid: e2e997e89dbd79c43a50cc9886dac93b, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: 4204d88cb6422be47ba8543c2dea501d, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: 3309e43d0395bb94f8039fadec4d3428, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1

@@ -30,7 +30,7 @@ There are two common ways to prepare models for Ollama.
 2. Create this structure in your Unity project:
 
 ```text
-Assets/StreamingAssets/EasyLocalLLM/Ollama/
+Assets/StreamingAssets/.EasyLocalLLM/Ollama/
 ├── ollama.exe
 ├── lib/
 └── models/
@@ -41,20 +41,20 @@ Assets/StreamingAssets/EasyLocalLLM/Ollama/
 1. PowerShell window #1 (start server):
 
 ```powershell
-$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama\models"
+$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\.EasyLocalLLM\Ollama\models"
 mkdir $env:OLLAMA_MODELS
-cd "<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama"
+cd "<ProjectPath>\Assets\StreamingAssets\.EasyLocalLLM\Ollama"
 .\ollama.exe serve
 ```
 
 2. PowerShell window #2 (pull model):
 
 ```powershell
-cd "<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama"
+cd "<ProjectPath>\Assets\StreamingAssets\.EasyLocalLLM\Ollama"
 .\ollama.exe pull mistral
 ```
 
-3. Confirm `blobs/` and `manifests/` are created under `StreamingAssets/EasyLocalLLM/Ollama/models/`.
+3. Confirm `blobs/` and `manifests/` are created under `StreamingAssets/.EasyLocalLLM/Ollama/models/`.
 
 ## Method B: Direct GGUF Placement
 
@@ -63,7 +63,7 @@ cd "<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama"
 Example:
 
 ```text
-Assets/StreamingAssets/EasyLocalLLM/Ollama/models/mistral/
+Assets/StreamingAssets/.EasyLocalLLM/Ollama/models/mistral/
 └── mistral-7b-instruct-v0.1.Q4_K_M.gguf
 ```
 
@@ -80,8 +80,8 @@ PARAMETER top_p 0.9
 ### 3) Register model in Ollama
 
 ```powershell
-$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama\models"
-cd "<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama\models\mistral"
+$env:OLLAMA_MODELS="<ProjectPath>\Assets\StreamingAssets\.EasyLocalLLM\Ollama\models"
+cd "<ProjectPath>\Assets\StreamingAssets\.EasyLocalLLM\Ollama\models\mistral"
 ..\..\ollama.exe create mistral -f ./Modelfile
 ```
 
@@ -97,8 +97,8 @@ cd "<ProjectPath>\Assets\StreamingAssets\EasyLocalLLM\Ollama\models\mistral"
 var config = new OllamaConfig
 {
     ServerUrl = "http://localhost:11434",
-    ExecutablePath = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/ollama.exe",
-    ModelsDirectory = Application.streamingAssetsPath + "/EasyLocalLLM/Ollama/models",
+    ExecutablePath = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/ollama.exe",
+    ModelsDirectory = Application.streamingAssetsPath + "/.EasyLocalLLM/Ollama/models",
     DefaultModelName = "mistral",
     AutoStartServer = true,
     DebugMode = true
