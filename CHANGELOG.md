@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.3] - 2026-04-19
+
+- Remove WllamaClient because of unstability
+- Change folder structure of StreamingAssets to improve time for importing assets
+
 ## [0.3.2] - 2026-03-08
 
 - Add LoadModelRunnable function to WllamaClient
